@@ -6,6 +6,8 @@ import best1 from '../../assets/best.jpg';
 import best2 from '../../assets/best 2.jpg';
 import best3 from '../../assets/best 3.jpg';
 import bnner from '../../assets/Bnner.jpg';
+import heroUp1 from '../../assets/hero-up-1.jpg';
+import heroUp2 from '../../assets/hero-up-2.jpg';
 
 // Coaching Photos for Gallery
 import coaching1 from '../../assets/474589765_1276841513370808_7764133733018340516_n.jpg';
@@ -36,7 +38,7 @@ const Home = () => {
   });
   const [formStatus, setFormStatus] = useState({ message: '', type: '' });
 
-  const heroImages = [best1, best2, best3];
+  const heroImages = [heroUp1, heroUp2, best1, best2, best3];
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
 
   useEffect(() => {
@@ -118,7 +120,7 @@ const Home = () => {
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <Navbar />
 
-      <section className="relative h-[95vh] w-screen flex items-center justify-center overflow-hidden bg-slate-900">
+      <section className="relative h-[calc(100vh-80px)] mt-[80px] w-screen flex items-center justify-center overflow-hidden bg-slate-900">
         {/* Background Slideshow - Edge to Edge */}
         {heroImages.map((img, idx) => (
           <div
@@ -129,7 +131,7 @@ const Home = () => {
             <img
               src={img}
               alt="Oasis Hero"
-              className="w-full h-full object-cover transform transition-transform duration-[5000ms] ease-out"
+              className="w-full h-full object-cover object-top transform transition-transform duration-[5000ms] ease-out"
             />
             {/* Improved Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/40 to-transparent"></div>
@@ -142,8 +144,8 @@ const Home = () => {
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[120px] animate-blob animation-delay-2000"></div>
         </div>
 
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center py-6">
+        <div className="relative z-10 w-full pt-20">
+          <div className="text-center py-6 px-4">
             <div className="inline-block bg-white/10 backdrop-blur-md rounded-full px-6 py-2 mb-8 border border-white/20 animate-reveal shadow-xl overflow-hidden relative">
               <span className="relative text-xs md:text-sm font-bold text-white tracking-wider flex items-center gap-2">
                 <span className="animate-pulse text-indigo-400">🏆</span>
@@ -170,7 +172,7 @@ const Home = () => {
               <span className="text-pink-300">Proven Results</span>
             </p>
 
-            <p className="text-base md:text-lg mb-10 text-gray-200 max-w-xl mx-auto font-medium leading-relaxed animate-reveal drop-shadow-sm" style={{ animationDelay: '2.7s' }}>
+            <p className="text-base md:text-lg mb-10 text-gray-200 font-medium leading-relaxed animate-reveal drop-shadow-sm" style={{ animationDelay: '2.7s' }}>
               Join Patna's most trusted JEE coaching institute with
               <span className="text-white font-bold mx-1 border-b border-indigo-500">95% success rate</span>
               and personalized attention.

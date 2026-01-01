@@ -19,9 +19,14 @@ router.post('/', auth, roleAuth('admin'), async (req, res) => {
     });
     await notice.save();
 
+    console.log('Publishing notice for roles:', targetRoles);
+
     // Broadcast notification to target users
     if (targetRoles && targetRoles.length > 0) {
+      // Create a case-insensitive query or just log the count
       const users = await User.find({ role: { $in: targetRoles } });
+      console.log(`Found ${users.length} users for target roles: ${targetRoles}`);
+
       const notifications = users.map(user => ({
         recipient: user._id,
         title: `New Notice: ${title}`,
@@ -32,6 +37,7 @@ router.post('/', auth, roleAuth('admin'), async (req, res) => {
 
       if (notifications.length > 0) {
         await Notification.insertMany(notifications);
+        console.log(`Successfully sent ${notifications.length} notifications.`);
       }
     }
 
@@ -45,9 +51,14 @@ router.post('/', auth, roleAuth('admin'), async (req, res) => {
 // Get notices for user role
 router.get('/', auth, async (req, res) => {
   try {
-    const notices = await Notice.find({ targetRoles: req.user.role });
+    const role = req.user.role;
+    console.log(`Fetching notices for role: ${role}`);
+    // Use $in to be safe if targetRoles is an array
+    const notices = await Notice.find({ targetRoles: { $in: [role] } }).sort({ createdAt: -1 });
+    console.log(`Found ${notices.length} notices for role ${role}`);
     res.json(notices);
   } catch (err) {
+    console.error('Error fetching notices:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });

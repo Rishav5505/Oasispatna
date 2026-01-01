@@ -109,7 +109,10 @@ const AdminDashboard = () => {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get('http://localhost:5002/api/auth/me');
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get('http://localhost:5002/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setProfile(res.data);
       setEditForm({ name: res.data.name, phone: res.data.phone, email: res.data.email, address: res.data.address });
     } catch (err) {
@@ -146,7 +149,10 @@ const AdminDashboard = () => {
     console.log('Fetching users...');
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5002/api/users');
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get('http://localhost:5002/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       console.log('Users fetched:', res.data);
       setUsers(res.data);
       const studentUsers = res.data.filter(u => u.role === 'student');
@@ -168,7 +174,10 @@ const AdminDashboard = () => {
 
   const fetchAllStudents = async () => {
     try {
-      const res = await axios.get('http://localhost:5002/api/users/students/all');
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get('http://localhost:5002/api/users/students/all', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setAllStudents(res.data);
     } catch (err) {
       console.error('Error fetching all students:', err);
@@ -266,8 +275,10 @@ const AdminDashboard = () => {
   const handleUpdateTotalFee = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      // selectedFeeStudent.userId is the User ID string.
-      await axios.put(`http://localhost:5002/api/users/students/${selectedFeeStudent.userId}/fee`,
+      // Safely get the user ID string from the potentially populated userId object
+      const targetUserId = selectedFeeStudent.userId?._id || selectedFeeStudent.userId;
+
+      await axios.put(`http://localhost:5002/api/users/students/${targetUserId}/fee`,
         { totalFee: newTotalFee },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -278,7 +289,7 @@ const AdminDashboard = () => {
       setSelectedFeeStudent(prev => ({ ...prev, totalFee: newTotalFee }));
     } catch (err) {
       console.error("Update Fee Error:", err);
-      alert('Failed to update fee');
+      alert('Failed to update fee: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -332,9 +343,11 @@ const AdminDashboard = () => {
     console.log('Clicked student:', student);
     setSelectedStudent(student);
     try {
+      const token = sessionStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
       const [attendanceRes, marksRes] = await Promise.all([
-        axios.get(`http://localhost:5002/api/attendance/student/${student._id}`),
-        axios.get(`http://localhost:5002/api/marks/student/${student._id}`)
+        axios.get(`http://localhost:5002/api/attendance/student/${student._id}`, { headers }),
+        axios.get(`http://localhost:5002/api/marks/student/${student._id}`, { headers })
       ]);
       console.log('Attendance:', attendanceRes.data);
       console.log('Marks:', marksRes.data);
@@ -347,7 +360,10 @@ const AdminDashboard = () => {
   const handleAddTeacher = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5002/api/users/teachers', teacherForm);
+      const token = sessionStorage.getItem('token');
+      await axios.post('http://localhost:5002/api/users/teachers', teacherForm, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       alert('Teacher added successfully');
       setTeacherForm({ name: '', email: '', phone: '', subjects: '', batches: '', classes: '', password: '' });
       fetchUsers();
@@ -360,7 +376,10 @@ const AdminDashboard = () => {
   const handleUpdateTeacherAssignments = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:5002/api/users/teachers/${assignForm.teacherId}`, assignForm);
+      const token = sessionStorage.getItem('token');
+      await axios.put(`http://localhost:5002/api/users/teachers/${assignForm.teacherId}`, assignForm, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       alert('Assignments updated successfully');
       setShowAssignModal(false);
       fetchUsers();
@@ -403,10 +422,11 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      await axios.post('http://localhost:5002/api/users/link-parent', {
-        parentId: linkParentId,
-        studentId: linkStudentId
-      });
+      const token = sessionStorage.getItem('token');
+      await axios.post('http://localhost:5002/api/users/link-parent',
+        { parentId: linkParentId, studentId: linkStudentId },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
       alert('Parent linked to student successfully');
       setLinkParentId('');
       setLinkStudentId('');
@@ -1181,15 +1201,23 @@ const AdminDashboard = () => {
                                     </div>
                                   ) : (
                                     <>
-                                      <span className="text-xl font-bold text-gray-700">₹{totalFee.toLocaleString()}</span>
+                                      <div className="flex flex-col items-end">
+                                        <span className={`text-xl font-bold ${totalFee === 0 ? 'text-rose-500 animate-pulse' : 'text-gray-700'}`}>
+                                          ₹{totalFee.toLocaleString()}
+                                        </span>
+                                        {totalFee === 0 && (
+                                          <span className="text-[8px] font-black text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded-full mt-1 uppercase tracking-tighter">Needs Calibration</span>
+                                        )}
+                                      </div>
                                       <button
                                         onClick={() => {
                                           setNewTotalFee(totalFee);
                                           setIsEditingFee(true);
                                         }}
-                                        className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                        className={`p-2 rounded-xl transition-all ${totalFee === 0 ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-indigo-600'}`}
+                                        title="Configure Total Course Fee"
                                       >
-                                        <FaCogs />
+                                        <FaCogs className={totalFee === 0 ? 'animate-spin-slow' : ''} />
                                       </button>
                                     </>
                                   )}
@@ -1358,67 +1386,82 @@ const AdminDashboard = () => {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Contact Number</label>
                     <input type="tel" placeholder="+91 9876543210" value={teacherForm.phone} onChange={(e) => setTeacherForm({ ...teacherForm, phone: e.target.value })} className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all" required />
                   </div>
-                  <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-3">
+                  {/* Assign Subjects Section */}
+                  <div className="space-y-4 col-span-1 md:col-span-2 lg:col-span-3">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Assign Subjects</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Mathematics, Physics (Comma separated)"
-                      value={teacherForm.subjects}
-                      onChange={(e) => setTeacherForm({ ...teacherForm, subjects: e.target.value })}
-                      className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all"
-                    />
-                    <div className="flex flex-wrap gap-2 mt-2 ml-4">
-                      {availableSubjects.slice(0, 5).map(sub => (
-                        <button
-                          key={sub._id}
-                          type="button"
-                          onClick={() => {
-                            const current = teacherForm.subjects.split(',').map(s => s.trim()).filter(x => x);
-                            if (!current.includes(sub.name)) {
-                              setTeacherForm({ ...teacherForm, subjects: [...current, sub.name].join(', ') });
-                            }
-                          }}
-                          className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold hover:bg-indigo-100 transition-colors"
-                        >
-                          + {sub.name}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {['Physics', 'Chemistry', 'Maths', 'Biology', 'English'].map(sub => {
+                        const isSelected = teacherForm.subjects.split(',').map(s => s.trim()).includes(sub);
+                        return (
+                          <label key={sub} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-transparent hover:border-indigo-100'}`}>
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              checked={isSelected}
+                              onChange={() => {
+                                const current = teacherForm.subjects.split(',').map(s => s.trim()).filter(x => x);
+                                const updated = isSelected ? current.filter(i => i !== sub) : [...current, sub];
+                                setTeacherForm({ ...teacherForm, subjects: updated.join(', ') });
+                              }}
+                            />
+                            <span className={`text-xs font-bold ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>{sub}</span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-3">
+                  {/* Assign Classes Section */}
+                  <div className="space-y-4 col-span-1 md:col-span-2 lg:col-span-3">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Assign Classes</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Class 10, Class 12 (Comma separated)"
-                      value={teacherForm.classes}
-                      onChange={(e) => setTeacherForm({ ...teacherForm, classes: e.target.value })}
-                      className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all"
-                    />
-                    <div className="flex flex-wrap gap-2 mt-2 ml-4">
-                      {availableClasses.slice(0, 5).map(cls => (
-                        <button
-                          key={cls._id}
-                          type="button"
-                          onClick={() => {
-                            const current = teacherForm.classes.split(',').map(s => s.trim()).filter(x => x);
-                            if (!current.includes(cls.name)) {
-                              setTeacherForm({ ...teacherForm, classes: [...current, cls.name].join(', ') });
-                            }
-                          }}
-                          className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold hover:bg-emerald-100 transition-colors"
-                        >
-                          + {cls.name}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {['Class 9', 'Class 10'].map(cls => {
+                        const isSelected = teacherForm.classes.split(',').map(s => s.trim()).includes(cls);
+                        return (
+                          <label key={cls} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-transparent hover:border-emerald-100'}`}>
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                              checked={isSelected}
+                              onChange={() => {
+                                const current = teacherForm.classes.split(',').map(s => s.trim()).filter(x => x);
+                                const updated = isSelected ? current.filter(i => i !== cls) : [...current, cls];
+                                setTeacherForm({ ...teacherForm, classes: updated.join(', ') });
+                              }}
+                            />
+                            <span className={`text-xs font-bold ${isSelected ? 'text-emerald-600' : 'text-gray-500'}`}>{cls}</span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className="space-y-2">
+                  {/* Assigned Batches Section */}
+                  <div className="space-y-4 col-span-1 md:col-span-2 lg:col-span-3">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Assigned Batches</label>
-                    <input type="text" placeholder="B1, B2" value={teacherForm.batches} onChange={(e) => setTeacherForm({ ...teacherForm, batches: e.target.value })} className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all" />
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {['B1', 'B2'].map(batch => {
+                        const isSelected = teacherForm.batches.split(',').map(s => s.trim()).includes(batch);
+                        return (
+                          <label key={batch} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-transparent hover:border-orange-100'}`}>
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                              checked={isSelected}
+                              onChange={() => {
+                                const current = teacherForm.batches.split(',').map(s => s.trim()).filter(x => x);
+                                const updated = isSelected ? current.filter(i => i !== batch) : [...current, batch];
+                                setTeacherForm({ ...teacherForm, batches: updated.join(', ') });
+                              }}
+                            />
+                            <span className={`text-xs font-bold ${isSelected ? 'text-orange-600' : 'text-gray-500'}`}>{batch}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="space-y-2">
+
+                  <div className="space-y-2 col-span-1 md:col-span-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Access Password</label>
                     <input type="password" placeholder="Create strong password" value={teacherForm.password} onChange={(e) => setTeacherForm({ ...teacherForm, password: e.target.value })} className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all" />
                   </div>
@@ -1616,71 +1659,76 @@ const AdminDashboard = () => {
                 </button>
               </div>
               <form onSubmit={handleUpdateTeacherAssignments} className="p-10 space-y-8">
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Assign Subjects</label>
-                  <input
-                    type="text"
-                    value={assignForm.subjects}
-                    onChange={(e) => setAssignForm({ ...assignForm, subjects: e.target.value })}
-                    className="w-full p-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all"
-                    placeholder="Maths, Physics, etc."
-                  />
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {availableSubjects.slice(0, 5).map(sub => (
-                      <button
-                        key={sub._id}
-                        type="button"
-                        onClick={() => {
-                          const current = assignForm.subjects.split(',').map(s => s.trim()).filter(x => x);
-                          if (!current.includes(sub.name)) {
-                            setAssignForm({ ...assignForm, subjects: [...current, sub.name].join(', ') });
-                          }
-                        }}
-                        className="px-2 py-1 bg-gray-100 text-gray-500 rounded-lg text-[9px] font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                      >
-                        {sub.name}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Physics', 'Chemistry', 'Maths', 'Biology', 'English'].map(sub => {
+                      const isSelected = assignForm.subjects.split(',').map(s => s.trim()).includes(sub);
+                      return (
+                        <label key={sub} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-transparent hover:border-indigo-100'}`}>
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            checked={isSelected}
+                            onChange={() => {
+                              const current = assignForm.subjects.split(',').map(s => s.trim()).filter(x => x);
+                              const updated = isSelected ? current.filter(i => i !== sub) : [...current, sub];
+                              setAssignForm({ ...assignForm, subjects: updated.join(', ') });
+                            }}
+                          />
+                          <span className={`text-xs font-bold ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>{sub}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Assign Classes</label>
-                  <input
-                    type="text"
-                    value={assignForm.classes}
-                    onChange={(e) => setAssignForm({ ...assignForm, classes: e.target.value })}
-                    className="w-full p-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700 focus:bg-white focus:ring-2 focus:ring-indigo-100 transition-all"
-                    placeholder="Class 10, Class 11"
-                  />
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {availableClasses.slice(0, 5).map(cls => (
-                      <button
-                        key={cls._id}
-                        type="button"
-                        onClick={() => {
-                          const current = assignForm.classes.split(',').map(s => s.trim()).filter(x => x);
-                          if (!current.includes(cls.name)) {
-                            setAssignForm({ ...assignForm, classes: [...current, cls.name].join(', ') });
-                          }
-                        }}
-                        className="px-2 py-1 bg-gray-100 text-gray-500 rounded-lg text-[9px] font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
-                      >
-                        {cls.name}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Class 9', 'Class 10'].map(cls => {
+                      const isSelected = assignForm.classes.split(',').map(s => s.trim()).includes(cls);
+                      return (
+                        <label key={cls} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-transparent hover:border-emerald-100'}`}>
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                            checked={isSelected}
+                            onChange={() => {
+                              const current = assignForm.classes.split(',').map(s => s.trim()).filter(x => x);
+                              const updated = isSelected ? current.filter(i => i !== cls) : [...current, cls];
+                              setAssignForm({ ...assignForm, classes: updated.join(', ') });
+                            }}
+                          />
+                          <span className={`text-xs font-bold ${isSelected ? 'text-emerald-600' : 'text-gray-500'}`}>{cls}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Batches</label>
-                  <input
-                    type="text"
-                    value={assignForm.batches}
-                    onChange={(e) => setAssignForm({ ...assignForm, batches: e.target.value })}
-                    className="w-full p-4 bg-gray-50 border-none rounded-2xl font-bold text-gray-700"
-                    placeholder="Morning, Evening"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    {['B1', 'B2'].map(batch => {
+                      const isSelected = assignForm.batches.split(',').map(s => s.trim()).includes(batch);
+                      return (
+                        <label key={batch} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-transparent hover:border-orange-100'}`}>
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                            checked={isSelected}
+                            onChange={() => {
+                              const current = assignForm.batches.split(',').map(s => s.trim()).filter(x => x);
+                              const updated = isSelected ? current.filter(i => i !== batch) : [...current, batch];
+                              setAssignForm({ ...assignForm, batches: updated.join(', ') });
+                            }}
+                          />
+                          <span className={`text-xs font-bold ${isSelected ? 'text-orange-600' : 'text-gray-500'}`}>{batch}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <button type="submit" className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-100 transition-all transform hover:-translate-y-1">

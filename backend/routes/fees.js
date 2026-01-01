@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Fee = require('../models/Fee');
 const Notification = require('../models/Notification');
@@ -78,18 +79,18 @@ router.post('/razorpay/verify', auth, roleAuth('parent'), async (req, res) => {
             const studentProfile = await Student.findById(studentId);
             if (studentProfile) {
                 await new Notification({
-                    userId: studentProfile.userId,
+                    recipient: studentProfile.userId,
                     title: 'Fee Payment Received',
                     message: `Payment of ₹${amount} received via Razorpay. Transaction ID: ${paymentId}.`,
-                    type: 'payment'
+                    type: 'fee'
                 }).save();
 
                 if (studentProfile.parentId) {
                     await new Notification({
-                        userId: studentProfile.parentId,
+                        recipient: studentProfile.parentId,
                         title: 'Fee Payment Confirmation',
                         message: `Payment of ₹${amount} confirmed for child ${studentProfile.name}.`,
-                        type: 'payment'
+                        type: 'fee'
                     }).save();
                 }
             }
@@ -128,27 +129,44 @@ router.post('/pay', auth, roleAuth('admin', 'parent'), async (req, res) => {
         const studentProfile = await Student.findById(studentId);
 
         if (studentProfile) {
+            console.log(`Recording payment for student: ${studentProfile.name}, userId: ${studentProfile.userId}, parentId: ${studentProfile.parentId}`);
             // Create Notification for Student
-            await new Notification({
-                userId: studentProfile.userId,
-                title: status === 'Paid' ? 'Fee Payment Received' : 'Payment Submitted',
-                message: status === 'Paid'
-                    ? `We have received a payment of ₹${amount} for ${type || 'fees'}.`
-                    : `Payment proof of ₹${amount} submitted for verification.`,
-                type: 'payment'
-            }).save();
+            try {
+                const studentNotif = new Notification({
+                    recipient: new mongoose.Types.ObjectId(studentProfile.userId),
+                    title: status === 'Paid' ? 'Fee Payment Received' : 'Payment Submitted',
+                    message: status === 'Paid'
+                        ? `We have received a payment of ₹${amount} for ${type || 'fees'}.`
+                        : `Payment proof of ₹${amount} submitted for verification.`,
+                    type: 'fee'
+                });
+                await studentNotif.save();
+                console.log('Notification sent to student:', studentProfile.userId);
+            } catch (notifErr) {
+                console.error('Error sending student notification:', notifErr);
+            }
 
             // Create Notification for Parent (if linked)
             if (studentProfile.parentId) {
-                await new Notification({
-                    userId: studentProfile.parentId,
-                    title: status === 'Paid' ? 'Fee Payment Confirmation' : 'Payment Submitted',
-                    message: status === 'Paid'
-                        ? `Payment of ₹${amount} received for ${studentProfile.name}.`
-                        : `Payment proof of ₹${amount} submitted for verification for ${studentProfile.name}.`,
-                    type: 'payment'
-                }).save();
+                try {
+                    const parentNotif = new Notification({
+                        recipient: new mongoose.Types.ObjectId(studentProfile.parentId),
+                        title: status === 'Paid' ? 'Fee Payment Confirmation' : 'Payment Submitted',
+                        message: status === 'Paid'
+                            ? `Payment of ₹${amount} received for ${studentProfile.name}.`
+                            : `Payment proof of ₹${amount} submitted for verification for ${studentProfile.name}.`,
+                        type: 'fee'
+                    });
+                    await parentNotif.save();
+                    console.log('Notification sent to parent:', studentProfile.parentId);
+                } catch (notifErr) {
+                    console.error('Error sending parent notification:', notifErr);
+                }
+            } else {
+                console.log('No parentId linked for student:', studentProfile.name);
             }
+        } else {
+            console.warn('Student profile not found for ID:', studentId);
         }
 
         res.json(fee);

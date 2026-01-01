@@ -27,14 +27,16 @@ const Navbar = () => {
   }, []);
 
   return (
-    <nav className={`fixed top-0 left-0 w-screen z-[100] transition-all duration-300 ${scrolled ? 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-lg' : 'bg-transparent'}`}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex justify-between items-center">
+    <nav className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 ease-in-out ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-indigo-50' : 'bg-white border-b border-gray-100'}`}>
+      <div className="w-full px-6 md:px-12 lg:px-16 h-16 md:h-20 flex justify-between items-center">
         <Link to="/" className="group flex items-center">
-          <img
-            src={oasisBannerLogo}
-            alt="Oasis IIT JEE"
-            className="h-10 md:h-14 w-auto object-contain transition-all duration-300 group-hover:scale-105 rounded-lg shadow-sm group-hover:shadow-md border border-gray-100/30 bg-white"
-          />
+          <div className="relative p-1.5 md:p-2 bg-white rounded-2xl shadow-lg border border-gray-100/50 group-hover:shadow-indigo-500/10 transition-all duration-300 transform group-hover:-translate-y-0.5">
+            <img
+              src={oasisBannerLogo}
+              alt="Oasis IIT JEE"
+              className="h-10 md:h-14 w-auto object-contain"
+            />
+          </div>
         </Link>
 
         {/* Desktop Menu */}
@@ -51,9 +53,10 @@ const Navbar = () => {
             <Link
               key={link.path}
               to={link.path}
-              className="text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300 font-bold text-sm uppercase tracking-wider"
+              className="relative text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-300 font-bold text-sm uppercase tracking-tight group/nav"
             >
-              {link.name}
+              <span className="relative z-10">{link.name}</span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-300 group-hover/nav:w-full rounded-full"></span>
             </Link>
           ))}
 
@@ -69,8 +72,9 @@ const Navbar = () => {
             )}
           </button>
 
-          <Link to="/login" className="bg-indigo-600 text-white px-8 py-3 rounded-2xl hover:bg-indigo-700 transition-all duration-300 text-sm font-black shadow-xl shadow-indigo-100 dark:shadow-none transform hover:-translate-y-0.5 active:scale-95">
-            Student Login
+          <Link to="/login" className="relative group overflow-hidden bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white px-8 py-3.5 rounded-2xl transition-all duration-300 text-sm font-black shadow-xl shadow-indigo-500/20 transform hover:-translate-y-1 hover:shadow-indigo-500/40 active:scale-95">
+            <span className="relative z-10">Student Login</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           </Link>
         </div>
 
@@ -133,17 +137,20 @@ const Navbar = () => {
             <Link
               key={link.path}
               to={link.path}
-              className="block px-4 py-3 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-sm uppercase tracking-wider transition-all"
+              className="block px-4 py-4 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-sm uppercase tracking-tight transition-all"
               onClick={() => setIsOpen(false)}
             >
-              {link.name}
+              <div className="flex items-center justify-between">
+                <span>{link.name}</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              </div>
             </Link>
           ))}
 
           <div className="pt-6 mt-6 border-t border-gray-100 dark:border-gray-800">
             <Link
               to="/login"
-              className="block w-full text-center bg-indigo-600 text-white px-6 py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
+              className="block w-full text-center bg-gradient-to-r from-indigo-600 to-purple-700 text-white px-6 py-5 rounded-2xl font-black text-sm uppercase tracking-wider shadow-xl shadow-indigo-500/20 active:scale-95 transition-all"
               onClick={() => setIsOpen(false)}
             >
               Student Login

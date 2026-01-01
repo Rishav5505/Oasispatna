@@ -40,7 +40,7 @@ const About = () => {
       <Navbar />
 
       {/* Hero Section with Brand Story */}
-      <section className="relative min-h-screen flex items-center justify-center bg-[#0f172a] overflow-hidden pt-20">
+      <section className="relative min-h-screen flex items-center justify-center bg-[#0f172a] overflow-hidden pt-24">
         {/* Abstract Background Elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-purple-600/30 rounded-full blur-[100px] animate-pulse"></div>

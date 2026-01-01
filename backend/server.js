@@ -29,12 +29,17 @@ app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/coaching-institute', {
+const dbUri = process.env.MONGO_URI || 'mongodb://localhost:27017/coaching-institute';
+const host = dbUri.includes('@') ? dbUri.split('@')[1].split('/')[0] : 'localhost';
+
+mongoose.connect(dbUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.log(err));
+  .then(() => console.log(`✅ MongoDB connected to: ${host}`))
+  .catch(err => {
+    console.log(`❌ MongoDB Connection Error (${host}):`, err.message);
+  });
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

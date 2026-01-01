@@ -235,21 +235,27 @@ router.get('/parent/students', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Parent role required.' });
     }
 
-    // For parents, get their linked student using studentId from token
-    if (!req.user.studentId) {
-      return res.status(400).json({ message: 'Parent account not linked to any student' });
+    // Fetch the current user from DB to get the most up-to-date studentId
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Parent user not found' });
+
+    // For parents, get their linked student using studentId from DB
+    if (!user.studentId) {
+      return res.status(200).json([]); // Return empty array if not linked yet, instead of error
     }
 
-    const student = await Student.findById(req.user.studentId)
+    const student = await Student.findById(user.studentId)
       .populate('userId', 'name email profilePhoto')
       .populate('classId', 'name')
       .populate('batchId', 'name');
+
     if (!student) {
-      return res.status(404).json({ message: 'Student not found' });
+      return res.status(404).json({ message: 'Linked student record not found' });
     }
 
     res.json([student]); // Return as array for consistency with frontend
   } catch (err) {
+    console.error('Error fetching parent students:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -289,6 +295,7 @@ router.get('/students/all', auth, roleAuth('admin'), async (req, res) => {
   try {
     console.log('Fetching all students for admin dropdown...');
     const students = await Student.find()
+      .populate('userId', 'email')
       .populate('classId', 'name')
       .populate('batchId', 'name')
       .populate('parentId', 'name email')
@@ -304,7 +311,11 @@ router.get('/students/all', auth, roleAuth('admin'), async (req, res) => {
 // Get student details by userId
 router.get('/students/:userId', auth, async (req, res) => {
   try {
-    const student = await Student.findOne({ userId: req.params.userId }).populate('classId').populate('batchId').populate('subjects');
+    const student = await Student.findOne({ userId: req.params.userId })
+      .populate('classId')
+      .populate('batchId')
+      .populate('subjects')
+      .populate('parentId', 'name email');
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
@@ -354,7 +365,11 @@ router.put('/students/:userId', auth, async (req, res) => {
       console.log('Student updated successfully:', student);
     }
 
-    const updatedStudent = await Student.findOne({ userId: req.params.userId }).populate('classId').populate('batchId').populate('subjects');
+    const updatedStudent = await Student.findOne({ userId: req.params.userId })
+      .populate('classId')
+      .populate('batchId')
+      .populate('subjects')
+      .populate('parentId', 'name email');
     console.log('Final student data:', updatedStudent);
     res.json(updatedStudent);
   } catch (err) {
@@ -382,39 +397,47 @@ router.put('/students/:userId/fee', auth, roleAuth('admin'), async (req, res) =>
 router.post('/link-parent', auth, roleAuth('admin'), async (req, res) => {
   const { parentId, studentId } = req.body;
   try {
-    // Verify parent exists and has parent role
+    console.log('Linking Parent:', parentId, 'to Student:', studentId);
+
+    // 1. Verify parent exists and has parent role
     const parent = await User.findById(parentId);
     if (!parent || parent.role !== 'parent') {
-      return res.status(400).json({ message: 'Invalid parent user' });
+      return res.status(400).json({ message: 'Invalid parent user or incorrect role' });
     }
 
-    // Verify student exists
+    // 2. Verify student exists
     const student = await Student.findById(studentId);
     if (!student) {
-      return res.status(404).json({ message: 'Student not found' });
+      return res.status(404).json({ message: 'Student document not found' });
     }
 
-    // Update parent user with studentId
+    // 3. Update parent user with studentId
     parent.studentId = studentId;
     await parent.save();
 
-    // Update student with parentId (for backward compatibility)
+    // 4. Update student with parentId
     student.parentId = parentId;
     await student.save();
 
-    // Create Notification for the parent
+    console.log('Successfully linked Parent and Student');
+
+    // 5. Create Notification for the parent
     const newNotification = new Notification({
       recipient: parentId,
-      title: 'New Student Linked',
-      message: `Student ${student.name} has been successfully linked to your account. You can now track their academic progress.`,
+      title: 'Academic Profile Linked',
+      message: `Profile of ${student.name} has been successfully linked to your portal. You can now track attendance and performance details.`,
       type: 'linking'
     });
     await newNotification.save();
 
-    res.json({ message: 'Parent linked with student successfully', parent, student });
+    res.json({
+      message: 'Connection established successfully',
+      parent: { name: parent.name, email: parent.email },
+      student: { name: student.name }
+    });
   } catch (err) {
     console.error('Error linking parent:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Internal server error while linking' });
   }
 });
 
