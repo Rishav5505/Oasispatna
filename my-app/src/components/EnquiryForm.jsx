@@ -6,7 +6,7 @@ const EnquiryForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post('http://localhost:5002/api/leads', form);
+    await axios.post('https://oasis-fdpj.onrender.com/api/leads', form);
     alert('Enquiry submitted');
   };
 

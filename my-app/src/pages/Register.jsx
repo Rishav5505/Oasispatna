@@ -15,7 +15,7 @@ const Register = () => {
       Object.keys(form).forEach(key => formData.append(key, form[key]));
       if (photoFile) formData.append('profilePhoto', photoFile);
 
-      await axios.post('http://localhost:5002/api/auth/register', formData, {
+      await axios.post('https://oasis-fdpj.onrender.com/api/auth/register', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       alert('Registration successful! Please login.');

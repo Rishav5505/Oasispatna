@@ -9,7 +9,7 @@ const ForgotPassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5002/api/auth/forgot-password', { email });
+      await axios.post('https://oasis-fdpj.onrender.com/api/auth/forgot-password', { email });
       alert('Reset email sent! Check your inbox.');
     } catch (err) {
       alert('Failed to send reset email');

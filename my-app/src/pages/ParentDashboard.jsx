@@ -75,7 +75,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('http://localhost:5002/api/auth/me', { headers });
+            const res = await axios.get('https://oasis-fdpj.onrender.com/api/auth/me', { headers });
             setProfile(res.data);
         } catch (err) {
             console.error('Error fetching profile:', err);
@@ -87,7 +87,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('http://localhost:5002/api/users/parent/students', { headers });
+            const res = await axios.get('https://oasis-fdpj.onrender.com/api/users/parent/students', { headers });
             setChildren(res.data);
             if (res.data.length > 0) setSelectedChild(res.data[0]._id);
         } catch (err) {
@@ -101,7 +101,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get(`http://localhost:5002/api/attendance/student/${id}`, { headers });
+            const res = await axios.get(`https://oasis-fdpj.onrender.com/api/attendance/student/${id}`, { headers });
             setAttendance(res.data);
         } catch (err) {
             console.error('Error fetching attendance:', err);
@@ -113,7 +113,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get(`http://localhost:5002/api/marks/student/${id}`, { headers });
+            const res = await axios.get(`https://oasis-fdpj.onrender.com/api/marks/student/${id}`, { headers });
             setMarks(res.data);
         } catch (err) {
             console.error('Error fetching marks:', err);
@@ -125,7 +125,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get(`http://localhost:5002/api/fees/student/${id}`, { headers });
+            const res = await axios.get(`https://oasis-fdpj.onrender.com/api/fees/student/${id}`, { headers });
             setFees(res.data);
         } catch (err) {
             console.error('Error fetching fees:', err);
@@ -137,7 +137,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('http://localhost:5002/api/study-material', { headers });
+            const res = await axios.get('https://oasis-fdpj.onrender.com/api/study-material', { headers });
             setMaterials(res.data);
         } catch (err) {
             console.error('Error fetching materials:', err);
@@ -149,7 +149,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('http://localhost:5002/api/notices', { headers });
+            const res = await axios.get('https://oasis-fdpj.onrender.com/api/notices', { headers });
             setNotices(res.data);
         } catch (err) {
             console.error('Error fetching notices:', err);
@@ -161,7 +161,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('http://localhost:5002/api/notifications', { headers });
+            const res = await axios.get('https://oasis-fdpj.onrender.com/api/notifications', { headers });
             setNotifications(res.data);
         } catch (err) {
             console.error('Error fetching notifications:', err);
@@ -276,7 +276,7 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         try {
-            await axios.patch('http://localhost:5002/api/notifications/read-all', {}, {
+            await axios.patch('https://oasis-fdpj.onrender.com/api/notifications/read-all', {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Update local state
@@ -933,7 +933,7 @@ const ParentDashboard = () => {
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 truncate">{m.title}</h3>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">Study material provided for students.</p>
                                     <a
-                                        href={`http://localhost:5002/${m.fileUrl}`}
+                                        href={`https://oasis-fdpj.onrender.com/${m.fileUrl}`}
                                         download
                                         className="inline-flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-wider hover:underline"
                                     >

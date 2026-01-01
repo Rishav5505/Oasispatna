@@ -103,7 +103,7 @@ const StudentDashboard = () => {
       // Fetch user profile first (always duplicates existing behavior but safer separate blocks)
       let profileData = {};
       try {
-        const profileRes = await axios.get('http://localhost:5002/api/auth/me', { headers });
+        const profileRes = await axios.get('https://oasis-fdpj.onrender.com/api/auth/me', { headers });
         profileData = profileRes.data;
         setProfile(profileData);
       } catch (err) {
@@ -120,7 +120,7 @@ const StudentDashboard = () => {
       // Fetch student data
       let studentData = {};
       try {
-        const studentRes = await axios.get(`http://localhost:5002/api/users/students/${user.id}`, { headers });
+        const studentRes = await axios.get(`https://oasis-fdpj.onrender.com/api/users/students/${user.id}`, { headers });
         studentData = studentRes.data || {};
         setStudent(studentData);
       } catch (err) {
@@ -135,16 +135,16 @@ const StudentDashboard = () => {
       // Now fetch other data that depends on student info
       // We use Promise.allSettled or just individual try-catches to prevent one failure from breaking all
       const requests = [
-        axios.get(`http://localhost:5002/api/attendance/student/${user.id}`, { headers }),
-        axios.get(`http://localhost:5002/api/marks/student/${user.id}`, { headers }),
-        axios.get(`http://localhost:5002/api/fees/student/${user.id}`, { headers }),
-        axios.get('http://localhost:5002/api/study-material', { headers }),
-        axios.get('http://localhost:5002/api/notices', { headers }),
-        axios.get('http://localhost:5002/api/notifications', { headers }),
+        axios.get(`https://oasis-fdpj.onrender.com/api/attendance/student/${user.id}`, { headers }),
+        axios.get(`https://oasis-fdpj.onrender.com/api/marks/student/${user.id}`, { headers }),
+        axios.get(`https://oasis-fdpj.onrender.com/api/fees/student/${user.id}`, { headers }),
+        axios.get('https://oasis-fdpj.onrender.com/api/study-material', { headers }),
+        axios.get('https://oasis-fdpj.onrender.com/api/notices', { headers }),
+        axios.get('https://oasis-fdpj.onrender.com/api/notifications', { headers }),
       ];
 
       if (studentData?.classId) {
-        requests.push(axios.get(`http://localhost:5002/api/exams/class/${studentData.classId._id}`, { headers }));
+        requests.push(axios.get(`https://oasis-fdpj.onrender.com/api/exams/class/${studentData.classId._id}`, { headers }));
       }
 
       const results = await Promise.allSettled(requests);
@@ -178,8 +178,8 @@ const StudentDashboard = () => {
 
       // Fetch available metadata
       const [classesRes, batchesRes] = await Promise.all([
-        axios.get('http://localhost:5002/api/users/classes', { headers }),
-        axios.get('http://localhost:5002/api/users/batches', { headers })
+        axios.get('https://oasis-fdpj.onrender.com/api/users/classes', { headers }),
+        axios.get('https://oasis-fdpj.onrender.com/api/users/batches', { headers })
       ]);
       setAvailableClasses(classesRes.data);
       setAvailableBatches(batchesRes.data);
@@ -226,7 +226,7 @@ const StudentDashboard = () => {
 
       // Update user data first
       console.log('Updating user data...');
-      const userResponse = await axios.put('http://localhost:5002/api/auth/me', userFormData, {
+      const userResponse = await axios.put('https://oasis-fdpj.onrender.com/api/auth/me', userFormData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`,
@@ -244,7 +244,7 @@ const StudentDashboard = () => {
       };
       console.log('Updating student data:', studentData);
 
-      const studentResponse = await axios.put(`http://localhost:5002/api/users/students/${user.id}`, studentData, {
+      const studentResponse = await axios.put(`https://oasis-fdpj.onrender.com/api/users/students/${user.id}`, studentData, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -264,7 +264,7 @@ const StudentDashboard = () => {
   const handleClassSelection = async (classId) => {
     try {
       const token = sessionStorage.getItem('token');
-      await axios.put(`http://localhost:5002/api/users/students/${user.id}`, { classId }, {
+      await axios.put(`https://oasis-fdpj.onrender.com/api/users/students/${user.id}`, { classId }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setShowClassModal(false);
@@ -284,7 +284,7 @@ const StudentDashboard = () => {
   const handleBatchSelection = async (batchId) => {
     try {
       const token = sessionStorage.getItem('token');
-      await axios.put(`http://localhost:5002/api/users/students/${user.id}`, { batchId }, {
+      await axios.put(`https://oasis-fdpj.onrender.com/api/users/students/${user.id}`, { batchId }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setShowBatchModal(false);
@@ -429,7 +429,7 @@ const StudentDashboard = () => {
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold overflow-hidden">
                   {student.profilePhoto || profile.profilePhoto ? (
-                    <img src={`http://localhost:5002${student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
+                    <img src={`https://oasis-fdpj.onrender.com${student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     (student.name || profile.name || 'S').charAt(0).toUpperCase()
                   )}
@@ -463,7 +463,7 @@ const StudentDashboard = () => {
               <div className="relative">
                 <div className="w-24 h-24 bg-white bg-opacity-20 backdrop-blur-sm rounded-full flex items-center justify-center border-4 border-white border-opacity-30 overflow-hidden">
                   {student.profilePhoto || profile.profilePhoto ? (
-                    <img src={`http://localhost:5002${student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
+                    <img src={`https://oasis-fdpj.onrender.com${student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     <FaUser className="text-4xl text-white opacity-80" />
                   )}
@@ -938,7 +938,7 @@ const StudentDashboard = () => {
 
               <div className="w-24 h-24 rounded-full border-4 border-white/20 p-1 mb-4">
                 <img
-                  src={`http://localhost:5002${student.profilePhoto || profile.profilePhoto}`}
+                  src={`https://oasis-fdpj.onrender.com${student.profilePhoto || profile.profilePhoto}`}
                   onError={(e) => { e.target.onerror = null; e.target.src = 'https://ui-avatars.com/api/?name=' + (student.name || 'Student'); }}
                   alt="Student"
                   className="w-full h-full rounded-full object-cover bg-slate-700"
@@ -1187,7 +1187,7 @@ const StudentDashboard = () => {
                       <p className="text-sm text-gray-600 truncate">{material.description}</p>
                     </div>
                     <a
-                      href={`http://localhost:5002/${material.fileUrl}`}
+                      href={`https://oasis-fdpj.onrender.com/${material.fileUrl}`}
                       download
                       className="ml-3 bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors"
                     >

@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       // Fetch user info
-      axios.get('http://localhost:5002/api/auth/me')
+      axios.get('https://oasis-fdpj.onrender.com/api/auth/me')
         .then(res => {
           setUser({ id: res.data._id, role: res.data.role });
           setMustChangePassword(res.data.mustChangePassword || false);
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password, selectedRole) => {
-    const res = await axios.post('http://localhost:5002/api/auth/login', { email, password });
+    const res = await axios.post('https://oasis-fdpj.onrender.com/api/auth/login', { email, password });
     const { token: receivedToken, role, id, mustChangePassword: mcp } = res.data;
 
     // Validate that the user's role matches the selected portal role

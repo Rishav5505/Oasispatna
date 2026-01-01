@@ -5,7 +5,7 @@
 
 const config = {
     // Backend API URL
-    API_URL: "http://localhost:5002/api",
+    API_URL: "https://oasis-fdpj.onrender.com/api",
 
     // Payment Gateway Configuration
     PAYMENT: {
