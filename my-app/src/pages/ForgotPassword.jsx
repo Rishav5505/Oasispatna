@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import oasisLogo from '../assets/oasis_logo.png';
+import config from '../config';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -9,7 +10,7 @@ const ForgotPassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('https://oasispatna.onrender.com/api/auth/forgot-password', { email });
+      await axios.post(`${config.API_URL}/auth/forgot-password`, { email });
       alert('Reset email sent! Check your inbox.');
     } catch (err) {
       alert('Failed to send reset email');

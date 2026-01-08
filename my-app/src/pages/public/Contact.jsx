@@ -3,6 +3,7 @@ import axios from 'axios';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { FaPhoneAlt, FaEnvelope, FaMapMarkerAlt, FaWhatsapp, FaQuestionCircle, FaChevronDown, FaPaperPlane } from 'react-icons/fa';
+import config from '../../config';
 
 const Contact = () => {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', course: '' });
@@ -11,7 +12,7 @@ const Contact = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('https://oasispatna.onrender.com/api/leads', form);
+      await axios.post(`${config.API_URL}/leads`, form);
       alert('Your enquiry has been received. Our team will contact you shortly.');
       setForm({ name: '', email: '', phone: '', message: '', course: '' });
     } catch (error) {

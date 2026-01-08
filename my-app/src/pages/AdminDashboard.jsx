@@ -25,6 +25,7 @@ import {
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
 import receiptBanner from '../assets/receipt_banner.png';
+import config from '../config';
 
 ChartJS.register(
   CategoryScale,
@@ -59,6 +60,8 @@ const AdminDashboard = () => {
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', address: '' });
   const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [viewingAttendanceTeacher, setViewingAttendanceTeacher] = useState(null);
 
   const [teacherAttendanceLogs, setTeacherAttendanceLogs] = useState([]);
@@ -110,13 +113,49 @@ const AdminDashboard = () => {
   const fetchProfile = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get('https://oasispatna.onrender.com/api/auth/me', {
+      const res = await axios.get(`${config.API_URL}/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setProfile(res.data);
       setEditForm({ name: res.data.name, phone: res.data.phone, email: res.data.email, address: res.data.address });
     } catch (err) {
       console.error('Error fetching profile:', err);
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleQuickPhotoUpload = async () => {
+    if (!photoFile) return;
+    setUploadingPhoto(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('profilePhoto', photoFile);
+      formData.append('name', editForm.name);
+
+      await axios.put(`${config.API_URL}/auth/me`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      fetchProfile();
+      alert('Profile photo updated successfully!');
+    } catch (err) {
+      console.error('Error uploading photo:', err);
+      alert('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -133,10 +172,15 @@ const AdminDashboard = () => {
       formData.append('address', editForm.address);
       if (photoFile) formData.append('profilePhoto', photoFile);
 
-      await axios.put('https://oasispatna.onrender.com/api/auth/me', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      await axios.put(`${config.API_URL}/auth/me`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
       });
       setEditMode(false);
+      setPhotoFile(null);
+      setPhotoPreview(null);
       fetchProfile();
       alert('Profile updated successfully!');
     } catch (err) {
@@ -150,7 +194,7 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       const token = sessionStorage.getItem('token');
-      const res = await axios.get('https://oasispatna.onrender.com/api/users', {
+      const res = await axios.get(`${config.API_URL}/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       console.log('Users fetched:', res.data);
@@ -175,7 +219,7 @@ const AdminDashboard = () => {
   const fetchAllStudents = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get('https://oasispatna.onrender.com/api/users/students/all', {
+      const res = await axios.get(`${config.API_URL}/users/students/all`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setAllStudents(res.data);
@@ -187,7 +231,7 @@ const AdminDashboard = () => {
   const fetchTeacherAttendanceCount = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get('https://oasispatna.onrender.com/api/attendance/teacher/all', {
+      const res = await axios.get(`${config.API_URL}/attendance/teacher/all`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -206,9 +250,9 @@ const AdminDashboard = () => {
       const token = sessionStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
       const [classesRes, subjectsRes, batchesRes] = await Promise.all([
-        axios.get('https://oasispatna.onrender.com/api/users/classes', { headers }),
-        axios.get('https://oasispatna.onrender.com/api/users/subjects', { headers }),
-        axios.get('https://oasispatna.onrender.com/api/users/batches', { headers })
+        axios.get(`${config.API_URL}/users/classes`, { headers }),
+        axios.get(`${config.API_URL}/users/subjects`, { headers }),
+        axios.get(`${config.API_URL}/users/batches`, { headers })
       ]);
       setAvailableClasses(classesRes.data);
       setAvailableSubjects(subjectsRes.data);
@@ -225,7 +269,7 @@ const AdminDashboard = () => {
 
     // Fetch real fee stats
     const tkn = sessionStorage.getItem('token');
-    axios.get('https://oasispatna.onrender.com/api/fees/stats', { headers: { 'Authorization': `Bearer ${tkn}` } })
+    axios.get(`${config.API_URL}/fees/stats`, { headers: { 'Authorization': `Bearer ${tkn}` } })
       .then(res => {
         setStats({
           totalStudents,
@@ -245,7 +289,7 @@ const AdminDashboard = () => {
   const fetchFees = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get('https://oasispatna.onrender.com/api/fees/all', {
+      const res = await axios.get(`${config.API_URL}/fees/all`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setFees(res.data);
@@ -258,7 +302,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       const token = sessionStorage.getItem('token');
-      await axios.post('https://oasispatna.onrender.com/api/fees/pay', feeForm, {
+      await axios.post(`${config.API_URL}/fees/pay`, feeForm, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       alert('Payment recorded successfully!');
@@ -278,7 +322,7 @@ const AdminDashboard = () => {
       // Safely get the user ID string from the potentially populated userId object
       const targetUserId = selectedFeeStudent.userId?._id || selectedFeeStudent.userId;
 
-      await axios.put(`https://oasispatna.onrender.com/api/users/students/${targetUserId}/fee`,
+      await axios.put(`${config.API_URL}/users/students/${targetUserId}/fee`,
         { totalFee: newTotalFee },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -346,8 +390,8 @@ const AdminDashboard = () => {
       const token = sessionStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
       const [attendanceRes, marksRes] = await Promise.all([
-        axios.get(`https://oasispatna.onrender.com/api/attendance/student/${student._id}`, { headers }),
-        axios.get(`https://oasispatna.onrender.com/api/marks/student/${student._id}`, { headers })
+        axios.get(`${config.API_URL}/attendance/student/${student._id}`, { headers }),
+        axios.get(`${config.API_URL}/marks/student/${student._id}`, { headers })
       ]);
       console.log('Attendance:', attendanceRes.data);
       console.log('Marks:', marksRes.data);
@@ -361,7 +405,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       const token = sessionStorage.getItem('token');
-      await axios.post('https://oasispatna.onrender.com/api/users/teachers', teacherForm, {
+      await axios.post(`${config.API_URL}/users/teachers`, teacherForm, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       alert('Teacher added successfully');
@@ -377,7 +421,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       const token = sessionStorage.getItem('token');
-      await axios.put(`https://oasispatna.onrender.com/api/users/teachers/${assignForm.teacherId}`, assignForm, {
+      await axios.put(`${config.API_URL}/users/teachers/${assignForm.teacherId}`, assignForm, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       alert('Assignments updated successfully');
@@ -404,7 +448,7 @@ const AdminDashboard = () => {
     setViewingAttendanceTeacher(teacher);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get('https://oasispatna.onrender.com/api/attendance/teacher/all', {
+      const res = await axios.get(`${config.API_URL}/attendance/teacher/all`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       // Filter in frontend for now as backend returns all
@@ -423,7 +467,7 @@ const AdminDashboard = () => {
     }
     try {
       const token = sessionStorage.getItem('token');
-      await axios.post('https://oasispatna.onrender.com/api/users/link-parent',
+      await axios.post(`${config.API_URL}/users/link-parent`,
         { parentId: linkParentId, studentId: linkStudentId },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -460,7 +504,7 @@ const AdminDashboard = () => {
       }
 
       const headers = { Authorization: `Bearer ${token}` };
-      const response = await axios.post('https://oasispatna.onrender.com/api/notices', newNotice, { headers });
+      const response = await axios.post(`${config.API_URL}/notices`, newNotice, { headers });
 
       alert('Notice published successfully!');
       setShowNoticeModal(false);
@@ -706,8 +750,12 @@ const AdminDashboard = () => {
           </div>
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 rounded-2xl border border-dotted border-gray-200 cursor-pointer hover:bg-white transition-all">
-              <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
-                {profile.name?.charAt(0).toUpperCase() || 'A'}
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm overflow-hidden border border-indigo-200 shadow-inner">
+                {profile.profilePhoto ? (
+                  <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Admin" className="w-full h-full object-cover" />
+                ) : (
+                  profile.name?.charAt(0).toUpperCase() || 'A'
+                )}
               </div>
               <div className="text-right hidden md:block">
                 <p className="text-xs font-bold text-gray-900 leading-none mb-1">{profile.name || 'Administrator'}</p>
@@ -1611,13 +1659,33 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-sm">
                 <div className="flex flex-col items-center mb-10">
                   <div className="w-32 h-32 rounded-[2.5rem] bg-indigo-50 border-4 border-white shadow-xl flex items-center justify-center text-4xl text-indigo-600 font-black mb-6 relative group overflow-hidden">
-                    {profile.profilePhoto ? (
-                      <img src={`https://oasispatna.onrender.com${profile.profilePhoto}`} className="w-full h-full object-cover" />
+                    {photoPreview ? (
+                      <img src={photoPreview} className="w-full h-full object-cover" />
+                    ) : profile.profilePhoto ? (
+                      <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} className="w-full h-full object-cover" />
                     ) : profile.name?.charAt(0)}
-                    <div className="absolute inset-0 bg-indigo-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
+                    <label className="absolute inset-0 bg-indigo-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
                       <FaPlus className="text-white" />
-                    </div>
+                      <input type="file" className="hidden" onChange={handlePhotoChange} accept="image/*" />
+                    </label>
                   </div>
+                  {photoPreview && (
+                    <div className="flex gap-2 mb-4 animate-in slide-in-from-top duration-300">
+                      <button
+                        onClick={handleQuickPhotoUpload}
+                        disabled={uploadingPhoto}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2"
+                      >
+                        {uploadingPhoto ? <FaHistory className="animate-spin" /> : <FaCheckCircle />} SAVE PHOTO
+                      </button>
+                      <button
+                        onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                        className="px-4 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-300 transition-all"
+                      >
+                        CANCEL
+                      </button>
+                    </div>
+                  )}
                   <h2 className="text-3xl font-black text-gray-900">{profile.name}</h2>
                   <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-1">Platform Admin</p>
                 </div>

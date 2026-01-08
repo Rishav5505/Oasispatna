@@ -8,6 +8,7 @@ import best3 from '../../assets/best 3.jpg';
 import bnner from '../../assets/Bnner.jpg';
 import heroUp1 from '../../assets/hero-up-1.jpg';
 import heroUp2 from '../../assets/hero-up-2.jpg';
+import config from '../../config';
 
 // Coaching Photos for Gallery
 import coaching1 from '../../assets/474589765_1276841513370808_7764133733018340516_n.jpg';
@@ -70,19 +71,19 @@ const Home = () => {
 
   useEffect(() => {
     // Fetch faculty data
-    fetch('https://oasispatna.onrender.com/api/public/faculty')
+    fetch(`${config.API_URL}/public/faculty`)
       .then(res => res.json())
       .then(data => setFaculty(data))
       .catch(err => console.error('Error fetching faculty:', err));
 
     // Fetch courses data
-    fetch('https://oasispatna.onrender.com/api/public/courses')
+    fetch(`${config.API_URL}/public/courses`)
       .then(res => res.json())
       .then(data => setCourses(data))
       .catch(err => console.error('Error fetching courses:', err));
 
     // Fetch testimonials
-    fetch('https://oasispatna.onrender.com/api/public/testimonials')
+    fetch(`${config.API_URL}/public/testimonials`)
       .then(res => res.json())
       .then(data => setTestimonials(data))
       .catch(err => console.error('Error fetching testimonials:', err));
@@ -97,7 +98,7 @@ const Home = () => {
     setFormStatus({ message: '', type: '' });
 
     try {
-      const response = await fetch('https://oasispatna.onrender.com/api/leads', {
+      const response = await fetch(`${config.API_URL}/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

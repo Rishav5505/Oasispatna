@@ -75,7 +75,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('https://oasispatna.onrender.com/api/auth/me', { headers });
+            const res = await axios.get(`${config.API_URL}/auth/me`, { headers });
             setProfile(res.data);
         } catch (err) {
             console.error('Error fetching profile:', err);
@@ -87,7 +87,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('https://oasispatna.onrender.com/api/users/parent/students', { headers });
+            const res = await axios.get(`${config.API_URL}/users/parent/students`, { headers });
             setChildren(res.data);
             if (res.data.length > 0) setSelectedChild(res.data[0]._id);
         } catch (err) {
@@ -101,7 +101,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get(`https://oasispatna.onrender.com/api/attendance/student/${id}`, { headers });
+            const res = await axios.get(`${config.API_URL}/attendance/student/${id}`, { headers });
             setAttendance(res.data);
         } catch (err) {
             console.error('Error fetching attendance:', err);
@@ -113,7 +113,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get(`https://oasispatna.onrender.com/api/marks/student/${id}`, { headers });
+            const res = await axios.get(`${config.API_URL}/marks/student/${id}`, { headers });
             setMarks(res.data);
         } catch (err) {
             console.error('Error fetching marks:', err);
@@ -125,7 +125,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get(`https://oasispatna.onrender.com/api/fees/student/${id}`, { headers });
+            const res = await axios.get(`${config.API_URL}/fees/student/${id}`, { headers });
             setFees(res.data);
         } catch (err) {
             console.error('Error fetching fees:', err);
@@ -137,7 +137,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('https://oasispatna.onrender.com/api/study-material', { headers });
+            const res = await axios.get(`${config.API_URL}/study-material`, { headers });
             setMaterials(res.data);
         } catch (err) {
             console.error('Error fetching materials:', err);
@@ -149,7 +149,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('https://oasispatna.onrender.com/api/notices', { headers });
+            const res = await axios.get(`${config.API_URL}/notices`, { headers });
             setNotices(res.data);
         } catch (err) {
             console.error('Error fetching notices:', err);
@@ -161,7 +161,7 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get('https://oasispatna.onrender.com/api/notifications', { headers });
+            const res = await axios.get(`${config.API_URL}/notifications`, { headers });
             setNotifications(res.data);
         } catch (err) {
             console.error('Error fetching notifications:', err);
@@ -276,7 +276,7 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         try {
-            await axios.patch('https://oasispatna.onrender.com/api/notifications/read-all', {}, {
+            await axios.patch(`${config.API_URL}/notifications/read-all`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Update local state
@@ -557,8 +557,12 @@ const ParentDashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-dotted border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-white dark:hover:bg-gray-700 transition-all group">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm group-hover:scale-105 transition-transform">
-                            {profile.name?.charAt(0).toUpperCase() || 'P'}
+                        <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm overflow-hidden border border-indigo-200 dark:border-indigo-800 shadow-inner group-hover:scale-105 transition-transform">
+                            {profile.profilePhoto ? (
+                                <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Parent" className="w-full h-full object-cover" />
+                            ) : (
+                                profile.name?.charAt(0).toUpperCase() || 'P'
+                            )}
                         </div>
                         <div className="text-right hidden md:block">
                             <p className="text-xs font-bold text-gray-900 dark:text-white leading-none mb-1">{profile.name || 'Parent'}</p>

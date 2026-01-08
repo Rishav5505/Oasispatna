@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
+import config from '../config';
 
 const TeacherDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -16,6 +17,9 @@ const TeacherDashboard = () => {
   const [teacherData, setTeacherData] = useState({ subjects: [], batches: [], classes: [] });
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   const decodeToken = (t) => {
@@ -72,14 +76,50 @@ const TeacherDashboard = () => {
     }
   }, [selectedClass, attendanceSubject, attendanceDate]);
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPhotoPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleQuickPhotoUpload = async () => {
+    if (!photoFile) return;
+    setUploadingPhoto(true);
+    const token = sessionStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('profilePhoto', photoFile);
+
+    try {
+      await axios.put(`${config.API_URL}/auth/me`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      alert('Profile photo updated successfully!');
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      fetchTeacherProfile(); // Refresh profile data
+    } catch (err) {
+      console.error('Error uploading photo:', err);
+      alert('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const fetchTeacherProfile = async () => {
     const token = sessionStorage.getItem('token');
     if (!token) return;
     const headers = { 'Authorization': `Bearer ${token}` };
     try {
       const [resProfile, resTeacher] = await Promise.all([
-        axios.get('https://oasispatna.onrender.com/api/auth/me', { headers }),
-        axios.get('https://oasispatna.onrender.com/api/teacher/me', { headers })
+        axios.get(`${config.API_URL}/auth/me`, { headers }),
+        axios.get(`${config.API_URL}/teacher/me`, { headers })
       ]);
       setProfile(resProfile.data);
       setTeacherData(resTeacher.data);
@@ -95,7 +135,7 @@ const TeacherDashboard = () => {
     if (!token) return;
     const headers = { 'Authorization': `Bearer ${token}` };
     try {
-      const res = await axios.get('https://oasispatna.onrender.com/api/exams', { headers });
+      const res = await axios.get(`${config.API_URL}/exams`, { headers });
       setExams(res.data);
     } catch (err) {
       console.error('Error fetching exams:', err);
@@ -107,7 +147,7 @@ const TeacherDashboard = () => {
     if (!token) return;
     const headers = { 'Authorization': `Bearer ${token}` };
     try {
-      const res = await axios.get('https://oasispatna.onrender.com/api/notices', { headers });
+      const res = await axios.get(`${config.API_URL}/notices`, { headers });
       setNotices(res.data);
     } catch (err) {
       console.error('Error fetching notices:', err);
@@ -118,14 +158,14 @@ const TeacherDashboard = () => {
     const token = sessionStorage.getItem('token');
     if (!token) return;
     try {
-      const res = await axios.get('https://oasispatna.onrender.com/api/attendance/teacher/today', {
+      const res = await axios.get(`${config.API_URL}/attendance/teacher/today`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       // res.data.data is now an array
       setTodayAttendance(res.data.data || []);
 
       // Fetch history
-      const historyRes = await axios.get('https://oasispatna.onrender.com/api/attendance/teacher/me', {
+      const historyRes = await axios.get(`${config.API_URL}/attendance/teacher/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setMyAttendanceHistory(historyRes.data);
@@ -141,7 +181,7 @@ const TeacherDashboard = () => {
     }
     const token = sessionStorage.getItem('token');
     try {
-      await axios.post('https://oasispatna.onrender.com/api/attendance/teacher/mark',
+      await axios.post(`${config.API_URL}/attendance/teacher/mark`,
         { className: selectedCheckInClass },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -161,11 +201,11 @@ const TeacherDashboard = () => {
     const headers = { 'Authorization': `Bearer ${token}` };
     try {
       // 1. Fetch students for class
-      const studentRes = await axios.get(`https://oasispatna.onrender.com/api/teacher/classes/${selectedClass}/students`, { headers });
+      const studentRes = await axios.get(`${config.API_URL}/teacher/classes/${selectedClass}/students`, { headers });
       setStudents(studentRes.data);
 
       // 2. Fetch existing attendance for this class/subject/date
-      const attendanceRes = await axios.get(`https://oasispatna.onrender.com/api/attendance/class/${selectedClass}/subject/${attendanceSubject}/date/${attendanceDate}`, { headers });
+      const attendanceRes = await axios.get(`${config.API_URL}/attendance/class/${selectedClass}/subject/${attendanceSubject}/date/${attendanceDate}`, { headers });
 
       // 3. Merge attendance into status object
       const initialStatus = {};
@@ -188,7 +228,7 @@ const TeacherDashboard = () => {
     if (!token) return;
     const headers = { 'Authorization': `Bearer ${token}` };
     try {
-      const res = await axios.get(`https://oasispatna.onrender.com/api/teacher/classes/${classId}/students`, { headers });
+      const res = await axios.get(`${config.API_URL}/teacher/classes/${classId}/students`, { headers });
       if (type === 'attendance') {
         setStudents(res.data);
         const initialAttendance = {};
@@ -218,7 +258,7 @@ const TeacherDashboard = () => {
 
     setLoadingStudents(true);
     try {
-      await axios.post('https://oasispatna.onrender.com/api/attendance/bulk', {
+      await axios.post(`${config.API_URL}/attendance/bulk`, {
         students: studentsToSave,
         date: attendanceDate,
         subjectId: attendanceSubject
@@ -238,7 +278,7 @@ const TeacherDashboard = () => {
     const token = sessionStorage.getItem('token');
     const headers = { 'Authorization': `Bearer ${token}` };
     try {
-      await axios.post('https://oasispatna.onrender.com/api/marks', {
+      await axios.post(`${config.API_URL}/marks`, {
         ...newMark,
         studentId: selectedMarkStudent._id
       }, { headers });
@@ -262,7 +302,7 @@ const TeacherDashboard = () => {
       'Content-Type': 'multipart/form-data'
     };
     try {
-      await axios.post('https://oasispatna.onrender.com/api/study-material', formData, { headers });
+      await axios.post(`${config.API_URL}/study-material`, formData, { headers });
       alert('Study material uploaded successfully!');
       setMaterialForm({ title: '', subjectId: '', file: null });
     } catch (err) {
@@ -343,8 +383,12 @@ const TeacherDashboard = () => {
           </div>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 rounded-2xl border border-dotted border-gray-200">
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm">
-                {profile.name?.charAt(0).toUpperCase()}
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm overflow-hidden border border-emerald-200 shadow-inner">
+                {profile.profilePhoto ? (
+                  <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Teacher" className="w-full h-full object-cover" />
+                ) : (
+                  profile.name?.charAt(0).toUpperCase()
+                )}
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold text-gray-900 leading-none mb-1">{profile.name}</p>
@@ -951,9 +995,34 @@ const TeacherDashboard = () => {
             <div className="max-w-2xl mx-auto animate-in fade-in duration-500">
               <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-sm">
                 <div className="flex flex-col items-center mb-10">
-                  <div className="w-32 h-32 rounded-[2.5rem] bg-emerald-50 border-4 border-white shadow-xl flex items-center justify-center text-4xl text-emerald-600 font-black mb-6">
-                    {profile.name?.charAt(0)}
+                  <div className="w-32 h-32 rounded-[2.5rem] bg-emerald-50 border-4 border-white shadow-xl flex items-center justify-center text-4xl text-emerald-600 font-black mb-6 relative group overflow-hidden">
+                    {photoPreview ? (
+                      <img src={photoPreview} className="w-full h-full object-cover" />
+                    ) : profile.profilePhoto ? (
+                      <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} className="w-full h-full object-cover" />
+                    ) : profile.name?.charAt(0)}
+                    <label className="absolute inset-0 bg-emerald-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
+                      <FaPlus className="text-white" />
+                      <input type="file" className="hidden" onChange={handlePhotoChange} accept="image/*" />
+                    </label>
                   </div>
+                  {photoPreview && (
+                    <div className="flex gap-2 mb-4 animate-in slide-in-from-top duration-300">
+                      <button
+                        onClick={handleQuickPhotoUpload}
+                        disabled={uploadingPhoto}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2"
+                      >
+                        {uploadingPhoto ? <FaHistory className="animate-spin" /> : <FaCheckCircle />} SAVE PHOTO
+                      </button>
+                      <button
+                        onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                        className="px-4 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-300 transition-all"
+                      >
+                        CANCEL
+                      </button>
+                    </div>
+                  )}
                   <h2 className="text-3xl font-black text-gray-900">{profile.name}</h2>
                   <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-1">Platform Educator</p>
                 </div>
