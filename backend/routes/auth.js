@@ -9,6 +9,7 @@ const sendEmail = require('../utils/sendEmail');
 const sendSMS = require('../utils/sendSMS');
 const auth = require('../middleware/auth');
 const { createAndSaveOtp, verifyOtp } = require('../utils/otp');
+const sendOtp = require('../utils/sendOtp');
 const multer = require('multer');
 
 const router = express.Router();
@@ -164,7 +165,7 @@ router.post('/send-otp', async (req, res) => {
     const otp = await createAndSaveOtp(user._id);
 
     if (email) {
-      sendEmail(user.email, 'Your OTP', `Your OTP is: ${otp}. It expires in 5 minutes.`);
+      await sendOtp(user.email, otp);
     }
     if (phone) {
       sendSMS(user.phone, `Your OTP is: ${otp}. It expires in 5 minutes.`);
