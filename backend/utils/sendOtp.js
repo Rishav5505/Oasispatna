@@ -28,8 +28,10 @@ const sendOtp = async (email, otp) => {
         console.log('Brevo API called successfully. Returned data: ' + JSON.stringify(data));
         return data;
     } catch (error) {
-        console.error('Error sending Brevo email:', error);
-        throw error;
+        // Log the actual error message from Brevo to help debugging
+        const errorMessage = error.response?.body?.message || error.message;
+        console.error('Brevo API Error Details:', errorMessage);
+        throw new Error(errorMessage);
     }
 };
 
