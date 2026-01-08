@@ -11,10 +11,11 @@ const sendOtp = async (email, otp) => {
         to: [{
             email: email
         }],
-        templateId: parseInt(process.env.BREVO_TEMPLATE_ID),
+        templateId: parseInt(process.env.BREVO_TEMPLATE_ID) || 1,
         params: {
             otp: otp,
         },
+        textContent: `Your Oasis OTP is: ${otp}. It expires in 5 minutes.`,
         sender: {
             email: process.env.SENDER_EMAIL,
             name: "Oasis"
