@@ -9,18 +9,39 @@ function hashOtp(otp) {
   return crypto.createHash('sha256').update(otp).digest('hex');
 }
 
-async function createAndSaveOtp(userId) {
+async function createAndSaveOtp(identifier) {
   const otp = generateOtp();
   const codeHash = hashOtp(otp);
-  await Otp.create({ userId, codeHash });
-  return otp; // caller should deliver this to user via SMS/email
+
+  const query = {};
+  if (typeof identifier === 'string' && identifier.includes('@')) {
+    query.email = identifier.toLowerCase();
+  } else {
+    query.userId = identifier;
+  }
+
+  // Clear previous OTPs for this identifier
+  await Otp.deleteMany(query);
+
+  await Otp.create({ ...query, codeHash });
+  return otp;
 }
 
-async function verifyOtp(userId, otpCandidate) {
+async function verifyOtp(identifier, otpCandidate) {
   const codeHash = hashOtp(otpCandidate);
-  const record = await Otp.findOne({ userId, codeHash });
+
+  const query = { codeHash };
+  if (typeof identifier === 'string' && identifier.includes('@')) {
+    query.email = identifier.toLowerCase();
+  } else {
+    query.userId = identifier;
+  }
+
+  const record = await Otp.findOne(query);
   if (!record) return false;
-  await Otp.deleteMany({ userId });
+
+  // Delete after verification
+  await Otp.deleteMany(query);
   return true;
 }
 

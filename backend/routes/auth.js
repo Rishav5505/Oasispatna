@@ -177,6 +177,38 @@ router.post('/send-otp', async (req, res) => {
   }
 });
 
+// Send OTP for Signup (email verification before register)
+router.post('/send-signup-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+
+  try {
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) return res.status(400).json({ message: 'Email already registered' });
+
+    const otp = await createAndSaveOtp(email);
+    await sendOtp(email, otp);
+
+    res.json({ message: 'OTP sent to your email' });
+  } catch (err) {
+    console.error('Signup OTP error:', err);
+    res.status(500).json({ message: 'Error sending OTP' });
+  }
+});
+
+// Verify OTP for Signup
+router.post('/verify-signup-otp', async (req, res) => {
+  const { email, otp } = req.body;
+  try {
+    const ok = await verifyOtp(email, otp);
+    if (!ok) return res.status(400).json({ message: 'Invalid or expired OTP' });
+
+    res.json({ verified: true });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Verify OTP
 router.post('/verify-otp', async (req, res) => {
   const { email, phone, otp } = req.body;
