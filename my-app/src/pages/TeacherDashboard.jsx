@@ -106,7 +106,7 @@ const TeacherDashboard = () => {
       fetchTeacherProfile(); // Refresh profile data
     } catch (err) {
       console.error('Error uploading photo:', err);
-      alert('Failed to upload photo');
+      alert('Failed to upload photo: ' + (err.response?.data?.message || err.message));
     } finally {
       setUploadingPhoto(false);
     }

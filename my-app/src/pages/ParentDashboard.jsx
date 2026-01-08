@@ -33,6 +33,10 @@ const ParentDashboard = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [selectedNotice, setSelectedNotice] = useState(null);
+    const [photoFile, setPhotoFile] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', address: '' });
 
     // Razorpay Loader
     const loadRazorpay = () => {
@@ -77,8 +81,47 @@ const ParentDashboard = () => {
         try {
             const res = await axios.get(`${config.API_URL}/auth/me`, { headers });
             setProfile(res.data);
+            setEditForm({ name: res.data.name, phone: res.data.phone, email: res.data.email, address: res.data.address });
         } catch (err) {
             console.error('Error fetching profile:', err);
+        }
+    };
+
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setPhotoFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setPhotoPreview(reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleQuickPhotoUpload = async () => {
+        if (!photoFile) return;
+        setUploadingPhoto(true);
+        const token = sessionStorage.getItem('token');
+        const formData = new FormData();
+        formData.append('profilePhoto', photoFile);
+        formData.append('name', editForm.name);
+
+        try {
+            await axios.put(`${config.API_URL}/auth/me`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            setPhotoFile(null);
+            setPhotoPreview(null);
+            fetchProfile();
+            alert('Profile photo updated successfully!');
+        } catch (err) {
+            console.error('Error uploading photo:', err);
+            alert('Failed to upload photo: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setUploadingPhoto(false);
         }
     };
 
@@ -414,6 +457,7 @@ const ParentDashboard = () => {
                         { id: 'Performance', icon: FaUserGraduate, label: 'Performance' },
                         { id: 'Materials', icon: FaBook, label: 'Study Materials' },
                         { id: 'Notices', icon: FaBullhorn, label: 'Notice Board' },
+                        { id: 'Profile', icon: FaIdCard, label: 'My Profile' },
                     ].map(item => (
                         <button
                             key={item.id}
@@ -1162,6 +1206,86 @@ const ParentDashboard = () => {
                         </div>
                     </div>
                 )}
+
+            {activeTab === 'Profile' && (
+                <div className="max-w-2xl mx-auto animate-in fade-in duration-500">
+                    <div className="bg-white dark:bg-gray-900 rounded-[3rem] p-12 border border-gray-100 dark:border-gray-800 shadow-sm">
+                        <div className="flex flex-col items-center mb-10">
+                            <div className="w-32 h-32 rounded-[2.5rem] bg-teal-50 dark:bg-teal-900/20 border-4 border-white dark:border-gray-800 shadow-xl flex items-center justify-center text-4xl text-teal-600 dark:text-teal-400 font-black mb-6 relative group overflow-hidden">
+                                {photoPreview ? (
+                                    <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
+                                ) : profile.profilePhoto ? (
+                                    <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} className="w-full h-full object-cover" alt="Profile" />
+                                ) : profile.name?.charAt(0)}
+                                <label className="absolute inset-0 bg-teal-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
+                                    <FaPlus className="text-white" />
+                                    <input type="file" className="hidden" onChange={handlePhotoChange} accept="image/*" />
+                                </label>
+                            </div>
+                            {photoPreview && (
+                                <div className="flex gap-2 mb-4 animate-in slide-in-from-top duration-300">
+                                    <button
+                                        onClick={handleQuickPhotoUpload}
+                                        disabled={uploadingPhoto}
+                                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2"
+                                    >
+                                        {uploadingPhoto ? <FaHistory className="animate-spin" /> : <FaCheckCircle />} SAVE PHOTO
+                                    </button>
+                                    <button
+                                        onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+                                    >
+                                        CANCEL
+                                    </button>
+                                </div>
+                            )}
+                            <h2 className="text-3xl font-black text-gray-900 dark:text-white">{profile.name}</h2>
+                            <p className="text-teal-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-1">Registered Guardian</p>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-3xl space-y-4">
+                                <div className="flex justify-between items-center px-2">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Details</span>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Email</span>
+                                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{profile.email}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Phone</span>
+                                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{profile.phone}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Address</span>
+                                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{profile.address || 'Not Provided'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {children.length > 0 && (
+                                <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-3xl">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 px-2">Linked Students</p>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {children.map(student => (
+                                            <div key={student._id} className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                                                    {student.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-black text-gray-800 dark:text-white">{student.name}</p>
+                                                    <p className="text-[9px] font-bold text-gray-400 uppercase">ID: {student._id.slice(-6)}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
