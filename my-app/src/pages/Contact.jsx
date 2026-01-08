@@ -11,7 +11,7 @@ const Contact = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await axios.post('https://oasis-fdpj.onrender.com/api/leads', form);
+      await axios.post('https://oasispatna.onrender.com/api/leads', form);
       alert('Enquiry submitted successfully! We will get back to you soon.');
       setForm({ name: '', email: '', phone: '', message: '', course: '' });
     } catch (error) {
@@ -182,3 +182,4 @@ const Contact = () => {
 };
 
 export default Contact;
+

@@ -6,7 +6,7 @@ const EnquiryForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post('https://oasis-fdpj.onrender.com/api/leads', form);
+    await axios.post('https://oasispatna.onrender.com/api/leads', form);
     alert('Enquiry submitted');
   };
 
@@ -29,3 +29,4 @@ const EnquiryForm = () => {
 };
 
 export default EnquiryForm;
+

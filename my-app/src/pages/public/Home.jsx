@@ -70,19 +70,19 @@ const Home = () => {
 
   useEffect(() => {
     // Fetch faculty data
-    fetch('https://oasis-fdpj.onrender.com/api/public/faculty')
+    fetch('https://oasispatna.onrender.com/api/public/faculty')
       .then(res => res.json())
       .then(data => setFaculty(data))
       .catch(err => console.error('Error fetching faculty:', err));
 
     // Fetch courses data
-    fetch('https://oasis-fdpj.onrender.com/api/public/courses')
+    fetch('https://oasispatna.onrender.com/api/public/courses')
       .then(res => res.json())
       .then(data => setCourses(data))
       .catch(err => console.error('Error fetching courses:', err));
 
     // Fetch testimonials
-    fetch('https://oasis-fdpj.onrender.com/api/public/testimonials')
+    fetch('https://oasispatna.onrender.com/api/public/testimonials')
       .then(res => res.json())
       .then(data => setTestimonials(data))
       .catch(err => console.error('Error fetching testimonials:', err));
@@ -97,7 +97,7 @@ const Home = () => {
     setFormStatus({ message: '', type: '' });
 
     try {
-      const response = await fetch('https://oasis-fdpj.onrender.com/api/leads', {
+      const response = await fetch('https://oasispatna.onrender.com/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -739,3 +739,4 @@ const Home = () => {
 };
 
 export default Home;
+
