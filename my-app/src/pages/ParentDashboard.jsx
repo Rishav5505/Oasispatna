@@ -7,7 +7,7 @@ import {
     FaUserGraduate, FaChalkboardTeacher, FaMoneyBillWave, FaBullhorn,
     FaChartLine, FaRegClock, FaSignOutAlt, FaChevronRight, FaTimesCircle,
     FaCalendarAlt, FaBook, FaFilePdf, FaArrowUp, FaArrowDown, FaCheckCircle,
-    FaTasks, FaSearch, FaWallet, FaLock, FaBell, FaCreditCard, FaLayerGroup, FaHistory, FaIdCard, FaEnvelopeOpenText
+    FaTasks, FaSearch, FaWallet, FaLock, FaBell, FaCreditCard, FaLayerGroup, FaHistory, FaIdCard, FaEnvelopeOpenText, FaPlus
 } from 'react-icons/fa';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
