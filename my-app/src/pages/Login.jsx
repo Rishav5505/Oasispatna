@@ -3,6 +3,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import oasisLogo from '../assets/oasis_logo.png';
+import config from '../config';
 
 const Login = () => {
   const [searchParams] = useSearchParams();
@@ -31,6 +32,17 @@ const Login = () => {
       navigate('/dashboard');
     } catch (err) {
       alert('Login failed: ' + (err.response?.data?.message || 'Invalid credentials'));
+    }
+  };
+
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${config.API_URL}/auth/forgot-password`, { email: forgotEmail });
+      alert('Password reset link has been sent to your email.');
+      setShowForgot(false);
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error sending password reset email');
     }
   };
 
