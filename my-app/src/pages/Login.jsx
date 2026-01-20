@@ -12,6 +12,9 @@ const Login = () => {
   const [role, setRole] = useState(searchParams.get('role') || 'student');
   const [forgotEmail, setForgotEmail] = useState('');
   const [showForgot, setShowForgot] = useState(false);
+  const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP & New Password
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -39,10 +42,28 @@ const Login = () => {
     e.preventDefault();
     try {
       await axios.post(`${config.API_URL}/auth/forgot-password`, { email: forgotEmail });
-      alert('Password reset link has been sent to your email.');
-      setShowForgot(false);
+      alert('OTP has been sent to your email.');
+      setResetStep(2);
     } catch (error) {
-      alert(error.response?.data?.message || 'Error sending password reset email');
+      alert(error.response?.data?.message || 'Error sending OTP');
+    }
+  };
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${config.API_URL}/auth/reset-password`, {
+        email: forgotEmail,
+        otp,
+        newPassword
+      });
+      alert('Password has been reset successfully. Please login.');
+      setShowForgot(false);
+      setResetStep(1);
+      setOtp('');
+      setNewPassword('');
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error resetting password');
     }
   };
 
@@ -154,30 +175,68 @@ const Login = () => {
 
         {showForgot && (
           <div className="mt-6 p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
-            <form onSubmit={handleForgot} className="space-y-4">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors duration-300"
-                required
-              />
-              <div className="flex space-x-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-green-500 to-teal-600 text-white p-3 rounded-lg font-semibold hover:from-green-600 hover:to-teal-700 transition-all duration-300"
-                >
-                  Send Reset Email
-                </button>
-                <button
-                  onClick={() => setShowForgot(false)}
-                  className="px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            {resetStep === 1 ? (
+              <form onSubmit={handleForgot} className="space-y-4">
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors duration-300"
+                  required
+                />
+                <div className="flex space-x-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-gradient-to-r from-green-500 to-teal-600 text-white p-3 rounded-lg font-semibold hover:from-green-600 hover:to-teal-700 transition-all duration-300"
+                  >
+                    Send OTP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot(false)}
+                    className="px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleReset} className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors duration-300"
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors duration-300"
+                  required
+                  minLength={6}
+                />
+                <div className="flex space-x-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-3 rounded-lg font-semibold hover:from-purple-600 hover:to-indigo-700 transition-all duration-300"
+                  >
+                    Reset Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResetStep(1)}
+                    className="px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-300"
+                  >
+                    Back
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
 
