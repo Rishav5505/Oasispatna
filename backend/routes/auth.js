@@ -123,12 +123,14 @@ router.post('/forgot-password', async (req, res) => {
     user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
-    sendEmail(email, 'Password Reset', `Click here to reset: ${resetUrl}`);
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
+    await sendEmail(email, 'Password Reset', `Click here to reset: ${resetUrl}`);
 
     res.json({ message: 'Reset email sent' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Forgot Password Error:', err.message);
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 });
 

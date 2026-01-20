@@ -168,7 +168,12 @@ router.post('/teachers', auth, roleAuth('admin'), async (req, res) => {
 
     // Send email/SMS with credentials
     const credentialMsg = `Your account has been created. Email: ${email}, Password: ${tempPassword}.`;
-    sendEmail(email, 'Teacher Account Created', credentialMsg);
+    try {
+      await sendEmail(email, 'Teacher Account Created', credentialMsg);
+    } catch (emailErr) {
+      console.error('Failed to send teacher credential email:', emailErr);
+      // Continue anyway as the account is created
+    }
     sendSMS(phone, credentialMsg);
 
     res.json({ message: 'Teacher created successfully', password: tempPassword });
