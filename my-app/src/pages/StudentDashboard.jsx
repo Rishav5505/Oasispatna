@@ -1341,6 +1341,8 @@ const StudentDashboard = () => {
           <StudentTest studentId={student._id || user.id} />
         ) : activeView === 'doubts' ? (
           <StudentDoubt studentId={student._id || user.id} />
+        ) : activeView === 'ai-buddy' ? (
+          <AIStudyBuddy />
         ) : activeView === 'attendance' ? (
           <QRScanner studentId={student._id || user.id} />
         ) : null}
