@@ -49,6 +49,27 @@ router.get('/student/:studentId', auth, async (req, res) => {
   }
 });
 
+// Get marks by class, subject, exam (teacher/admin)
+router.get('/class/:classId/subject/:subjectId/exam/:examId', auth, roleAuth('teacher', 'admin'), async (req, res) => {
+  const { classId, subjectId, examId } = req.params;
+  try {
+    // 1. Get all students in this class
+    const students = await Student.find({ classId });
+    const studentIds = students.map(s => s._id);
+
+    // 2. Get marks for these students for specific subject/exam
+    const marks = await Marks.find({
+      studentId: { $in: studentIds },
+      subjectId,
+      examId
+    }).populate('studentId', 'name');
+
+    res.json(marks);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get all marks (admin)
 router.get('/', auth, roleAuth('admin'), async (req, res) => {
   try {

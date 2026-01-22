@@ -14,6 +14,7 @@ import oasisFullLogo from '../assets/oasis_full_logo.png';
 import receiptBanner from '../assets/receipt_banner.png';
 import config from '../config';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { FaLaptopCode } from 'react-icons/fa';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -24,6 +25,7 @@ const ParentDashboard = () => {
     const [selectedChild, setSelectedChild] = useState(null);
     const [attendance, setAttendance] = useState([]);
     const [marks, setMarks] = useState([]);
+    const [onlineTestResults, setOnlineTestResults] = useState([]);
     const [materials, setMaterials] = useState([]);
     const [notices, setNotices] = useState([]);
     const [fees, setFees] = useState({});
@@ -71,6 +73,7 @@ const ParentDashboard = () => {
             fetchAttendance(selectedChild);
             fetchMarks(selectedChild);
             fetchFees(selectedChild);
+            fetchOnlineTestResults(selectedChild);
         }
     }, [selectedChild]);
 
@@ -86,6 +89,8 @@ const ParentDashboard = () => {
             console.error('Error fetching profile:', err);
         }
     };
+
+    // ... (keep handlePhotoChange and handleQuickPhotoUpload same)
 
     const handlePhotoChange = (e) => {
         const file = e.target.files[0];
@@ -172,6 +177,19 @@ const ParentDashboard = () => {
             setFees(res.data);
         } catch (err) {
             console.error('Error fetching fees:', err);
+        }
+    };
+
+    const fetchOnlineTestResults = async (id) => {
+        const token = sessionStorage.getItem('token');
+        if (!token) return;
+        const headers = { Authorization: `Bearer ${token}` };
+        try {
+            const res = await axios.get(`${config.API_URL}/tests/student/${id}`, { headers });
+            // Filter tests to show results or at least attempted ones or all with status
+            setOnlineTestResults(res.data);
+        } catch (err) {
+            console.error('Error fetching online tests:', err);
         }
     };
 
@@ -452,6 +470,7 @@ const ParentDashboard = () => {
                 <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
                     {[
                         { id: 'Overview', icon: FaChartLine, label: 'Overview' },
+                        { id: 'Tests', icon: FaLaptopCode, label: 'Online Test Results' },
                         { id: 'Fees', icon: FaMoneyBillWave, label: 'Pay Fees / History' },
                         { id: 'Attendance', icon: FaCalendarAlt, label: 'Attendance' },
                         { id: 'Performance', icon: FaUserGraduate, label: 'Performance' },
@@ -1045,6 +1064,77 @@ const ParentDashboard = () => {
                             </div>
                         </div>
                     )}
+
+                    {activeTab === 'Tests' && (
+                        <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="flex items-center justify-between mb-8">
+                                <div>
+                                    <h2 className="text-2xl font-black text-gray-900 leading-tight">Online Test Results</h2>
+                                    <p className="text-gray-400 font-bold text-sm">Performance in digital assessments</p>
+                                </div>
+                                <div className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                                    <FaLaptopCode /> Digital Report
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                            <th className="pb-4 pl-4">Test Title</th>
+                                            <th className="pb-4">Subject</th>
+                                            <th className="pb-4">Date</th>
+                                            <th className="pb-4">Status</th>
+                                            <th className="pb-4 text-right pr-4">Score / Marks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50 text-sm">
+                                        {onlineTestResults.map((test) => (
+                                            <tr key={test._id} className="group hover:bg-gray-50/50 transition-colors">
+                                                <td className="py-4 pl-4 font-bold text-gray-800">
+                                                    {test.title}
+                                                </td>
+                                                <td className="py-4 font-bold text-gray-500">
+                                                    {test.subjectId?.name || 'General'}
+                                                </td>
+                                                <td className="py-4 font-medium text-gray-400 text-xs uppercase tracking-widest">
+                                                    {new Date(test.createdAt).toLocaleDateString()}
+                                                </td>
+                                                <td className="py-4">
+                                                    {test.attempted ? (
+                                                        <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                                            Completed
+                                                        </span>
+                                                    ) : (
+                                                        <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                                            Missed / Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-4 text-right pr-4">
+                                                    {test.attempted ? (
+                                                        <span className="font-black text-indigo-600 text-base">
+                                                            {test.score} <span className="text-gray-300 text-xs">/ {test.totalMarks}</span>
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-300 font-bold">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {onlineTestResults.length === 0 && (
+                                            <tr>
+                                                <td colSpan="5" className="text-center py-10 text-gray-400 font-bold italic">
+                                                    No online tests found for this student.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
 
                 </div>
             </main >

@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { AuthContext } from '../contexts/AuthContext';
 import {
   FaChalkboardTeacher, FaUsers, FaCalendarCheck, FaBook,
   FaFilePdf, FaChartLine, FaHistory, FaSearch, FaPlus,
   FaChevronRight, FaSignOutAlt, FaRegClock, FaCheckCircle,
-  FaTimesCircle, FaFileUpload, FaUserGraduate, FaClipboardList, FaUserClock, FaBullhorn, FaTimes
+  FaTimesCircle, FaFileUpload, FaUserGraduate, FaClipboardList, FaUserClock, FaBullhorn, FaTimes, FaQrcode
 } from 'react-icons/fa';
+import { QRCodeCanvas } from 'qrcode.react';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
 import config from '../config';
+import TeacherLiveClass from '../components/live/TeacherLiveClass';
+import TeacherVideo from '../components/video/TeacherVideo';
+import TeacherTest from '../components/test/TeacherTest';
+import DoubtBoard from '../components/doubt/DoubtBoard';
+import { FaVideo, FaPlayCircle, FaLaptopCode, FaQuestionCircle } from 'react-icons/fa';
 
 const TeacherDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -46,6 +53,12 @@ const TeacherDashboard = () => {
   const [selectedMarkStudent, setSelectedMarkStudent] = useState(null);
   const [newMark, setNewMark] = useState({ subjectId: '', marks: '', examId: '', remarks: '' });
   const [exams, setExams] = useState([]);
+  const [marksViewMode, setMarksViewMode] = useState('entry'); // 'entry' or 'view'
+  const [classMarks, setClassMarks] = useState([]);
+  const [fetchingClassMarks, setFetchingClassMarks] = useState(false);
+  const [qrToken, setQrToken] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [generatingQR, setGeneratingQR] = useState(false);
 
   // Material State
   const [materialForm, setMaterialForm] = useState({ title: '', subjectId: '', file: null });
@@ -67,6 +80,9 @@ const TeacherDashboard = () => {
           setSelectedClass(decoded.user.classIds[0]);
         }
       }
+      const socket = io(config.SOCKET_URL);
+      socket.emit('join', user.id);
+      return () => socket.disconnect();
     }
   }, [user]);
 
@@ -273,6 +289,29 @@ const TeacherDashboard = () => {
     }
   };
 
+  const handleGenerateQR = async () => {
+    if (!selectedClass || !attendanceSubject) {
+      alert('Please select Class and Subject first');
+      return;
+    }
+    setGeneratingQR(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.post(`${config.API_URL}/attendance/qr/generate`, {
+        classId: selectedClass,
+        subjectId: attendanceSubject
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setQrToken(res.data.qrToken);
+      setShowQRModal(true);
+    } catch (err) {
+      alert('Failed to generate QR session');
+    } finally {
+      setGeneratingQR(false);
+    }
+  };
+
   const handleUploadMarks = async (e) => {
     e.preventDefault();
     const token = sessionStorage.getItem('token');
@@ -283,10 +322,30 @@ const TeacherDashboard = () => {
         studentId: selectedMarkStudent._id
       }, { headers });
       alert('Marks and remarks uploaded successfully!');
-      setNewMark({ subjectId: '', marks: '', examId: '', remarks: '' });
+      setNewMark({ ...newMark, marks: '', remarks: '' }); // Clear marks and remarks but keep subject/exam
       setSelectedMarkStudent(null);
+      if (marksViewMode === 'view') fetchClassMarks(); // Refresh if in view mode
     } catch (err) {
       alert('Failed to upload marks');
+    }
+  };
+
+  const fetchClassMarks = async () => {
+    if (!marksClass || !newMark.subjectId || !newMark.examId) {
+      alert('Please select Class, Subject and Exam');
+      return;
+    }
+    setFetchingClassMarks(true);
+    const token = sessionStorage.getItem('token');
+    const headers = { 'Authorization': `Bearer ${token}` };
+    try {
+      const res = await axios.get(`${config.API_URL}/marks/class/${marksClass}/subject/${newMark.subjectId}/exam/${newMark.examId}`, { headers });
+      setClassMarks(res.data);
+    } catch (err) {
+      console.error('Error fetching class marks:', err);
+      alert('Failed to fetch marks');
+    } finally {
+      setFetchingClassMarks(false);
     }
   };
 
@@ -336,6 +395,10 @@ const TeacherDashboard = () => {
         <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
           {[
             { id: 'overview', icon: FaChartLine, label: 'Dashboard' },
+            { id: 'live-classes', icon: FaVideo, label: 'Live Classes' },
+            { id: 'recorded-classes', icon: FaPlayCircle, label: 'Video Library' },
+            { id: 'online-tests', icon: FaLaptopCode, label: 'Online Tests' },
+            { id: 'doubts', icon: FaQuestionCircle, label: 'Doubt Forum' },
             { id: 'attendance', icon: FaCalendarCheck, label: 'Attendance' },
             { id: 'marks', icon: FaClipboardList, label: 'Academic Performance' },
             { id: 'materials', icon: FaBook, label: 'Study Resources' },
@@ -541,7 +604,51 @@ const TeacherDashboard = () => {
                 >
                   {loadingStudents ? 'LOADING RECORDS...' : 'FINALIZE AND SAVE ATTENDANCE'}
                 </button>
+
+                <div className="mt-4 flex items-center gap-4">
+                  <div className="flex-1 h-[1px] bg-gray-100"></div>
+                  <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">OR USE SMART SCAN</span>
+                  <div className="flex-1 h-[1px] bg-gray-100"></div>
+                </div>
+
+                <button
+                  onClick={handleGenerateQR}
+                  className="mt-4 w-full bg-white border-2 border-blue-100 text-blue-600 hover:bg-blue-50 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all group"
+                >
+                  <FaQrcode className="text-xl group-hover:rotate-12 transition-transform" />
+                  {generatingQR ? 'GENERATING SECURE TOKEN...' : 'DISPLAY ATTENDANCE QR CODE'}
+                </button>
               </div>
+
+              {/* QR Modal */}
+              {showQRModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                  <div className="bg-white rounded-[3rem] p-10 max-w-md w-full text-center shadow-2xl relative">
+                    <button
+                      onClick={() => setShowQRModal(false)}
+                      className="absolute top-8 right-8 text-gray-400 hover:text-gray-600 p-2"
+                    >
+                      <FaTimes />
+                    </button>
+                    <div className="mb-8">
+                      <h3 className="text-2xl font-black text-gray-900 mb-2">Scan to Mark Presence</h3>
+                      <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Expires in 5 minutes</p>
+                    </div>
+                    <div className="bg-white p-8 rounded-3xl border-4 border-blue-50 inline-block shadow-inner mb-8">
+                      <QRCodeCanvas value={qrToken} size={250} level="H" includeMargin={true} />
+                    </div>
+                    <div className="space-y-4">
+                      <p className="text-sm font-medium text-gray-500 bg-gray-50 p-4 rounded-2xl">
+                        Ask students to open their dashboard and use the <span className="text-blue-600 font-bold tracking-tight">SCANNER</span> tool.
+                      </p>
+                      <div className="flex items-center justify-center gap-2 text-emerald-500 font-black text-[10px] uppercase tracking-tighter">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                        Secure Geofencing Active
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {!selectedClass || !attendanceSubject ? (
                 <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300 text-center">
@@ -604,123 +711,214 @@ const TeacherDashboard = () => {
           )}
 
           {activeTab === 'marks' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 animate-in fade-in duration-500">
-              <div className="lg:col-span-1 space-y-6">
-                <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-black text-gray-900 leading-tight">Academic Records</h2>
-                    <p className="text-gray-400 font-bold text-xs uppercase tracking-widest">Global Selector</p>
-                  </div>
-                  <div className="space-y-4">
-                    <select
-                      className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-sm text-gray-700"
-                      value={marksClass}
-                      onChange={(e) => {
-                        setMarksClass(e.target.value);
-                        fetchClassStudents(e.target.value, 'marks');
-                      }}
-                    >
-                      <option value="">-- Choose Class --</option>
-                      {teacherData.classes?.map(c => (
-                        <option key={c._id} value={c._id}>{c.name}</option>
-                      ))}
-                    </select>
-                    <select
-                      className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-sm text-gray-700"
-                      value={newMark.subjectId}
-                      onChange={(e) => setNewMark({ ...newMark, subjectId: e.target.value })}
-                    >
-                      <option value="">-- Choose Subject --</option>
-                      {teacherData.subjects.map(s => (
-                        <option key={s._id} value={s._id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {marksStudents.map(s => (
-                      <button
-                        key={s._id}
-                        onClick={() => setSelectedMarkStudent(s)}
-                        className={`w-full p-4 rounded-2xl text-left transition-all ${selectedMarkStudent?._id === s._id ? 'bg-indigo-600 text-white shadow-xl' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                      >
-                        <p className="font-bold text-sm">{s.name || s.userId?.name || 'Unknown'}</p>
-                      </button>
-                    ))}
-                  </div>
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900">Academic Performance</h2>
+                  <p className="text-gray-400 font-bold text-xs uppercase tracking-widest">Manage and View Student Marks</p>
+                </div>
+                <div className="flex bg-gray-100 p-1 rounded-2xl">
+                  <button
+                    onClick={() => setMarksViewMode('entry')}
+                    className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all ${marksViewMode === 'entry' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    ENTRY MODE
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMarksViewMode('view');
+                      if (marksClass && newMark.subjectId && newMark.examId) fetchClassMarks();
+                    }}
+                    className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all ${marksViewMode === 'view' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    VIEW MODE
+                  </button>
                 </div>
               </div>
 
-              <div className="lg:col-span-2">
-                {selectedMarkStudent ? (
-                  <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-xl space-y-8 animate-in slide-in-from-right-5">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 text-2xl font-black">
-                        {(selectedMarkStudent.name || selectedMarkStudent.userId?.name || '?').charAt(0)}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                <div className="lg:col-span-1 space-y-6">
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Select Class</label>
+                        <select
+                          className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-sm text-gray-700"
+                          value={marksClass}
+                          onChange={(e) => {
+                            setMarksClass(e.target.value);
+                            fetchClassStudents(e.target.value, 'marks');
+                          }}
+                        >
+                          <option value="">-- Choose Class --</option>
+                          {teacherData.classes?.map(c => (
+                            <option key={c._id} value={c._id}>{c.name}</option>
+                          ))}
+                        </select>
                       </div>
-                      <div>
-                        <h2 className="text-2xl font-black text-gray-900">{selectedMarkStudent.name || selectedMarkStudent.userId?.name || 'Unknown'}</h2>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Mark Entry Terminal</p>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Select Subject</label>
+                        <select
+                          className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-sm text-gray-700"
+                          value={newMark.subjectId}
+                          onChange={(e) => setNewMark({ ...newMark, subjectId: e.target.value })}
+                        >
+                          <option value="">-- Choose Subject --</option>
+                          {teacherData.subjects.map(s => (
+                            <option key={s._id} value={s._id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Select Exam</label>
+                        <select
+                          className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-sm text-gray-700"
+                          value={newMark.examId}
+                          onChange={(e) => setNewMark({ ...newMark, examId: e.target.value })}
+                        >
+                          <option value="">-- Choose Exam --</option>
+                          {exams.map(e => (
+                            <option key={e._id} value={e._id}>{e.name} ({e.type})</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
-                    <form onSubmit={handleUploadMarks} className="space-y-6">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Subject</label>
-                          <select
-                            className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-700"
-                            value={newMark.subjectId}
-                            onChange={(e) => setNewMark({ ...newMark, subjectId: e.target.value })}
-                            required
+                    {marksViewMode === 'entry' && (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Select Student</p>
+                        {marksStudents.map(s => (
+                          <button
+                            key={s._id}
+                            onClick={() => setSelectedMarkStudent(s)}
+                            className={`w-full p-4 rounded-2xl text-left transition-all ${selectedMarkStudent?._id === s._id ? 'bg-indigo-600 text-white shadow-xl' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
                           >
-                            <option value="">-- Select Subject --</option>
-                            {teacherData.subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Exam Cycle</label>
-                          <select
-                            className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-700"
-                            value={newMark.examId}
-                            onChange={(e) => setNewMark({ ...newMark, examId: e.target.value })}
-                            required
-                          >
-                            <option value="">-- Select Exam --</option>
-                            {exams.map(e => <option key={e._id} value={e._id}>{e.name} ({e.type})</option>)}
-                          </select>
-                        </div>
+                            <p className="font-bold text-sm">{s.name || s.userId?.name || 'Unknown'}</p>
+                          </button>
+                        ))}
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Score (%)</label>
-                        <input
-                          type="number"
-                          max="100"
-                          placeholder="0-100"
-                          className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-700 text-3xl text-center"
-                          value={newMark.marks}
-                          onChange={(e) => setNewMark({ ...newMark, marks: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Pedagogical Remarks</label>
-                        <textarea
-                          rows="4"
-                          placeholder="Provide constructive feedback..."
-                          className="w-full p-6 bg-gray-50 rounded-[2rem] border-none font-bold text-gray-700 resize-none"
-                          value={newMark.remarks}
-                          onChange={(e) => setNewMark({ ...newMark, remarks: e.target.value })}
-                        />
-                      </div>
-                      <button type="submit" className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm transition-all shadow-xl shadow-indigo-100">COMMIT TO LEDGER</button>
-                    </form>
+                    )}
+
+                    {marksViewMode === 'view' && (
+                      <button
+                        onClick={fetchClassMarks}
+                        disabled={!marksClass || !newMark.subjectId || !newMark.examId || fetchingClassMarks}
+                        className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-100 transition-all disabled:opacity-50"
+                      >
+                        {fetchingClassMarks ? 'FETCHING...' : 'REFRESH RECORDS'}
+                      </button>
+                    )}
                   </div>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-300 border-4 border-dashed border-gray-100 rounded-[3rem] p-20">
-                    <FaClipboardList className="text-6xl mb-6 opacity-20" />
-                    <p className="font-bold">Select a student from the sidebar to start evaluation</p>
-                  </div>
-                )}
+                </div>
+
+                <div className="lg:col-span-2">
+                  {marksViewMode === 'entry' ? (
+                    selectedMarkStudent ? (
+                      <div className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-xl space-y-8 animate-in slide-in-from-right-5">
+                        <div className="flex items-center gap-6">
+                          <div className="w-16 h-16 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 text-2xl font-black">
+                            {(selectedMarkStudent.name || selectedMarkStudent.userId?.name || '?').charAt(0)}
+                          </div>
+                          <div>
+                            <h2 className="text-2xl font-black text-gray-900">{selectedMarkStudent.name || selectedMarkStudent.userId?.name || 'Unknown'}</h2>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Mark Entry Terminal</p>
+                          </div>
+                        </div>
+
+                        <form onSubmit={handleUploadMarks} className="space-y-6">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Score (%)</label>
+                            <input
+                              type="number"
+                              max="100"
+                              placeholder="0-100"
+                              className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-700 text-3xl text-center"
+                              value={newMark.marks}
+                              onChange={(e) => setNewMark({ ...newMark, marks: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Pedagogical Remarks</label>
+                            <textarea
+                              rows="4"
+                              placeholder="Provide constructive feedback..."
+                              className="w-full p-6 bg-gray-50 rounded-[2rem] border-none font-bold text-gray-700 resize-none"
+                              value={newMark.remarks}
+                              onChange={(e) => setNewMark({ ...newMark, remarks: e.target.value })}
+                            />
+                          </div>
+                          <button type="submit" className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm transition-all shadow-xl shadow-indigo-100">COMMIT TO LEDGER</button>
+                        </form>
+                      </div>
+                    ) : (
+                      <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-gray-300 border-4 border-dashed border-gray-100 rounded-[3rem] p-20">
+                        <FaClipboardList className="text-6xl mb-6 opacity-20" />
+                        <p className="font-bold">Select a student from the sidebar to start evaluation</p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-xl space-y-8 animate-in slide-in-from-right-5">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-black text-gray-900">Class Performance Records</h3>
+                        <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase border border-emerald-100">
+                          {classMarks.length} Records Found
+                        </span>
+                      </div>
+
+                      {fetchingClassMarks ? (
+                        <div className="py-20 flex flex-col items-center justify-center text-emerald-500">
+                          <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent mb-4"></div>
+                          <p className="font-bold">Retrieving Marks...</p>
+                        </div>
+                      ) : classMarks.length === 0 ? (
+                        <div className="py-20 flex flex-col items-center justify-center text-gray-300 border-4 border-dashed border-gray-50 rounded-[2rem]">
+                          <FaChartLine className="text-5xl mb-4 opacity-20" />
+                          <p className="font-bold">No marks records found for this selection</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-hidden rounded-[2rem] border border-gray-50">
+                          <table className="w-full text-left">
+                            <thead className="bg-gray-50">
+                              <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                <th className="px-6 py-4">Student</th>
+                                <th className="px-6 py-4 text-center">Score</th>
+                                <th className="px-6 py-4">Remarks</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {classMarks.map(m => (
+                                <tr key={m._id} className="hover:bg-gray-50/50 transition-all">
+                                  <td className="px-6 py-4 font-bold text-sm text-gray-800">{m.studentId?.name || 'Unknown'}</td>
+                                  <td className="px-6 py-4 text-center">
+                                    <span className={`px-3 py-1 rounded-lg font-black text-sm ${m.marks >= 75 ? 'bg-emerald-50 text-emerald-600' : m.marks >= 40 ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
+                                      {m.marks}%
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-xs font-medium text-gray-500 max-w-[200px] truncate">{m.remarks || '---'}</td>
+                                  <td className="px-6 py-4 text-right">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedMarkStudent(m.studentId);
+                                        setNewMark({ ...newMark, marks: m.marks, remarks: m.remarks || '' });
+                                        setMarksViewMode('entry');
+                                      }}
+                                      className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                      title="Edit Mark"
+                                    >
+                                      <FaClipboardList />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -777,6 +975,11 @@ const TeacherDashboard = () => {
               </div>
             </div>
           )}
+
+          {activeTab === 'live-classes' && <TeacherLiveClass teacherData={teacherData} />}
+          {activeTab === 'recorded-classes' && <TeacherVideo teacherData={teacherData} />}
+          {activeTab === 'online-tests' && <TeacherTest teacherData={teacherData} />}
+          {activeTab === 'doubts' && <DoubtBoard teacherData={teacherData} />}
 
           {activeTab === 'my-attendance' && (
             <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-500">
@@ -1057,6 +1260,27 @@ const TeacherDashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Mobile Bottom Navigation */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 py-2 flex justify-around items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
+          {[
+            { id: 'overview', icon: <FaChartLine />, label: 'Home' },
+            { id: 'attendance', icon: <FaCalendarCheck />, label: 'Attendance' },
+            { id: 'marks', icon: <FaClipboardList />, label: 'Marks' },
+            { id: 'live-classes', icon: <FaVideo />, label: 'Live' },
+            { id: 'doubts', icon: <FaQuestionCircle />, label: 'Doubts' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center gap-1 p-2 min-w-[64px] transition-all ${activeTab === tab.id ? 'text-emerald-600' : 'text-gray-400'}`}
+            >
+              <span className={`text-xl ${activeTab === tab.id ? 'scale-110' : ''}`}>{tab.icon}</span>
+              <span className="text-[10px] font-bold uppercase tracking-tighter">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="lg:hidden h-20"></div> {/* Spacer */}
       </main>
     </div>
   );

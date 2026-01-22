@@ -240,4 +240,42 @@ router.get('/stats', auth, roleAuth('admin'), async (req, res) => {
     }
 });
 
+// Send Fee Reminder (Admin)
+router.post('/remind/:studentId', auth, roleAuth('admin'), async (req, res) => {
+    try {
+        const student = await Student.findById(req.params.studentId);
+        if (!student) return res.status(404).json({ message: 'Student not found' });
+
+        const notification = new Notification({
+            recipient: student.userId,
+            title: 'Fee Payment Reminder',
+            message: `Friendly reminder: Your fees are due. Please clear them as soon as possible.`,
+            type: 'fee'
+        });
+        await notification.save();
+
+        if (req.io) {
+            req.io.to(student.userId.toString()).emit('notification', notification);
+        }
+
+        if (student.parentId) {
+            const parentNotif = new Notification({
+                recipient: student.parentId,
+                title: 'Fee Payment Reminder for Child',
+                message: `Reminder for ${student.name}'s fee payment.`,
+                type: 'fee'
+            });
+            await parentNotif.save();
+            if (req.io) {
+                req.io.to(student.parentId.toString()).emit('notification', parentNotif);
+            }
+        }
+
+        res.json({ message: 'Reminders sent successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 module.exports = router;

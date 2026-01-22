@@ -17,6 +17,25 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
+// Create Notification (Internal/Admin)
+router.post('/', auth, async (req, res) => {
+    try {
+        const { recipient, title, message, type } = req.body;
+        const notification = new Notification({
+            recipient, title, message, type
+        });
+        await notification.save();
+
+        if (req.io) {
+            req.io.to(recipient).emit('notification', notification);
+        }
+
+        res.status(201).json(notification);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Mark a notification as read
 router.patch('/:id/read', auth, async (req, res) => {
     try {

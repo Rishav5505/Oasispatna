@@ -3,9 +3,12 @@
  * Store all API keys and environment specific variables here.
  */
 
+const isDev = import.meta.env.MODE === 'development';
+
 const config = {
     // Backend API URL
-    API_URL: "https://oasispatna.onrender.com/api",
+    API_URL: isDev ? "http://localhost:5002/api" : "https://oasispatna.onrender.com/api",
+    SOCKET_URL: isDev ? "http://localhost:5002" : "https://oasispatna.onrender.com",
 
     // Payment Gateway Configuration
     PAYMENT: {

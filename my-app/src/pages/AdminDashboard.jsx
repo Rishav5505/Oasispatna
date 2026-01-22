@@ -20,7 +20,7 @@ import {
   FaMoneyBillWave, FaBullhorn, FaTasks, FaHistory, FaSearch,
   FaPlus, FaUserPlus, FaEnvelope, FaFilter, FaArrowUp, FaArrowDown,
   FaCheckCircle, FaExclamationTriangle, FaChartLine, FaRegClock,
-  FaCogs, FaSignOutAlt, FaChevronRight, FaFileInvoiceDollar, FaTimesCircle
+  FaCogs, FaSignOutAlt, FaChevronRight, FaFileInvoiceDollar, FaTimesCircle, FaLaptopCode, FaCalendarAlt, FaChartPie, FaTrophy
 } from 'react-icons/fa';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
@@ -72,6 +72,20 @@ const AdminDashboard = () => {
   const [isEditingFee, setIsEditingFee] = useState(false);
   const [newTotalFee, setNewTotalFee] = useState('');
 
+  // Academics / Test State
+  const [tests, setTests] = useState([]);
+  const [selectedTestResults, setSelectedTestResults] = useState(null);
+  const [showTestResultsModal, setShowTestResultsModal] = useState(false);
+  const [loadingResults, setLoadingResults] = useState(false);
+
+  // Schedule State
+  const [liveClasses, setLiveClasses] = useState([]);
+
+  // Insights State
+  const [insights, setInsights] = useState(null);
+
+  // Linking State
+
   // Linking State
   const [parentList, setParentList] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
@@ -107,6 +121,15 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (activeTab === 'fees') {
       fetchFees();
+    }
+    if (activeTab === 'academics') {
+      fetchTests();
+    }
+    if (activeTab === 'schedule') {
+      fetchLiveClasses();
+    }
+    if (activeTab === 'insights') {
+      fetchInsights();
     }
   }, [activeTab]);
 
@@ -295,6 +318,65 @@ const AdminDashboard = () => {
       setFees(res.data);
     } catch (err) {
       console.error('Error fetching fees:', err);
+    }
+  };
+
+  const fetchTests = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${config.API_URL}/tests/all`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setTests(res.data);
+    } catch (err) {
+      console.error('Error fetching tests:', err);
+    }
+  };
+
+  const handleViewTestResults = async (test) => {
+    setLoadingResults(true);
+    setShowTestResultsModal(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${config.API_URL}/tests/${test._id}/results`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setSelectedTestResults({ ...test, results: res.data });
+    } catch (err) {
+      console.error('Error fetching one test results:', err);
+      alert('Could not fetch results for this test.');
+    } finally {
+      setLoadingResults(false);
+    }
+  };
+
+  const fetchLiveClasses = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${config.API_URL}/live-classes/all`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setLiveClasses(res.data);
+    } catch (err) {
+      console.error('Error fetching live classes:', err);
+    }
+  };
+
+  const fetchInsights = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${config.API_URL}/analytics/insights`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setInsights(res.data);
+    } catch (err) {
+      console.error('Error fetching insights:', err);
+      // Fallback for demo if API fails
+      setInsights({
+        toppers: [],
+        atRisk: [],
+        subjectPerformance: []
+      });
     }
   };
 
@@ -687,6 +769,9 @@ const AdminDashboard = () => {
             { id: 'overview', icon: FaChartLine, label: 'Overview' },
             { id: 'students', icon: FaUserGraduate, label: 'Students' },
             { id: 'teachers', icon: FaChalkboardTeacher, label: 'Teachers' },
+            { id: 'academics', icon: FaLaptopCode, label: 'Academics & Tests' },
+            { id: 'schedule', icon: FaCalendarAlt, label: 'Schedule & Timings' },
+            { id: 'insights', icon: FaChartPie, label: 'AI Insights' },
             { id: 'fees', icon: FaMoneyBillWave, label: 'Fees Management' },
             { id: 'communication', icon: FaBullhorn, label: 'Notice Center' },
             { id: 'profile', icon: FaCogs, label: 'Profile Settings' },
@@ -1582,6 +1667,242 @@ const AdminDashboard = () => {
             </div>
           )}
 
+          {activeTab === 'insights' && (
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-500">
+              <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm relative overflow-hidden">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                  <div>
+                    <h2 className="text-3xl font-black text-gray-900 leading-tight">Executive Intelligence</h2>
+                    <p className="text-gray-400 font-bold">Automated analysis of institutional performance</p>
+                  </div>
+                  <button onClick={fetchInsights} className="px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-2">
+                    <FaRegClock /> Refresh Analytics
+                  </button>
+                </div>
+
+                {insights ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Toppers Pod */}
+                    <div className="bg-[#FFFBEB] rounded-[2.5rem] p-8 border border-yellow-100 flex flex-col relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-200/20 rounded-full -mr-20 -mt-20"></div>
+                      <h3 className="text-lg font-black text-yellow-800 mb-6 flex items-center gap-2 uppercase tracking-wide">
+                        <FaTrophy className="text-xl" /> Top Performers
+                      </h3>
+                      <div className="space-y-4 flex-1">
+                        {insights.toppers?.map((student, i) => (
+                          <div key={student._id || i} className="bg-white/60 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-yellow-400 text-white font-black flex items-center justify-center text-xs shadow-md">#{i + 1}</div>
+                              <div>
+                                <p className="font-bold text-gray-800 text-sm leading-tight">{student.name}</p>
+                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wide">{student.className || 'Class N/A'}</p>
+                              </div>
+                            </div>
+                            <p className="font-black text-yellow-600">{student.avgTotal}%</p>
+                          </div>
+                        ))}
+                        {(!insights.toppers || insights.toppers.length === 0) && <p className="text-center text-gray-400 text-xs font-bold uppercase py-4">Not enough data</p>}
+                      </div>
+                    </div>
+
+                    {/* At Risk Pod */}
+                    <div className="bg-[#FEF2F2] rounded-[2.5rem] p-8 border border-red-100 flex flex-col relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-red-200/20 rounded-full -mr-20 -mt-20"></div>
+                      <h3 className="text-lg font-black text-red-800 mb-6 flex items-center gap-2 uppercase tracking-wide">
+                        <FaExclamationTriangle className="text-xl" /> Needs Attention
+                      </h3>
+                      <div className="space-y-4 flex-1">
+                        {insights.atRisk?.map((student, i) => (
+                          <div key={student._id || i} className="bg-white/60 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+                            <div className="flex items-center gap-3">
+                              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                              <div>
+                                <p className="font-bold text-gray-800 text-sm leading-tight">{student.name}</p>
+                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">{student.className || 'Class N/A'}</p>
+                              </div>
+                            </div>
+                            <p className="font-black text-red-500 text-xs">{student.avgTotal}% Avg</p>
+                          </div>
+                        ))}
+                        {(!insights.atRisk || insights.atRisk.length === 0) && <p className="text-center text-gray-400 text-xs font-bold uppercase py-4">All Clear!</p>}
+                      </div>
+                    </div>
+
+                    {/* Subject Stats Pod */}
+                    <div className="bg-[#ECFDF5] rounded-[2.5rem] p-8 border border-emerald-100 flex flex-col relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-200/20 rounded-full -mr-20 -mt-20"></div>
+                      <h3 className="text-lg font-black text-emerald-800 mb-6 flex items-center gap-2 uppercase tracking-wide">
+                        <FaChartPie className="text-xl" /> Subject Metrics
+                      </h3>
+                      <div className="space-y-4 flex-1 overflow-y-auto max-h-60 custom-scrollbar">
+                        {insights.subjectPerformance?.map((sub, i) => (
+                          <div key={i} className="bg-white/60 p-4 rounded-2xl shadow-sm">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-bold text-emerald-900 text-xs uppercase tracking-wide">{sub.subjectName}</span>
+                              <span className="font-black text-emerald-600">{sub.avgScore}%</span>
+                            </div>
+                            <div className="w-full bg-emerald-100 rounded-full h-2 overflow-hidden">
+                              <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${sub.avgScore}%` }}></div>
+                            </div>
+                          </div>
+                        ))}
+                        {(!insights.subjectPerformance || insights.subjectPerformance.length === 0) && <p className="text-center text-gray-400 text-xs font-bold uppercase py-4">No data generated</p>}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 text-indigo-300">
+                    <FaChartPie className="text-6xl mb-4 animate-pulse opacity-50" />
+                    <p className="font-black text-xs uppercase tracking-widest">Analyzing Institutional Data...</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'schedule' && (
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-500">
+              <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between mb-8 relative z-10">
+                  <div>
+                    <h2 className="text-3xl font-black text-gray-900 leading-tight">Master Schedule</h2>
+                    <p className="text-gray-400 font-bold">Monitor live class activities and timings</p>
+                  </div>
+                  <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-black text-2xl">
+                    <FaRegClock />
+                  </div>
+                </div>
+
+                <div className="bg-[#F8FAFC] rounded-[2.5rem] p-6">
+                  <div className="space-y-4">
+                    {liveClasses.length > 0 ? (
+                      liveClasses.map((cls, idx) => {
+                        const isLive = new Date() >= new Date(cls.dateTime) && new Date() <= new Date(new Date(cls.dateTime).getTime() + 60 * 60 * 1000); // 1 hour duration assumption or just check start time
+                        const status = isLive ? 'LIVE NOW' : (new Date(cls.dateTime) > new Date() ? 'UPCOMING' : 'COMPLETED');
+
+                        return (
+                          <div key={cls._id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-6 group hover:border-indigo-100 transition-all">
+                            <div className="md:w-32 text-center md:text-left shrink-0">
+                              <p className="font-black text-2xl text-gray-800">{new Date(cls.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{new Date(cls.dateTime).toLocaleDateString()}</p>
+                            </div>
+
+                            <div className="flex-1 md:border-l border-gray-100 md:pl-6 text-center md:text-left">
+                              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
+                                <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-black uppercase tracking-widest">{cls.classId?.name || 'General'}</span>
+                                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">{cls.subjectId?.name}</span>
+                              </div>
+                              <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{cls.title}</h3>
+                              <p className="text-sm text-gray-500 font-medium mt-1">Faculty: {cls.teacherId?.name || 'Unknown'}</p>
+                            </div>
+
+                            <div className="shrink-0 w-full md:w-auto">
+                              <div className={`px-6 py-3 rounded-xl text-center font-black text-[10px] uppercase tracking-widest border ${status === 'LIVE NOW'
+                                ? 'bg-red-50 text-red-600 border-red-100 animate-pulse'
+                                : status === 'UPCOMING'
+                                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                  : 'bg-gray-50 text-gray-400 border-gray-100'
+                                }`}>
+                                {status}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <div className="text-center py-20">
+                        <p className="text-gray-400 font-bold italic">No classes scheduled.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'academics' && (
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-500">
+              <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm relative overflow-hidden">
+                <div className="relative z-10">
+                  <h2 className="text-3xl font-black text-gray-900 mb-6">Academic Monitoring</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+                      <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Total Assessments</p>
+                      <p className="text-5xl font-black text-indigo-600">{tests.length}</p>
+                    </div>
+                    <div className="p-8 bg-emerald-50 rounded-[2rem] border border-emerald-100 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">Active Subjects</p>
+                      <p className="text-5xl font-black text-emerald-600">{[...new Set(tests.map(t => t.subjectId?.name || 'General'))].length}</p>
+                    </div>
+                    <div className="p-8 bg-orange-50 rounded-[2rem] border border-orange-100 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+                      <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-1">Pending Review</p>
+                      <p className="text-5xl font-black text-orange-600">--</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden p-2">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-50">
+                        <th className="px-8 py-6">Assessment Title</th>
+                        <th className="px-8 py-6">Faculty / Subject</th>
+                        <th className="px-8 py-6">Date Created</th>
+                        <th className="px-8 py-6 text-right">Analytics</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {tests.map(test => (
+                        <tr key={test._id} className="group hover:bg-gray-50 transition-all">
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-bold text-xl shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                <FaLaptopCode />
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors text-sm">{test.title}</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                                  {test.questionPaperUrl ? 'PDF Attached' : 'Manual Entry'} • {test.totalMarks} Marks
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-gray-700 text-xs">{test.subjectId?.name || 'General'}</span>
+                              <span className="text-[10px] text-gray-400 uppercase tracking-wider">{test.teacherId?.name ? `By ${test.teacherId.name}` : 'Admin'}</span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                              {new Date(test.createdAt).toLocaleDateString()}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6 text-right">
+                            <button
+                              onClick={() => handleViewTestResults(test)}
+                              className="px-6 py-3 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-black text-[10px] uppercase tracking-widest shadow-sm hover:shadow-indigo-200"
+                            >
+                              View Report
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {tests.length === 0 && (
+                        <tr><td colSpan="4" className="text-center py-10 text-gray-400 font-bold italic">No academic tests found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'communication' && (
             <div className="max-w-4xl mx-auto space-y-10 animate-in slide-in-from-bottom-5 duration-500">
               <div className="text-center">
@@ -1803,6 +2124,99 @@ const AdminDashboard = () => {
                   UPDATE ASSIGNMENTS
                 </button>
               </form>
+            </div>
+          </div>
+        )
+      }
+      {
+        showTestResultsModal && selectedTestResults && (
+          <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="p-8 border-b border-indigo-50 bg-indigo-50/30 flex justify-between items-start shrink-0">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-widest">{selectedTestResults.subjectId?.name || 'Subject'}</span>
+                    <span className="text-xs font-bold text-gray-400">|</span>
+                    <span className="text-xs font-bold text-gray-400">{new Date(selectedTestResults.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <h2 className="text-3xl font-black text-gray-900 leading-tight">{selectedTestResults.title}</h2>
+                  <p className="text-gray-500 font-bold mt-1">Total Marks: {selectedTestResults.totalMarks} • Questions: {selectedTestResults.questions?.length || 0}</p>
+                </div>
+                <button onClick={() => setShowTestResultsModal(false)} className="w-10 h-10 rounded-xl bg-white text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center shadow-sm">
+                  <FaTimesCircle className="text-xl" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
+                {loadingResults ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-indigo-500">
+                    <FaHistory className="text-4xl animate-spin mb-4" />
+                    <p className="font-bold text-xs uppercase tracking-widest">Generating Digital Report...</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          <th className="px-6 py-4">Rank</th>
+                          <th className="px-6 py-4">Student</th>
+                          <th className="px-6 py-4 text-center">Score</th>
+                          <th className="px-6 py-4 text-center">Efficiency</th>
+                          <th className="px-6 py-4 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {selectedTestResults.results && selectedTestResults.results.length > 0 ? (
+                          selectedTestResults.results.map((result, index) => {
+                            const percentage = Math.round((result.score / selectedTestResults.totalMarks) * 100);
+                            return (
+                              <tr key={result._id} className="hover:bg-gray-50/50 transition-colors">
+                                <td className="px-6 py-4">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${index === 0 ? 'bg-yellow-100 text-yellow-600' : index === 1 ? 'bg-gray-200 text-gray-600' : index === 2 ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-400'}`}>
+                                    {index + 1}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div>
+                                    <p className="font-bold text-gray-800 text-sm">{result.studentId?.name || 'Unknown Student'}</p>
+                                    <p className="text-[10px] text-gray-400 uppercase tracking-wide">ID: {(result.studentId?._id || '').slice(-6)}</p>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <span className="font-black text-indigo-600 text-base">{result.score}</span>
+                                  <span className="text-gray-300 text-xs font-bold">/{selectedTestResults.totalMarks}</span>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                      <div className={`h-full rounded-full ${percentage >= 75 ? 'bg-emerald-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${percentage}%` }}></div>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-500">{percentage}%</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${percentage >= 40 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                    {percentage >= 40 ? 'Qualified' : 'Needs Impr.'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-bold italic">
+                              No submissions found for this test yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 border-t border-gray-100 bg-white shrink-0 flex justify-end">
+                <button onClick={() => setShowTestResultsModal(false)} className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all uppercase tracking-widest">Close Report</button>
+              </div>
             </div>
           </div>
         )

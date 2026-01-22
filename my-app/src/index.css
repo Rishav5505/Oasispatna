@@ -124,3 +124,27 @@
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* Mobile Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@layer base {
+  h1 {
+    @apply text-4xl md:text-6xl font-black;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl font-black;
+  }
+}
+
+.glass {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+}

@@ -4,6 +4,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
 
 dotenv.config();
 
@@ -24,10 +26,31 @@ require('./models/Otp');
 require('./models/Lead');
 require('./models/Notification');
 require('./models/Schedule');
+// New Models
+require('./models/LiveClass');
+require('./models/Video');
+require('./models/VideoProgress');
+require('./models/OnlineTest');
+require('./models/TestResult');
+require('./models/Doubt');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins for now
+    methods: ["GET", "POST"]
+  }
+});
+
 app.use(cors());
 app.use(express.json());
+
+// Inject Socket.io into request
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -36,6 +59,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Connect to MongoDB
 const dbUri = process.env.MONGO_URI || 'mongodb://localhost:27017/coaching-institute';
@@ -50,6 +74,22 @@ mongoose.connect(dbUri, {
     console.log(`❌ MongoDB Connection Error (${host}):`, err.message);
   });
 
+// Socket.io Logic
+io.on('connection', (socket) => {
+  console.log('New client connected:', socket.id);
+
+  socket.on('join', (userId) => {
+    if (userId) {
+      socket.join(userId);
+      console.log(`User ${userId} joined their room`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
@@ -60,11 +100,19 @@ app.use('/api/fees', require('./routes/fees'));
 app.use('/api/exams', require('./routes/exams'));
 app.use('/api/notices', require('./routes/notices'));
 app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/attendance/teacher', require('./routes/teacherAttendance')); // New route for teacher attendance
+app.use('/api/attendance/teacher', require('./routes/teacherAttendance'));
 app.use('/api/teacher', require('./routes/teacher'));
 app.use('/api/leads', require('./routes/leads'));
 app.use('/api/public', require('./routes/public'));
 app.use('/api/schedule', require('./routes/schedule'));
 
+// New Routes
+app.use('/api/live-classes', require('./routes/liveClassRoutes'));
+app.use('/api/videos', require('./routes/videoRoutes'));
+app.use('/api/tests', require('./routes/testRoutes'));
+app.use('/api/doubts', require('./routes/doubtRoutes'));
+app.use('/api/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/ai-buddy', require('./routes/aiRoutes'));
+
 const PORT = process.env.PORT || 5002;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

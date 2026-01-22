@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -19,6 +20,7 @@
     "nodemailer": "^6.9.7",
     "razorpay": "^2.9.6",
     "sib-api-v3-sdk": "^8.5.0",
+    "socket.io": "^4.8.3",
     "stripe": "^20.1.0",
     "twilio": "^4.19.0"
   },

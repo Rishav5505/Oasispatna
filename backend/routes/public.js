@@ -3,8 +3,20 @@ const Teacher = require('../models/Teacher');
 const Batch = require('../models/Batch');
 const Class = require('../models/Class');
 const User = require('../models/User');
+const Subject = require('../models/Subject');
 
 const router = express.Router();
+
+// Get all subjects
+router.get('/subjects', async (req, res) => {
+    try {
+        const subjects = await Subject.find().sort({ name: 1 });
+        res.json(subjects);
+    } catch (err) {
+        console.error('Error fetching subjects:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 // Get featured faculty for homepage
 router.get('/faculty', async (req, res) => {
