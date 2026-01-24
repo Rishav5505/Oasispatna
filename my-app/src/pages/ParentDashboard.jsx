@@ -514,59 +514,66 @@ const ParentDashboard = () => {
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden w-full bg-[#F8FAFC] dark:bg-gray-950 transition-colors duration-300">
                 {/* Header */}
-                <header className="h-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-6 lg:px-10 shadow-sm z-[60] w-full transition-colors duration-300">
-                    <div className="flex items-center gap-6 flex-1 max-w-2xl text-gray-400">
+                <header className="h-16 md:h-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 md:px-10 shadow-sm z-[60] w-full transition-colors duration-300">
+                    <div className="flex items-center gap-2 md:gap-6 flex-1 max-w-2xl">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
-                            className="lg:hidden p-2 bg-gray-50 rounded-xl text-indigo-600"
+                            className="lg:hidden p-2 bg-gray-50 dark:bg-gray-800 rounded-xl text-indigo-600 shrink-0"
                         >
                             <FaTasks className="text-xl" />
                         </button>
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1 shrink-0 lg:hidden">
+                                <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
+                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-400 dark:to-emerald-400">
+                                        Parent Portal
+                                    </span>
+                                </h1>
+                                <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-bold truncate hidden sm:block">Institute Management System</p>
+                            </div>
+                        </div>
+
                         {children.length > 1 && (
-                            <select
-                                value={selectedChild}
-                                onChange={(e) => setSelectedChild(e.target.value)}
-                                className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 font-bold text-sm text-indigo-600 dark:text-indigo-400 focus:ring-0 cursor-pointer outline-none transition-colors"
-                            >
-                                {children.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-                            </select>
+                            <div className="ml-2 hidden md:block">
+                                <select
+                                    value={selectedChild}
+                                    onChange={(e) => setSelectedChild(e.target.value)}
+                                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 font-bold text-sm text-indigo-600 dark:text-indigo-400 focus:ring-0 cursor-pointer outline-none transition-colors"
+                                >
+                                    {children.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                                </select>
+                            </div>
                         )}
-                        {!children.length && <span className="text-sm font-bold text-gray-400">No Student Linked</span>}
                     </div>
-                    <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-2 md:gap-8">
                         {/* Notifications */}
                         <div className="relative">
                             <button
                                 onClick={toggleNotifications}
-                                className={`p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors relative focus:outline-none ${isNotificationsOpen ? 'bg-gray-50 dark:bg-gray-800 text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}
+                                className={`p-2 md:p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors relative focus:outline-none ${isNotificationsOpen ? 'bg-gray-50 dark:bg-gray-800 text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}
                             >
-                                <FaBell className={`text-xl transition-colors ${isNotificationsOpen ? 'text-indigo-500 dark:text-indigo-400' : 'text-gray-400'}`} />
+                                <FaBell className={`text-lg md:text-xl transition-colors ${isNotificationsOpen ? 'text-indigo-500 dark:text-indigo-400' : 'text-gray-400'}`} />
                                 {notifications.some(n => !n.read) && (
-                                    <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></span>
+                                    <span className="absolute top-1.5 md:top-2 right-1.5 md:right-2.5 w-2 md:w-2.5 h-2 md:h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></span>
                                 )}
                             </button>
 
                             {/* Notification Dropdown */}
                             {isNotificationsOpen && (
                                 <div
-                                    className="fixed inset-x-4 top-24 lg:absolute lg:inset-auto lg:right-[-10px] lg:top-full lg:mt-4 w-auto lg:w-96 bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                                    className="fixed inset-x-4 top-20 lg:absolute lg:inset-auto lg:right-[-10px] lg:top-full lg:mt-4 w-auto lg:w-96 bg-white dark:bg-gray-900 rounded-3xl lg:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                                    <div className="p-4 md:p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50 backdrop-blur-sm">
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-black text-gray-800 dark:text-white text-xs uppercase tracking-widest">Notifications</h3>
-                                            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-black px-2 py-0.5 rounded-full">{notifications.length} Total</span>
+                                            <h3 className="font-black text-gray-800 dark:text-white text-[10px] md:text-xs uppercase tracking-widest">Notifications</h3>
+                                            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full">{notifications.length} Total</span>
                                         </div>
-                                        {notifications.some(n => !n.read) && (
-                                            <button
-                                                onClick={handleMarkAllRead}
-                                                className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 uppercase tracking-wider bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md transition-colors"
-                                            >
-                                                Mark all read
-                                            </button>
-                                        )}
                                     </div>
-                                    <div className="max-h-[60vh] lg:max-h-80 overflow-y-auto custom-scrollbar">
+                                    <div className="max-h-[50vh] lg:max-h-80 overflow-y-auto custom-scrollbar">
                                         {notifications.length > 0 ? (
                                             <div className="divide-y divide-gray-50 dark:divide-gray-800">
                                                 {notifications.map(n => (
@@ -578,9 +585,9 @@ const ParentDashboard = () => {
                                                         }}
                                                         className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group ${!n.read ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}
                                                     >
-                                                        <div className="flex gap-4">
-                                                            <div className={`mt-1 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${!n.read ? 'bg-indigo-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-                                                                <FaBell className="text-xs" />
+                                                        <div className="flex gap-3 md:gap-4">
+                                                            <div className={`mt-1 w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${!n.read ? 'bg-indigo-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                                                                <FaBell className="text-[10px] md:text-xs" />
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className={`text-xs font-bold mb-1 truncate ${!n.read ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
@@ -589,27 +596,24 @@ const ParentDashboard = () => {
                                                                 <p className="text-[10px] text-gray-500 dark:text-gray-500 leading-relaxed line-clamp-2">
                                                                     {n.message}
                                                                 </p>
-                                                                <p className="text-[9px] text-gray-400 dark:text-gray-600 mt-2 font-bold uppercase tracking-widest">
-                                                                    {new Date(n.createdAt).toLocaleDateString()}
-                                                                </p>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div className="p-10 text-center flex flex-col items-center justify-center text-center">
-                                                <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-200 dark:text-gray-700 mx-auto mb-4">
-                                                    <FaBell className="text-2xl" />
+                                            <div className="p-10 text-center flex flex-col items-center justify-center">
+                                                <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-200 dark:text-gray-700 mx-auto mb-4">
+                                                    <FaBell className="text-xl md:text-2xl" />
                                                 </div>
-                                                <p className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">All caught up!</p>
+                                                <p className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">All caught up!</p>
                                             </div>
                                         )}
                                     </div>
                                     <div className="p-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 text-center">
                                         <button
                                             onClick={() => setIsNotificationsOpen(false)}
-                                            className="w-full py-2.5 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 font-black text-[10px] uppercase rounded-xl transition-colors tracking-widest"
+                                            className="w-full py-2.5 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 font-black text-[9px] md:text-[10px] uppercase rounded-xl transition-colors tracking-widest"
                                         >
                                             Close Panel
                                         </button>
@@ -617,29 +621,29 @@ const ParentDashboard = () => {
                                 </div>
                             )}
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-dotted border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-white dark:hover:bg-gray-700 transition-all group">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm overflow-hidden border border-indigo-200 dark:border-indigo-800 shadow-inner group-hover:scale-105 transition-transform">
-                            {profile.profilePhoto ? (
-                                <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Parent" className="w-full h-full object-cover" />
-                            ) : (
-                                profile.name?.charAt(0).toUpperCase() || 'P'
-                            )}
-                        </div>
-                        <div className="text-right hidden md:block">
-                            <p className="text-xs font-bold text-gray-900 dark:text-white leading-none mb-1">{profile.name || 'Parent'}</p>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Guardian</p>
+                        <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:dark:bg-gray-800 md:rounded-2xl md:border md:border-dotted md:border-gray-200 md:dark:border-gray-700 cursor-pointer hover:bg-white dark:hover:bg-gray-700 transition-all group">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs md:text-sm overflow-hidden border border-indigo-200 dark:border-indigo-800 shadow-inner group-hover:scale-105 transition-transform">
+                                {profile.profilePhoto ? (
+                                    <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Parent" className="w-full h-full object-cover" />
+                                ) : (
+                                    profile.name?.charAt(0).toUpperCase() || 'P'
+                                )}
+                            </div>
+                            <div className="text-right hidden lg:block">
+                                <p className="text-xs font-bold text-gray-900 dark:text-white leading-none mb-1">{profile.name || 'Parent'}</p>
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Guardian</p>
+                            </div>
                         </div>
                     </div>
                 </header>
 
                 {/* Dashboard Content */}
-                <div className="flex-1 overflow-y-auto p-10 space-y-10 scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 scroll-smooth">
                     {activeTab === 'Overview' && (
                         <>
                             {/* Welcome Banner - Parent Indigo Style */}
-                            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-10 shadow-2xl shadow-indigo-200/50 mb-10 text-white">
+                            <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-6 md:p-10 shadow-2xl shadow-indigo-200/50 mb-6 md:mb-10 text-white">
                                 <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/10 blur-3xl rounded-full pointer-events-none"></div>
                                 <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-yellow-500/20 blur-3xl rounded-full pointer-events-none"></div>
 
@@ -649,20 +653,20 @@ const ParentDashboard = () => {
                                             <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">PARENT PORTAL</span>
                                             <span className="text-indigo-100 text-xs font-bold">{new Date().toDateString()}</span>
                                         </div>
-                                        <h1 className="text-4xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
+                                        <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
                                             Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-blue-100">{profile.name?.split(' ')[0]}</span> 👋
                                         </h1>
-                                        <p className="text-indigo-50 font-medium max-w-lg text-sm leading-relaxed opacity-90">
+                                        <p className="text-indigo-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
                                             You are viewing progress for <span className="font-black text-white underline decoration-yellow-400 decoration-2 underline-offset-4">{currentChild?.name || 'Student'}</span>.
                                             <br />
                                             Attendance is <span className="font-black text-white">{attendancePercentage}%</span> and academic performance is <span className="font-black text-indigo-200">{avgMarks > 0 ? 'Optimal' : 'Tracking'}</span>.
                                         </p>
                                     </div>
-                                    <div className="flex gap-4">
-                                        <button onClick={() => setActiveTab('Fees')} className="bg-white text-indigo-700 px-6 py-3 rounded-2xl font-black text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center gap-2 group">
+                                    <div className="flex flex-wrap gap-3 md:gap-4 w-full md:w-auto">
+                                        <button onClick={() => setActiveTab('Fees')} className="flex-1 md:flex-none bg-white text-indigo-700 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 group">
                                             <FaMoneyBillWave className="group-hover:rotate-12 transition-transform" /> PAY FEES
                                         </button>
-                                        <button onClick={() => window.print()} className="bg-indigo-900/30 text-white border border-white/20 px-6 py-3 rounded-2xl font-black text-xs hover:bg-indigo-900/50 transition-all backdrop-blur-md">
+                                        <button onClick={() => window.print()} className="flex-1 md:flex-none bg-indigo-900/30 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-indigo-900/50 transition-all backdrop-blur-md">
                                             D'LOAD REPORT
                                         </button>
                                     </div>
@@ -670,7 +674,7 @@ const ParentDashboard = () => {
                             </div>
 
                             {/* Stats Cards - Admin Style */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                                 {[
                                     { label: 'Attendance', value: `${attendancePercentage}%`, trend: 'Last 30 Days', icon: FaCalendarAlt, color: 'blue', gradient: 'from-blue-500 to-cyan-500' },
                                     { label: 'Avg Assessment', value: `${avgMarks}%`, trend: 'Academics', icon: FaChartLine, color: 'indigo', gradient: 'from-indigo-500 to-blue-500' },
@@ -680,25 +684,25 @@ const ParentDashboard = () => {
                                     <div
                                         key={i}
                                         onClick={() => stat.id === 'fees' && setActiveTab('Fees')}
-                                        className={`p-8 bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 hover:shadow-xl ${stat.id === 'fees' ? 'cursor-pointer' : ''}`}
+                                        className={`p-4 md:p-8 bg-white dark:bg-gray-800 rounded-3xl md:rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 hover:shadow-xl ${stat.id === 'fees' ? 'cursor-pointer' : ''}`}
                                     >
-                                        <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out`}></div>
-                                        <div className="flex items-center justify-between mb-8 relative">
-                                            <div className={`w-14 h-14 bg-${stat.color}-50 rounded-2xl flex items-center justify-center text-${stat.color}-600 text-xl shadow-inner`}>
+                                        <div className={`absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out`}></div>
+                                        <div className="flex items-center justify-between mb-4 md:mb-8 relative">
+                                            <div className={`w-10 h-10 md:w-14 md:h-14 bg-${stat.color}-50 rounded-xl md:rounded-2xl flex items-center justify-center text-${stat.color}-600 text-base md:text-xl shadow-inner`}>
                                                 <stat.icon />
                                             </div>
-                                            <span className={`text-${stat.color}-600 text-[10px] font-black bg-${stat.color}-50 px-3 py-1.5 rounded-full border border-${stat.color}-100`}>
+                                            <span className={`hidden sm:block text-${stat.color}-600 text-[10px] font-black bg-${stat.color}-50 px-3 py-1.5 rounded-full border border-${stat.color}-100`}>
                                                 {stat.trend}
                                             </span>
                                         </div>
                                         <div className="flex items-end justify-between relative">
                                             <div>
-                                                <h3 className="text-4xl font-[900] text-slate-800 dark:text-white mb-2 tracking-tight">{stat.value}</h3>
-                                                <p className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest">{stat.label}</p>
+                                                <h3 className="text-xl md:text-4xl font-[900] text-slate-800 dark:text-white mb-1 md:mb-2 tracking-tight">{stat.value}</h3>
+                                                <p className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">{stat.label}</p>
                                             </div>
                                             {stat.id === 'fees' && (
-                                                <button className="p-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm">
-                                                    <FaMoneyBillWave />
+                                                <button className="p-1.5 md:p-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg md:rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm">
+                                                    <FaMoneyBillWave className="text-xs md:text-base" />
                                                 </button>
                                             )}
                                         </div>
@@ -1000,7 +1004,7 @@ const ParentDashboard = () => {
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 truncate">{m.title}</h3>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">Study material provided for students.</p>
                                     <a
-                                        href={`https://oasispatna.onrender.com/${m.fileUrl}`}
+                                        href={`${config.API_URL.replace('/api', '')}/${m.fileUrl}`}
                                         download
                                         className="inline-flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-wider hover:underline"
                                     >
@@ -1342,7 +1346,7 @@ const ParentDashboard = () => {
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase">Email</span>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{profile.email}</span>
+                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200 break-all text-right ml-4">{profile.email}</span>
                                         </div>
                                         <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase">Phone</span>

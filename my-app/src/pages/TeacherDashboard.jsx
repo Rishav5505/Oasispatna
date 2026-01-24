@@ -435,25 +435,37 @@ const TeacherDashboard = () => {
       <main className="flex-1 flex flex-col overflow-hidden w-full relative">
         {/* Header */}
         <header className="h-16 md:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-10 shadow-sm z-10 w-full">
-          <div className="flex items-center gap-4 flex-1 max-w-2xl">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 max-w-2xl">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 bg-gray-50 rounded-xl text-emerald-600 hover:bg-emerald-50 transition-colors"
+              className="lg:hidden p-2 bg-gray-50 rounded-xl text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0"
             >
               <FaClipboardList className="text-xl" />
             </button>
-            <h2 className="text-xl font-black text-gray-900 capitalize">{activeTab}</h2>
+            <div className="flex items-center gap-2 md:gap-4">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1 shrink-0 lg:hidden">
+                <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400">
+                    Teacher Portal
+                  </span>
+                </h1>
+                <p className="text-[10px] md:text-sm text-gray-500 font-bold truncate hidden sm:block">Academic Management System</p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 rounded-2xl border border-dotted border-gray-200">
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm overflow-hidden border border-emerald-200 shadow-inner">
+          <div className="flex items-center gap-2 md:gap-6">
+            <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:rounded-2xl md:border md:border-dotted md:border-gray-200 group cursor-pointer transition-all">
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs md:text-sm overflow-hidden border border-emerald-200 shadow-inner group-hover:scale-105 transition-transform">
                 {profile.profilePhoto ? (
                   <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Teacher" className="w-full h-full object-cover" />
                 ) : (
                   profile.name?.charAt(0).toUpperCase()
                 )}
               </div>
-              <div className="text-right">
+              <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-gray-900 leading-none mb-1">{profile.name}</p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Expert Educator</p>
               </div>
@@ -462,77 +474,76 @@ const TeacherDashboard = () => {
         </header>
 
         {/* Dynamic Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 pb-24 md:pb-10">
+        <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 pb-24 md:pb-10 scroll-smooth">
           {activeTab === 'overview' && (
             <div className="space-y-10 animate-in fade-in duration-500">
 
               {/* Teacher Welcome Banner */}
-              <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-10 shadow-2xl shadow-emerald-200/50 text-white relative">
+              <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-6 md:p-10 shadow-2xl shadow-emerald-200/50 text-white">
                 <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/10 blur-3xl rounded-full pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-teal-900/10 blur-3xl rounded-full pointer-events-none"></div>
 
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">Faculty Portal</span>
                       <span className="text-emerald-50 text-xs font-bold">{new Date().toDateString()}</span>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
+                    <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
                       Welcome Back, <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-100 to-white">{profile.name?.split(' ')[0] || 'Educator'}</span> 👨‍🏫
                     </h1>
-                    <p className="text-emerald-50 font-medium max-w-lg text-sm leading-relaxed opacity-90">
+                    <p className="text-emerald-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
                       You are managing <span className="font-black text-white underline decoration-emerald-200 decoration-2 underline-offset-4">{teacherData.batches.length || 0} batches</span> and impacting students with your expertise.
                     </p>
                   </div>
-                  <div className="flex gap-4">
-                    {/* Simplified Quick Access - full implementation in My Attendance tab */}
-                    <button onClick={() => setActiveTab('my-attendance')} className="bg-white text-teal-600 px-6 py-3 rounded-2xl font-black text-xs shadow-lg hover:bg-emerald-50 transition-all flex items-center gap-2 group animate-pulse">
+                  <div className="flex flex-wrap gap-3 md:gap-4 w-full md:w-auto">
+                    <button onClick={() => setActiveTab('my-attendance')} className="flex-1 md:flex-none bg-white text-teal-600 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 group animate-pulse">
                       <FaUserClock className="group-hover:rotate-12 transition-transform" />
-                      {todayAttendance.length > 0 ? `${todayAttendance.length} SESSIONS DONE` : 'START DAY CHECK-IN'}
+                      {todayAttendance.length > 0 ? `${todayAttendance.length} DONE` : 'CHECK-IN'}
                     </button>
 
-                    <button onClick={() => setActiveTab('attendance')} className="bg-teal-900/40 text-white border border-white/20 px-6 py-3 rounded-2xl font-black text-xs hover:bg-teal-900/60 transition-all backdrop-blur-md flex items-center gap-2">
-                      <FaCalendarCheck /> MARK STUDENT ATTENDANCE
+                    <button onClick={() => setActiveTab('attendance')} className="flex-1 md:flex-none bg-teal-900/40 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-teal-900/60 transition-all backdrop-blur-md flex items-center justify-center gap-2">
+                      <FaCalendarCheck /> ATTENDANCE
                     </button>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="p-8 bg-white rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
-                  <div className="flex items-center justify-between mb-8 relative">
-                    <div className="w-16 h-16 bg-emerald-50 rounded-[1.5rem] flex items-center justify-center text-emerald-600 text-2xl shadow-inner group-hover:scale-110 transition-transform">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-8">
+                <div className="p-4 md:p-8 bg-white rounded-3xl md:rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-emerald-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
+                  <div className="flex items-center justify-between mb-4 md:mb-8 relative">
+                    <div className="w-10 h-10 md:w-16 md:h-16 bg-emerald-50 rounded-xl md:rounded-[1.5rem] flex items-center justify-center text-emerald-600 text-base md:text-2xl shadow-inner group-hover:scale-110 transition-transform">
                       <FaUsers />
                     </div>
-                    <span className="text-emerald-600 text-[10px] font-black bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">ACTIVE</span>
+                    <span className="hidden sm:block text-emerald-600 text-[10px] font-black bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">ACTIVE</span>
                   </div>
-                  <h3 className="text-4xl font-[900] text-gray-800 mb-2 relative tracking-tight">{teacherData.batches.length || 0}</h3>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest relative">Active Batches</p>
+                  <h3 className="text-2xl md:text-4xl font-[900] text-gray-800 mb-1 md:mb-2 relative tracking-tight">{teacherData.batches.length || 0}</h3>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest relative leading-none">Active Batches</p>
                 </div>
 
-                <div className="p-8 bg-white rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
-                  <div className="flex items-center justify-between mb-8 relative">
-                    <div className="w-16 h-16 bg-indigo-50 rounded-[1.5rem] flex items-center justify-center text-indigo-600 text-2xl shadow-inner group-hover:scale-110 transition-transform">
+                <div className="p-4 md:p-8 bg-white rounded-3xl md:rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-indigo-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
+                  <div className="flex items-center justify-between mb-4 md:mb-8 relative">
+                    <div className="w-10 h-10 md:w-16 md:h-16 bg-indigo-50 rounded-xl md:rounded-[1.5rem] flex items-center justify-center text-indigo-600 text-base md:text-2xl shadow-inner group-hover:scale-110 transition-transform">
                       <FaBook />
                     </div>
-                    <span className="text-indigo-600 text-[10px] font-black bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">EXPERTISE</span>
+                    <span className="hidden sm:block text-indigo-600 text-[10px] font-black bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">EXPERTISE</span>
                   </div>
-                  <h3 className="text-4xl font-[900] text-gray-800 mb-2 relative tracking-tight">{teacherData.subjects.length || 0}</h3>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest relative">Assigned Subjects</p>
+                  <h3 className="text-2xl md:text-4xl font-[900] text-gray-800 mb-1 md:mb-2 relative tracking-tight">{teacherData.subjects.length || 0}</h3>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest relative leading-none">Subjects</p>
                 </div>
 
-                <div className="p-8 bg-white rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
-                  <div className="flex items-center justify-between mb-8 relative">
-                    <div className="w-16 h-16 bg-orange-50 rounded-[1.5rem] flex items-center justify-center text-orange-500 text-2xl shadow-inner group-hover:scale-110 transition-transform">
+                <div className="p-4 md:p-8 bg-white rounded-3xl md:rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-300 group relative overflow-hidden col-span-2 md:col-span-1">
+                  <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-orange-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
+                  <div className="flex items-center justify-between mb-4 md:mb-8 relative">
+                    <div className="w-10 h-10 md:w-16 md:h-16 bg-orange-50 rounded-xl md:rounded-[1.5rem] flex items-center justify-center text-orange-500 text-base md:text-2xl shadow-inner group-hover:scale-110 transition-transform">
                       <FaRegClock />
                     </div>
-                    <span className="text-orange-600 text-[10px] font-black bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100">STATUS</span>
+                    <span className="hidden sm:block text-orange-600 text-[10px] font-black bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100">STATUS</span>
                   </div>
-                  <h3 className="text-4xl font-[900] text-gray-800 mb-2 relative tracking-tight">Active</h3>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest relative">System Access</p>
+                  <h3 className="text-2xl md:text-4xl font-[900] text-gray-800 mb-1 md:mb-2 relative tracking-tight">Active</h3>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest relative leading-none">System Access</p>
                 </div>
               </div>
 
@@ -1248,7 +1259,7 @@ const TeacherDashboard = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
                       <span className="text-xs font-bold text-gray-400 uppercase">Registered Email</span>
-                      <span className="text-sm font-bold text-gray-700">{profile.email}</span>
+                      <span className="text-sm font-bold text-gray-700 break-all ml-4 text-right">{profile.email}</span>
                     </div>
                     <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
                       <span className="text-xs font-bold text-gray-400 uppercase">Contact Node</span>

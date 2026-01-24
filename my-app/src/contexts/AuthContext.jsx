@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
       // Fetch user info
       axios.get(`${config.API_URL}/auth/me`)
         .then(res => {
-          setUser({ id: res.data._id, role: res.data.role });
+          setUser({ id: res.data._id, role: res.data.role, profilePhoto: res.data.profilePhoto });
           setMustChangePassword(res.data.mustChangePassword || false);
         })
         .catch(err => {
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.setItem('token', receivedToken);
     axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
 
-    setUser({ id, role });
+    setUser({ id, role, profilePhoto: res.data.profilePhoto });
     setMustChangePassword(mcp || false);
   };
 

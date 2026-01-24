@@ -478,36 +478,40 @@ const StudentDashboard = () => {
       <header className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1">
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1 shrink-0">
                 <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Student Portal</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, {student.name || profile.name || 'Student'}</p>
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
+                    Student Portal
+                  </span>
+                </h1>
+                <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-bold truncate">Welcome, {(student.name || profile.name || 'Student').split(' ')[0]}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1 md:space-x-4">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-400 hover:text-blue-600 transition-colors bg-white rounded-xl border border-transparent hover:border-gray-100"
+                className="relative p-1.5 md:p-2 text-gray-400 hover:text-blue-600 transition-colors bg-white rounded-xl border border-transparent hover:border-gray-100"
               >
-                <FaBell className="text-xl" />
+                <FaBell className="text-lg md:text-xl" />
                 {(notifications.some(n => !n.read) || notices.some(n => new Date(n.createdAt) > new Date(Date.now() - 86400000))) && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                 )}
               </button>
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold overflow-hidden shadow-inner border border-white/20">
-                  {student.profilePhoto || profile.profilePhoto ? (
-                    <img src={`${config.API_URL.replace('/api', '')}${student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
+              <div className="flex items-center space-x-1 md:space-x-3">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs md:text-base font-semibold overflow-hidden shadow-inner border border-white/20">
+                  {student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto ? (
+                    <img src={`${config.API_URL.replace('/api', '')}${student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     (student.name || profile.name || 'S').charAt(0).toUpperCase()
                   )}
                 </div>
-                <div className="hidden md:block">
-                  <p className="font-medium text-gray-900 dark:text-white">{student.name || profile.name}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Student ID: {user?.id?.slice(-6)}</p>
+                <div className="hidden lg:block">
+                  <p className="font-medium text-gray-900 dark:text-white leading-none mb-1">{student.name || profile.name}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">ID: {user?.id?.slice(-6)}</p>
                 </div>
               </div>
               <button
@@ -515,10 +519,11 @@ const StudentDashboard = () => {
                   logout();
                   window.location.href = '/login';
                 }}
-                className="flex items-center space-x-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition-all font-bold text-sm"
+                className="flex items-center justify-center w-8 h-8 md:w-auto md:px-4 md:py-2 bg-red-50 text-red-600 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition-all font-bold text-sm"
+                title="Logout"
               >
                 <FaSignOutAlt />
-                <span className="hidden sm:inline">Logout</span>
+                <span className="hidden md:inline ml-2">Logout</span>
               </button>
             </div>
           </div>
@@ -555,22 +560,22 @@ const StudentDashboard = () => {
           <>
             {/* Original Dashboard Layout */}
             {/* Welcome Section with Profile Photo */}
-            <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 rounded-2xl p-8 mb-8 text-white relative overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 rounded-xl md:rounded-2xl p-4 md:p-8 mb-4 md:mb-8 text-white relative overflow-hidden">
               <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-              <div className="relative z-10 flex items-center justify-between">
-                <div className="flex items-center space-x-6">
+              <div className="relative z-10 flex flex-col md:flex-row items-center md:justify-between gap-4">
+                <div className="flex flex-col md:flex-row items-center md:space-x-6 gap-3 md:gap-0 w-full md:w-auto">
                   <div className="relative group">
-                    <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border-4 border-white/30 overflow-hidden shadow-2xl relative">
+                    <div className="w-16 h-16 md:w-24 md:h-24 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border-2 md:border-4 border-white/30 overflow-hidden shadow-2xl relative">
                       {uploadingPhoto ? (
-                        <div className="animate-spin rounded-full h-8 w-8 border-4 border-white border-t-transparent"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-2 md:border-4 border-white border-t-transparent"></div>
                       ) : photoPreview ? (
                         <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                      ) : student.profilePhoto || profile.profilePhoto ? (
-                        <img src={`${config.API_URL.replace('/api', '')}${student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      ) : student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto ? (
+                        <img src={`${config.API_URL.replace('/api', '')}${student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                       ) : (
                         <div className="flex flex-col items-center">
-                          <FaUser className="text-4xl text-white opacity-90" />
-                          <span className="text-[10px] uppercase font-bold tracking-tighter mt-1 opacity-70">No Photo</span>
+                          <FaUser className="text-2xl md:text-4xl text-white opacity-90" />
+                          <span className="text-[8px] md:text-[10px] uppercase font-bold tracking-tighter mt-1 opacity-70">No Photo</span>
                         </div>
                       )}
                     </div>
@@ -579,17 +584,17 @@ const StudentDashboard = () => {
                       <button
                         onClick={handleQuickPhotoUpload}
                         disabled={uploadingPhoto}
-                        className="absolute -bottom-2 -right-2 bg-green-500 text-white p-2 rounded-full shadow-lg hover:bg-green-600 transition-all transform hover:scale-110 z-20 flex items-center justify-center border-2 border-white"
+                        className="absolute -bottom-1 md:-bottom-2 -right-1 md:-right-2 bg-green-500 text-white p-1.5 md:p-2 rounded-full shadow-lg hover:bg-green-600 transition-all transform hover:scale-110 z-20 flex items-center justify-center border-2 border-white"
                         title="Save Photo"
                       >
-                        {uploadingPhoto ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent"></div> : <FaCheckCircle className="text-lg" />}
+                        {uploadingPhoto ? <div className="animate-spin h-3 w-3 md:h-4 md:w-4 border-2 border-white border-t-transparent"></div> : <FaCheckCircle className="text-sm md:text-lg" />}
                       </button>
                     ) : (
                       <button
                         onClick={() => document.getElementById('profile-photo-upload').click()}
-                        className="absolute -bottom-1 -right-1 w-9 h-9 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-xl hover:bg-blue-50 transition-all transform hover:scale-110 z-20 border-2 border-blue-50"
+                        className="absolute -bottom-1 -right-1 w-7 h-7 md:w-9 md:h-9 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-xl hover:bg-blue-50 transition-all transform hover:scale-110 z-20 border-2 border-blue-50"
                       >
-                        <FaCamera className="text-lg" />
+                        <FaCamera className="text-sm md:text-lg" />
                       </button>
                     )}
 
@@ -610,23 +615,23 @@ const StudentDashboard = () => {
                       className="hidden"
                     />
                   </div>
-                  <div>
-                    <h2 className="text-3xl font-bold mb-2">Welcome back, {student.name || profile.name}!</h2>
-                    <p className="text-blue-100 mb-4">Ready to continue your learning journey?</p>
-                    <div className="flex items-center space-x-6 text-sm">
+                  <div className="text-center md:text-left">
+                    <h2 className="text-xl md:text-3xl font-bold mb-1 md:mb-2">Welcome back, {student.name || profile.name}!</h2>
+                    <p className="text-blue-100 text-xs md:text-base mb-2 md:mb-4">Ready to continue your learning journey?</p>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-4 text-xs md:text-sm">
                       <span
                         onClick={() => setShowClassModal(true)}
-                        className={`flex items-center cursor-pointer px-3 py-1.5 rounded-lg transition-all ${!student.classId ? 'bg-red-500/20 text-red-100 animate-pulse border border-red-400/30' : 'bg-white/10 hover:bg-white/20'}`}
+                        className={`flex items-center cursor-pointer px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all ${!student.classId ? 'bg-red-500/20 text-red-100 animate-pulse border border-red-400/30' : 'bg-white/10 hover:bg-white/20'}`}
                       >
-                        <img src={oasisLogo} alt="Logo" className="w-4 h-4 mr-2 object-contain brightness-200" />
-                        Class: {student.classId?.name || 'Click to Select'}
+                        <img src={oasisLogo} alt="Logo" className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 object-contain brightness-200" />
+                        Class: {student.classId?.name || 'Select'}
                       </span>
                       <span
                         onClick={() => setShowBatchModal(true)}
-                        className={`flex items-center cursor-pointer px-3 py-1.5 rounded-lg transition-all ${!student.batchId ? 'bg-orange-500/20 text-orange-100 animate-pulse border border-orange-400/30' : 'bg-white/10 hover:bg-white/20'}`}
+                        className={`flex items-center cursor-pointer px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all ${!student.batchId ? 'bg-orange-500/20 text-orange-100 animate-pulse border border-orange-400/30' : 'bg-white/10 hover:bg-white/20'}`}
                       >
-                        <FaCalendarAlt className="mr-2" />
-                        Batch: {student.batchId?.name || 'Click to Select'}
+                        <FaCalendarAlt className="mr-1 md:mr-2 text-xs md:text-sm" />
+                        Batch: {student.batchId?.name || 'Select'}
                       </span>
                     </div>
                   </div>
@@ -649,99 +654,99 @@ const StudentDashboard = () => {
             </div>
 
             {/* Quick Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="group bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-[5rem] -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+            <div className="grid grid-cols-4 lg:grid-cols-4 gap-2 md:gap-6 mb-8">
+              <div className="group bg-white dark:bg-gray-800 rounded-xl md:rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-2 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-emerald-50 rounded-bl-[2rem] md:rounded-bl-[5rem] -mr-6 md:-mr-10 -mt-6 md:-mt-10 transition-transform group-hover:scale-110"></div>
                 <div className="relative flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
+                  <div className="w-6 h-6 md:w-16 md:h-16 bg-emerald-100 text-emerald-600 rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-2xl mb-1 md:mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
                     <FaCalendarAlt />
                   </div>
-                  <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Academic Attendance</p>
-                  <div className="relative mb-2">
-                    <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">{calculateAttendancePercentage()}%</p>
-                    <div className="w-full h-1 bg-gray-100 rounded-full mt-2 overflow-hidden">
+                  <p className="text-[6px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Academic Attendance</p>
+                  <div className="relative mb-1 md:mb-2">
+                    <p className="text-lg md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{calculateAttendancePercentage()}%</p>
+                    <div className="w-full h-0.5 md:h-1 bg-gray-100 rounded-full mt-1 md:mt-2 overflow-hidden">
                       <div
                         className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
                         style={{ width: `${calculateAttendancePercentage()}%` }}
                       ></div>
                     </div>
                   </div>
-                  <p className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                  <p className="text-[6px] md:text-xs font-bold text-emerald-600 bg-emerald-50 px-1 md:px-3 py-0.5 md:py-1 rounded-full leading-tight">
                     {attendance.filter(a => a.status === 'present').length} Sessions Recorded
                   </p>
                 </div>
               </div>
 
-              <div className="group bg-white rounded-3xl shadow-sm border border-gray-100 p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-[5rem] -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+              <div className="group bg-white rounded-xl md:rounded-3xl shadow-sm border border-gray-100 p-2 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-blue-50 rounded-bl-[2rem] md:rounded-bl-[5rem] -mr-6 md:-mr-10 -mt-6 md:-mt-10 transition-transform group-hover:scale-110"></div>
                 <div className="relative flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
+                  <div className="w-6 h-6 md:w-16 md:h-16 bg-blue-100 text-blue-600 rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-2xl mb-1 md:mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
                     <FaBook />
                   </div>
-                  <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Average Marks</p>
-                  <div className="relative mb-2">
-                    <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">
+                  <p className="text-[6px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Average Marks</p>
+                  <div className="relative mb-1 md:mb-2">
+                    <p className="text-lg md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
                       {marks.length > 0 ? Math.round(marks.reduce((sum, m) => sum + (m.marks || 0), 0) / marks.length) : 0}%
                     </p>
-                    <div className="w-full h-1 bg-gray-100 rounded-full mt-2 overflow-hidden">
+                    <div className="w-full h-0.5 md:h-1 bg-gray-100 rounded-full mt-1 md:mt-2 overflow-hidden">
                       <div
                         className="h-full bg-blue-500 rounded-full transition-all duration-1000"
                         style={{ width: `${marks.length > 0 ? Math.round(marks.reduce((sum, m) => sum + (m.marks || 0), 0) / marks.length) : 0}%` }}
                       ></div>
                     </div>
                   </div>
-                  <p className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">{marks.length} Subjects Evaluated</p>
+                  <p className="text-[6px] md:text-xs font-bold text-blue-600 bg-blue-50 px-1 md:px-3 py-0.5 md:py-1 rounded-full leading-tight">{marks.length} Subjects Evaluated</p>
                 </div>
               </div>
 
-              <div className="group bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-red-50 rounded-bl-[5rem] -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+              <div className="group bg-white dark:bg-gray-800 rounded-xl md:rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-2 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-red-50 rounded-bl-[2rem] md:rounded-bl-[5rem] -mr-6 md:-mr-10 -mt-6 md:-mt-10 transition-transform group-hover:scale-110"></div>
                 <div className="relative flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
+                  <div className="w-6 h-6 md:w-16 md:h-16 bg-red-100 text-red-600 rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-2xl mb-1 md:mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
                     <FaMoneyBillWave />
                   </div>
-                  <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Unpaid Balance</p>
-                  <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-2">₹{fees.pendingFees || 0}</p>
-                  <p className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">Due: {fees.dueDate ? new Date(fees.dueDate).toLocaleDateString() : 'Paid'}</p>
+                  <p className="text-[6px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Unpaid Balance</p>
+                  <p className="text-lg md:text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-1 md:mb-2">₹{fees.pendingFees || 0}</p>
+                  <p className="text-[6px] md:text-xs font-bold text-red-600 bg-red-50 px-1 md:px-3 py-0.5 md:py-1 rounded-full leading-tight">Due: {fees.dueDate ? new Date(fees.dueDate).toLocaleDateString() : 'Paid'}</p>
                 </div>
               </div>
 
               {/* Dynamic Exam Countdown Card (Replaces static Scheduled Exams) */}
-              <div className="group bg-gradient-to-br from-violet-600 to-indigo-700 rounded-3xl shadow-lg shadow-indigo-200 border border-indigo-500 p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden text-white">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-[5rem] -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+              <div className="group bg-gradient-to-br from-violet-600 to-indigo-700 rounded-xl md:rounded-3xl shadow-lg shadow-indigo-200 border border-indigo-500 p-2 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden text-white">
+                <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-white/10 rounded-bl-[2rem] md:rounded-bl-[5rem] -mr-6 md:-mr-10 -mt-6 md:-mt-10 transition-transform group-hover:scale-110"></div>
                 <div className="relative flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-white/20 text-white rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-lg backdrop-blur-sm">
+                  <div className="w-6 h-6 md:w-16 md:h-16 bg-white/20 text-white rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-2xl mb-1 md:mb-4 shadow-lg backdrop-blur-sm">
                     <FaClock className="animate-pulse" />
                   </div>
 
                   {nextExam ? (
                     <>
-                      <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">Next: {nextExam.name}</p>
-                      <div className="flex gap-2 mb-2">
-                        <div className="bg-white/10 rounded p-1 min-w-[30px]">
-                          <span className="font-black text-xl block leading-none">{String(timeLeft.days).padStart(2, '0')}</span>
-                          <span className="text-[8px] uppercase opacity-70">Day</span>
+                      <p className="text-[6px] md:text-[10px] font-black text-indigo-200 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Next: {nextExam.name}</p>
+                      <div className="flex gap-0.5 md:gap-2 mb-1 md:mb-2">
+                        <div className="bg-white/10 rounded p-0.5 md:p-1 min-w-[18px] md:min-w-[30px]">
+                          <span className="font-black text-[10px] md:text-xl block leading-none">{String(timeLeft.days).padStart(2, '0')}</span>
+                          <span className="text-[5px] md:text-[8px] uppercase opacity-70">Day</span>
                         </div>
-                        <span className="font-bold pt-1">:</span>
-                        <div className="bg-white/10 rounded p-1 min-w-[30px]">
-                          <span className="font-black text-xl block leading-none">{String(timeLeft.hours).padStart(2, '0')}</span>
-                          <span className="text-[8px] uppercase opacity-70">Hr</span>
+                        <span className="font-bold pt-0.5 md:pt-1 text-[8px] md:text-base">:</span>
+                        <div className="bg-white/10 rounded p-0.5 md:p-1 min-w-[18px] md:min-w-[30px]">
+                          <span className="font-black text-[10px] md:text-xl block leading-none">{String(timeLeft.hours).padStart(2, '0')}</span>
+                          <span className="text-[5px] md:text-[8px] uppercase opacity-70">Hr</span>
                         </div>
-                        <span className="font-bold pt-1">:</span>
-                        <div className="bg-white/10 rounded p-1 min-w-[30px]">
-                          <span className="font-black text-xl block leading-none">{String(timeLeft.minutes).padStart(2, '0')}</span>
-                          <span className="text-[8px] uppercase opacity-70">Min</span>
+                        <span className="font-bold pt-0.5 md:pt-1 text-[8px] md:text-base">:</span>
+                        <div className="bg-white/10 rounded p-0.5 md:p-1 min-w-[18px] md:min-w-[30px]">
+                          <span className="font-black text-[10px] md:text-xl block leading-none">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                          <span className="text-[5px] md:text-[8px] uppercase opacity-70">Min</span>
                         </div>
                       </div>
                     </>
                   ) : (
                     <>
-                      <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">Upcoming Exams</p>
-                      <p className="text-3xl font-black tracking-tight mb-2">None</p>
+                      <p className="text-[6px] md:text-[10px] font-black text-indigo-200 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Upcoming Exams</p>
+                      <p className="text-base md:text-3xl font-black tracking-tight mb-1 md:mb-2">None</p>
                     </>
                   )}
 
-                  <p className="text-xs font-bold text-white bg-white/20 px-4 py-1.5 rounded-full border border-white/10">
+                  <p className="text-[6px] md:text-xs font-bold text-white bg-white/20 px-1 md:px-4 py-0.5 md:py-1.5 rounded-full border border-white/10 leading-tight">
                     {nextExam ? new Date(nextExam.date).toLocaleDateString() : 'Relax & Prepare!'}
                   </p>
                 </div>
@@ -775,7 +780,7 @@ const StudentDashboard = () => {
               </div>
 
               {editMode ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
@@ -884,7 +889,7 @@ const StudentDashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div
                     onClick={() => setEditMode(true)}
                     className={`bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border-2 cursor-pointer hover:shadow-md transition-all ${!editForm.name ? 'border-red-200' : 'border-blue-200'}`}
@@ -896,7 +901,7 @@ const StudentDashboard = () => {
                       {!editForm.name && <FaStar className="text-red-500" />}
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Full Name</h3>
-                    <p className="text-gray-700">{editForm.name || 'Not provided'}</p>
+                    <p className="text-gray-700 break-words">{editForm.name || 'Not provided'}</p>
                     {editForm.name && <FaCheckCircle className="text-green-500 mt-2" />}
                   </div>
 
@@ -911,7 +916,7 @@ const StudentDashboard = () => {
                       {!editForm.phone && <FaStar className="text-red-500" />}
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Phone</h3>
-                    <p className="text-gray-700">{editForm.phone || 'Not provided'}</p>
+                    <p className="text-gray-700 break-words">{editForm.phone || 'Not provided'}</p>
                     {editForm.phone && <FaCheckCircle className="text-green-500 mt-2" />}
                   </div>
 
@@ -926,7 +931,7 @@ const StudentDashboard = () => {
                       {!editForm.email && <FaStar className="text-red-500" />}
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Email</h3>
-                    <p className="text-gray-700">{editForm.email || 'Not provided'}</p>
+                    <p className="text-gray-700 break-all">{editForm.email || 'Not provided'}</p>
                     {editForm.email && <FaCheckCircle className="text-green-500 mt-2" />}
                   </div>
 
@@ -952,7 +957,7 @@ const StudentDashboard = () => {
                       {!editForm.fatherName && <FaStar className="text-red-500" />}
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Father's Name</h3>
-                    <p className="text-gray-700">{editForm.fatherName || 'Not provided'}</p>
+                    <p className="text-gray-700 break-words">{editForm.fatherName || 'Not provided'}</p>
                     {editForm.fatherName && <FaCheckCircle className="text-green-500 mt-2" />}
                   </div>
 
@@ -967,7 +972,7 @@ const StudentDashboard = () => {
                       {!editForm.motherName && <FaStar className="text-red-500" />}
                     </div>
                     <h3 className="font-semibold text-gray-900 mb-2">Mother's Name</h3>
-                    <p className="text-gray-700">{editForm.motherName || 'Not provided'}</p>
+                    <p className="text-gray-700 break-words">{editForm.motherName || 'Not provided'}</p>
                     {editForm.motherName && <FaCheckCircle className="text-green-500 mt-2" />}
                   </div>
 
@@ -1066,7 +1071,7 @@ const StudentDashboard = () => {
 
                   <div className="w-24 h-24 rounded-full border-4 border-white/20 p-1 mb-4">
                     <img
-                      src={`https://oasispatna.onrender.com${student.profilePhoto || profile.profilePhoto}`}
+                      src={`${config.API_URL.replace('/api', '')}${student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto}`}
                       onError={(e) => { e.target.onerror = null; e.target.src = 'https://ui-avatars.com/api/?name=' + (student.name || 'Student'); }}
                       alt="Student"
                       className="w-full h-full rounded-full object-cover bg-slate-700"
@@ -1315,7 +1320,7 @@ const StudentDashboard = () => {
                           <p className="text-sm text-gray-600 truncate">{material.description}</p>
                         </div>
                         <a
-                          href={`https://oasispatna.onrender.com/${material.fileUrl}`}
+                          href={`${config.API_URL.replace('/api', '')}/${material.fileUrl}`}
                           download
                           className="ml-3 bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors"
                         >

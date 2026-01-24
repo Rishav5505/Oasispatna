@@ -317,6 +317,7 @@ router.get('/students/all', auth, roleAuth('admin'), async (req, res) => {
 router.get('/students/:userId', auth, async (req, res) => {
   try {
     const student = await Student.findOne({ userId: req.params.userId })
+      .populate('userId', 'name email profilePhoto')
       .populate('classId')
       .populate('batchId')
       .populate('subjects')
@@ -371,6 +372,7 @@ router.put('/students/:userId', auth, async (req, res) => {
     }
 
     const updatedStudent = await Student.findOne({ userId: req.params.userId })
+      .populate('userId', 'name email profilePhoto')
       .populate('classId')
       .populate('batchId')
       .populate('subjects')

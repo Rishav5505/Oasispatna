@@ -812,37 +812,48 @@ const AdminDashboard = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden w-full">
         {/* Header bar */}
-        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 shadow-sm z-10 w-full">
-          <div className="flex items-center gap-6 flex-1 max-w-2xl text-gray-400">
-            <div className="flex items-center gap-4 w-full">
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden p-2 bg-gray-50 rounded-xl text-indigo-600"
-              >
-                <FaTasks className="text-xl" />
-              </button>
-              <div className="flex items-center gap-2 w-full">
-                <FaSearch className="text-gray-300" />
-                <input
-                  type="text"
-                  placeholder="Search Universe..."
-                  className="w-full bg-transparent focus:outline-none text-gray-600 font-medium placeholder-gray-300 text-sm"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        <header className="h-16 md:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-10 shadow-sm z-10 w-full transition-all">
+          <div className="flex items-center gap-2 md:gap-6 flex-1 max-w-2xl">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 bg-gray-50 rounded-xl text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0"
+            >
+              <FaTasks className="text-xl" />
+            </button>
+            <div className="flex items-center gap-2 md:gap-4 shrink-0">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1 lg:hidden">
+                <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400">
+                    Admin Portal
+                  </span>
+                </h1>
+                <p className="text-[10px] md:text-sm text-gray-500 font-bold truncate hidden sm:block">Control Center</p>
               </div>
             </div>
+            <div className="hidden md:flex items-center gap-2 w-full ml-4">
+              <FaSearch className="text-gray-300" />
+              <input
+                type="text"
+                placeholder="Search Universe..."
+                className="w-full bg-transparent focus:outline-none text-gray-600 font-medium placeholder-gray-300 text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 px-5 py-2.5 bg-gray-50 rounded-2xl border border-dotted border-gray-200 cursor-pointer hover:bg-white transition-all">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm overflow-hidden border border-indigo-200 shadow-inner">
+          <div className="flex items-center gap-2 md:gap-8">
+            <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:rounded-2xl md:border md:border-dotted md:border-gray-200 group cursor-pointer transition-all">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs md:text-sm overflow-hidden border border-indigo-200 shadow-inner group-hover:scale-105 transition-transform">
                 {profile.profilePhoto ? (
                   <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Admin" className="w-full h-full object-cover" />
                 ) : (
                   profile.name?.charAt(0).toUpperCase() || 'A'
                 )}
               </div>
-              <div className="text-right hidden md:block">
+              <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-gray-900 leading-none mb-1">{profile.name || 'Administrator'}</p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{user.role}</p>
               </div>
@@ -855,37 +866,35 @@ const AdminDashboard = () => {
           {activeTab === 'overview' && (
             <>
               {/* Vibrant Welcome Banner */}
-              <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 p-10 shadow-2xl shadow-indigo-200/50 mb-10 text-white relative">
+              <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 p-6 md:p-10 shadow-2xl shadow-indigo-200/50 mb-6 md:mb-10 text-white">
                 <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/10 blur-3xl rounded-full pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-pink-500/20 blur-3xl rounded-full pointer-events-none"></div>
 
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">Admin Console</span>
                       <span className="text-indigo-200 text-xs font-bold">{new Date().toDateString()}</span>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
+                    <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
                       Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-200 to-indigo-100">{profile.name?.split(' ')[0] || 'Admin'}</span> 👋
                     </h1>
-                    <p className="text-indigo-100 font-medium max-w-lg text-sm leading-relaxed opacity-90">
-                      You have <span className="font-black text-white underline decoration-pink-400 decoration-2 underline-offset-4">{stats.totalStudents || 0} active students</span> and <span className="font-black text-white">{stats.presentToday || 0}</span> students present today.
-                      <br />
-                      <span className="font-black text-emerald-300">{stats.presentTeachers || 0} Teachers</span> have checked in.
+                    <p className="text-indigo-100 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
+                      You have <span className="font-black text-white underline decoration-pink-400 decoration-2 underline-offset-4">{stats.totalStudents || 0} active students</span> and <span className="font-black text-white">{stats.presentToday || 0}</span> present today.
                     </p>
                   </div>
-                  <div className="flex gap-4">
-                    <button onClick={() => setActiveTab('communication')} className="bg-white text-indigo-600 px-6 py-3 rounded-2xl font-black text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center gap-2 group">
+                  <div className="flex flex-wrap gap-3 md:gap-4 w-full md:w-auto">
+                    <button onClick={() => setActiveTab('communication')} className="flex-1 md:flex-none bg-white text-indigo-600 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 group">
                       <FaBullhorn className="group-hover:rotate-12 transition-transform" /> POST UPDATE
                     </button>
-                    <button onClick={() => alert('System report downloading...')} className="bg-indigo-800/40 text-white border border-white/20 px-6 py-3 rounded-2xl font-black text-xs hover:bg-indigo-800/60 transition-all backdrop-blur-md">
-                      VIEW REPORTS
+                    <button onClick={() => alert('System report downloading...')} className="flex-1 md:flex-none bg-indigo-800/40 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-indigo-800/60 transition-all backdrop-blur-md">
+                      REPORTS
                     </button>
                   </div>
                 </div>
               </div>
               {/* Quick Actions Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                 {[
                   { label: 'Add Student', icon: FaUserPlus, color: 'bg-emerald-500', bg: 'hover:bg-emerald-50', border: 'hover:border-emerald-200', action: () => setActiveTab('students') },
                   { label: 'New Teacher', icon: FaPlus, color: 'bg-indigo-600', bg: 'hover:bg-indigo-50', border: 'hover:border-indigo-200', action: () => setActiveTab('teachers') },
@@ -895,42 +904,41 @@ const AdminDashboard = () => {
                   <button
                     key={i}
                     onClick={act.action}
-                    className={`group flex flex-col items-center justify-center p-8 bg-white rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${act.bg} ${act.border}`}
+                    className={`group flex flex-col items-center justify-center p-4 md:p-8 bg-white rounded-3xl md:rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${act.bg} ${act.border}`}
                   >
-                    <div className={`${act.color} w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-white text-2xl mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
+                    <div className={`${act.color} w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-[1.5rem] flex items-center justify-center text-white text-base md:text-2xl mb-2 md:mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300`}>
                       <act.icon />
                     </div>
-                    <span className="font-bold text-gray-700 text-sm group-hover:text-gray-900">{act.label}</span>
+                    <span className="font-bold text-gray-700 text-[10px] md:text-sm group-hover:text-gray-900">{act.label}</span>
                   </button>
                 ))}
               </div>
 
               {/* Stats & Clickable Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                 {[
-                  { label: 'Live Students', value: stats.totalStudents, trend: '+12%', icon: FaUserGraduate, color: 'indigo', gradient: 'from-indigo-500 to-blue-500', action: () => setActiveTab('students') },
-                  { label: 'Teachers Present', value: `${stats.presentTeachers || 0}/${stats.totalTeachers || 0}`, trend: 'Live', icon: FaChalkboardTeacher, color: 'emerald', gradient: 'from-emerald-500 to-teal-500', action: () => setActiveTab('teachers') },
-                  { label: 'Student Presence', value: `${stats.presentToday}/${stats.totalStudents}`, trend: 'Good', icon: FaCalendarCheck, color: 'orange', gradient: 'from-orange-500 to-amber-500', action: null },
-                  { label: 'Fees Collection', value: `₹${(stats.totalFees || 0).toLocaleString()}`, trend: 'Live', icon: FaMoneyBillWave, color: 'rose', gradient: 'from-rose-500 to-pink-500', action: () => setActiveTab('fees') },
+                  { label: 'Students', value: stats.totalStudents, trend: '+12%', icon: FaUserGraduate, color: 'indigo', gradient: 'from-indigo-500 to-blue-500', action: () => setActiveTab('students') },
+                  { label: 'Teachers', value: `${stats.presentTeachers || 0}/${stats.totalTeachers || 0}`, trend: 'Live', icon: FaChalkboardTeacher, color: 'emerald', gradient: 'from-emerald-500 to-teal-500', action: () => setActiveTab('teachers') },
+                  { label: 'Present', value: `${stats.presentToday}`, trend: 'Good', icon: FaCalendarCheck, color: 'orange', gradient: 'from-orange-500 to-amber-500', action: null },
+                  { label: 'Collection', value: `₹${((stats.totalFees || 0) / 1000).toFixed(1)}k`, trend: 'Live', icon: FaMoneyBillWave, color: 'rose', gradient: 'from-rose-500 to-pink-500', action: () => setActiveTab('fees') },
                 ].map((stat, i) => (
                   <div
                     key={i}
                     onClick={stat.action}
-                    className={`p-8 bg-white rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] transition-all duration-300 group relative overflow-hidden ${stat.action ? 'cursor-pointer hover:-translate-y-1 hover:shadow-xl' : ''}`}
+                    className={`p-4 md:p-8 bg-white dark:bg-gray-800 rounded-3xl md:rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] transition-all duration-300 group relative overflow-hidden ${stat.action ? 'cursor-pointer hover:-translate-y-1 hover:shadow-xl' : ''}`}
                   >
-                    <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out`}></div>
+                    <div className={`absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out`}></div>
 
-                    <div className="flex items-center justify-between mb-8 relative">
-                      <div className={`w-14 h-14 bg-${stat.color}-50 rounded-2xl flex items-center justify-center text-${stat.color}-600 text-xl shadow-inner`}>
+                    <div className="flex items-center justify-between mb-4 md:mb-8 relative">
+                      <div className={`w-10 h-10 md:w-14 md:h-14 bg-${stat.color}-50 rounded-xl md:rounded-2xl flex items-center justify-center text-${stat.color}-600 text-base md:text-xl shadow-inner`}>
                         <stat.icon />
                       </div>
-                      <span className={`text-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-600 text-[10px] font-black bg-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-50 px-3 py-1.5 rounded-full border border-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-100`}>
-                        {stat.trend.startsWith('+') ? <FaArrowUp className="inline mr-1" /> : stat.trend.startsWith('-') ? <FaArrowDown className="inline mr-1" /> : <FaCheckCircle className="inline mr-1" />}
+                      <span className={`hidden sm:block text-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-600 text-[10px] font-black bg-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-50 px-3 py-1.5 rounded-full border border-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-100`}>
                         {stat.trend}
                       </span>
                     </div>
-                    <h3 className="text-4xl font-[900] text-slate-800 mb-2 relative tracking-tight">{stat.value}</h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest relative">{stat.label}</p>
+                    <h3 className="text-xl md:text-4xl font-[900] text-slate-800 dark:text-white mb-1 md:mb-2 relative tracking-tight">{stat.value}</h3>
+                    <p className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest relative leading-none">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -1083,136 +1091,138 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-[2rem] md:rounded-[3rem] border border-gray-100 shadow-sm overflow-x-auto p-2">
-                <table className="w-full text-left border-collapse min-w-[700px]">
-                  <thead>
-                    <tr className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                      <th className="px-6 md:px-8 py-6">Identity</th>
-                      <th className="px-6 md:px-8 py-6">Classification</th>
-                      <th className="px-6 md:px-8 py-6">Linked Guardian</th>
-                      <th className="px-6 md:px-8 py-6">Engagement</th>
-                      <th className="px-6 md:px-8 py-6 text-right">Interactions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {filteredStudents.map(student => (
-                      <tr
-                        key={student._id}
-                        className="group hover:bg-indigo-50/30 transition-all cursor-pointer"
-                        onClick={() => handleStudentClick(student)}
-                      >
-                        <td className="px-8 py-6">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center shadow-sm overflow-hidden p-2 group-hover:scale-110 transition-all">
-                              <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain opacity-40 group-hover:opacity-100 transition-all" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-gray-900 text-sm group-hover:text-indigo-600 transition-colors">{student.name}</p>
-                              <p className="text-xs text-gray-400 font-medium">{student.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-8 py-6">
-                          <span className="text-xs font-bold text-gray-600 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100">Grade {student.classId?.name || 'NA'}</span>
-                        </td>
-                        <td className="px-8 py-6">
-                          {student.parentId ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                              <div>
-                                <p className="text-xs font-bold text-gray-900 leading-tight">{student.parentId.name}</p>
-                                <p className="text-[10px] text-gray-400 font-medium">{student.parentId.email}</p>
+              <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-gray-50/50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                        <th className="px-4 md:px-8 py-6">Entity Identity</th>
+                        <th className="px-4 md:px-8 py-6">Academic Level</th>
+                        <th className="px-4 md:px-8 py-6">Linked Guardian</th>
+                        <th className="px-4 md:px-8 py-6">Engagement</th>
+                        <th className="px-4 md:px-8 py-6 text-right">Interactions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredStudents.map(student => (
+                        <tr
+                          key={student._id}
+                          className="group hover:bg-indigo-50/30 transition-all cursor-pointer"
+                          onClick={() => handleStudentClick(student)}
+                        >
+                          <td className="px-4 md:px-8 py-6">
+                            <div className="flex items-center gap-3 md:gap-4">
+                              <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 rounded-xl md:rounded-2xl flex items-center justify-center shadow-sm overflow-hidden p-2 group-hover:scale-110 transition-all">
+                                <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain opacity-40 group-hover:opacity-100 transition-all" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-bold text-gray-900 text-sm group-hover:text-indigo-600 transition-colors truncate">{student.name}</p>
+                                <p className="text-[10px] md:text-xs text-gray-400 font-medium truncate">{student.email}</p>
                               </div>
                             </div>
-                          ) : (
-                            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">Not Linked</span>
-                          )}
-                        </td>
-                        <td className="px-8 py-6">
-                          <div className="flex items-center gap-4">
-                            <div className="flex-1 w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-emerald-500 rounded-full" style={{ width: '82%' }}></div>
+                          </td>
+                          <td className="px-4 md:px-8 py-6">
+                            <span className="text-[10px] md:text-xs font-bold text-gray-600 bg-gray-50 px-3 md:px-4 py-1.5 rounded-full border border-gray-100">Grade {student.classId?.name || 'NA'}</span>
+                          </td>
+                          <td className="px-4 md:px-8 py-6">
+                            {student.parentId ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0"></div>
+                                <div className="min-w-0">
+                                  <p className="text-[10px] md:text-xs font-bold text-gray-900 leading-tight truncate">{student.parentId.name}</p>
+                                  <p className="text-[9px] md:text-[10px] text-gray-400 font-medium truncate">{student.parentId.email}</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-[9px] md:text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">Not Linked</span>
+                            )}
+                          </td>
+                          <td className="px-4 md:px-8 py-6">
+                            <div className="flex items-center gap-2 md:gap-4">
+                              <div className="flex-1 min-w-[60px] md:w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 rounded-full" style={{ width: '82%' }}></div>
+                              </div>
+                              <span className="text-[10px] font-black text-emerald-600">82%</span>
                             </div>
-                            <span className="text-[10px] font-black text-emerald-600">82%</span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-6 text-right">
-                          <button className="p-3 hover:bg-white rounded-xl text-gray-400 hover:text-indigo-600 transition-all hover:shadow-md">
-                            <FaChevronRight className="text-xs" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {/* Student Details & Linking Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
-                  {selectedStudent && (
-                    <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-xl animate-in slide-in-from-left-5 duration-500">
-                      <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-2xl font-black text-gray-900 leading-tight">Academic Profile: {selectedStudent.name}</h2>
-                        <button onClick={() => setSelectedStudent(null)} className="text-gray-400 hover:text-rose-500 p-2"><FaPlus className="rotate-45" /></button>
+                          </td>
+                          <td className="px-4 md:px-8 py-6 text-right">
+                            <button className="p-2 md:p-3 hover:bg-white rounded-xl text-gray-400 hover:text-indigo-600 transition-all hover:shadow-md">
+                              <FaChevronRight className="text-xs" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {/* Student Details & Linking Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
+                {selectedStudent && (
+                  <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-xl animate-in slide-in-from-left-5 duration-500">
+                    <div className="flex items-center justify-between mb-8">
+                      <h2 className="text-2xl font-black text-gray-900 leading-tight">Academic Profile: {selectedStudent.name}</h2>
+                      <button onClick={() => setSelectedStudent(null)} className="text-gray-400 hover:text-rose-500 p-2"><FaPlus className="rotate-45" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6 mb-8">
+                      <div className="p-6 bg-indigo-50 rounded-3xl">
+                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Attendance</p>
+                        <p className="text-2xl font-black text-indigo-600">{studentDetails.attendance.length > 0 ? Math.round((studentDetails.attendance.filter(a => a.status === 'present').length / studentDetails.attendance.length) * 100) : 0}%</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-6 mb-8">
-                        <div className="p-6 bg-indigo-50 rounded-3xl">
-                          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Attendance</p>
-                          <p className="text-2xl font-black text-indigo-600">{studentDetails.attendance.length > 0 ? Math.round((studentDetails.attendance.filter(a => a.status === 'present').length / studentDetails.attendance.length) * 100) : 0}%</p>
-                        </div>
-                        <div className="p-6 bg-emerald-50 rounded-3xl">
-                          <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Performance</p>
-                          <p className="text-2xl font-black text-emerald-600">8.4 CGPA</p>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Recent Performance</h4>
-                        {studentDetails.marks.slice(0, 3).map((m, i) => (
-                          <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-indigo-100 transition-all">
-                            <span className="font-bold text-gray-700">{m.subjectId?.name}</span>
-                            <span className="font-black text-indigo-600">{m.marks}%</span>
-                          </div>
-                        ))}
-                        {studentDetails.marks.length === 0 && <p className="text-sm font-bold text-gray-400 text-center py-4 bg-gray-50 rounded-2xl border border-dashed border-gray-100">No marks recorded yet</p>}
+                      <div className="p-6 bg-emerald-50 rounded-3xl">
+                        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Performance</p>
+                        <p className="text-2xl font-black text-emerald-600">8.4 CGPA</p>
                       </div>
                     </div>
-                  )}
-
-                  {/* Link Parent Form */}
-                  <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 border border-gray-100 shadow-xl">
-                    <h2 className="text-xl md:text-2xl font-black text-gray-900 mb-8 flex items-center gap-3">
-                      <FaUsers className="text-indigo-500" /> Link Parent Entity
-                    </h2>
-                    <form onSubmit={handleLinkParent} className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block">Biological Parent</label>
-                        <select
-                          value={linkParentId}
-                          onChange={(e) => setLinkParentId(e.target.value)}
-                          className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all appearance-none"
-                        >
-                          <option value="">-- Select Parent Member --</option>
-                          {parentList.map(p => (
-                            <option key={p._id} value={p._id}>{p.name} ({p.email})</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block">Associate Student</label>
-                        <select
-                          value={linkStudentId}
-                          onChange={(e) => setLinkStudentId(e.target.value)}
-                          className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all appearance-none"
-                        >
-                          <option value="">-- Select Student Entity --</option>
-                          {allStudents.map(s => (
-                            <option key={s._id} value={s._id}>{s.name} - Class {s.classId?.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <button type="submit" className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-3">
-                        ESTABLISH CONNECTION
-                      </button>
-                    </form>
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Recent Performance</h4>
+                      {studentDetails.marks.slice(0, 3).map((m, i) => (
+                        <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-indigo-100 transition-all">
+                          <span className="font-bold text-gray-700">{m.subjectId?.name}</span>
+                          <span className="font-black text-indigo-600">{m.marks}%</span>
+                        </div>
+                      ))}
+                      {studentDetails.marks.length === 0 && <p className="text-sm font-bold text-gray-400 text-center py-4 bg-gray-50 rounded-2xl border border-dashed border-gray-100">No marks recorded yet</p>}
+                    </div>
                   </div>
+                )}
+
+                {/* Link Parent Form */}
+                <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 border border-gray-100 shadow-xl">
+                  <h2 className="text-xl md:text-2xl font-black text-gray-900 mb-8 flex items-center gap-3">
+                    <FaUsers className="text-indigo-500" /> Link Parent Entity
+                  </h2>
+                  <form onSubmit={handleLinkParent} className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block">Biological Parent</label>
+                      <select
+                        value={linkParentId}
+                        onChange={(e) => setLinkParentId(e.target.value)}
+                        className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all appearance-none"
+                      >
+                        <option value="">-- Select Parent Member --</option>
+                        {parentList.map(p => (
+                          <option key={p._id} value={p._id}>{p.name} ({p.email})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block">Associate Student</label>
+                      <select
+                        value={linkStudentId}
+                        onChange={(e) => setLinkStudentId(e.target.value)}
+                        className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all appearance-none"
+                      >
+                        <option value="">-- Select Student Entity --</option>
+                        {allStudents.map(s => (
+                          <option key={s._id} value={s._id}>{s.name} - Class {s.classId?.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button type="submit" className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-3">
+                      ESTABLISH CONNECTION
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>
@@ -1624,7 +1634,7 @@ const AdminDashboard = () => {
                             </div>
                             <div>
                               <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{teacher.name}</p>
-                              <p className="text-xs text-gray-400 font-medium">{teacher.email}</p>
+                              <p className="text-xs text-gray-400 font-medium break-all">{teacher.email}</p>
                             </div>
                           </div>
                         </td>
@@ -2032,7 +2042,7 @@ const AdminDashboard = () => {
             </div>
           )}
         </div>
-      </main >
+      </main>
       {/* Task: Teacher Module Activation - Assignment Modal */}
       {
         showAssignModal && editingTeacher && (
