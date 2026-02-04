@@ -7,7 +7,8 @@ import {
     FaUserGraduate, FaChalkboardTeacher, FaMoneyBillWave, FaBullhorn,
     FaChartLine, FaRegClock, FaSignOutAlt, FaChevronRight, FaTimesCircle,
     FaCalendarAlt, FaBook, FaFilePdf, FaArrowUp, FaArrowDown, FaCheckCircle,
-    FaTasks, FaSearch, FaWallet, FaLock, FaBell, FaCreditCard, FaLayerGroup, FaHistory, FaIdCard, FaEnvelopeOpenText, FaPlus
+    FaTasks, FaSearch, FaWallet, FaLock, FaBell, FaCreditCard, FaLayerGroup, FaHistory, FaIdCard, FaEnvelopeOpenText, FaPlus,
+    FaTrophy, FaFileAlt, FaPrint
 } from 'react-icons/fa';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
@@ -35,6 +36,9 @@ const ParentDashboard = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [selectedNotice, setSelectedNotice] = useState(null);
+    const [viewingReportCard, setViewingReportCard] = useState(null);
+    const [cumulativeSummary, setCumulativeSummary] = useState(null);
+    const [selectedFilterClass, setSelectedFilterClass] = useState('All');
     const [photoFile, setPhotoFile] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -117,8 +121,11 @@ const ParentDashboard = () => {
                     'Authorization': `Bearer ${token}`,
                 },
             });
-            if (res.data.user?.profilePhoto) {
-                updateUser({ profilePhoto: res.data.user.profilePhoto });
+            if (res.data.user) {
+                updateUser({
+                    profilePhoto: res.data.user.profilePhoto,
+                    name: res.data.user.name
+                });
             }
 
             setPhotoFile(null);
@@ -164,10 +171,15 @@ const ParentDashboard = () => {
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
         try {
-            const res = await axios.get(`${config.API_URL}/marks/student/${id}`, { headers });
-            setMarks(res.data);
+            const [marksRes, summaryRes] = await Promise.all([
+                axios.get(`${config.API_URL}/marks/student/${id}`, { headers }),
+                axios.get(`${config.API_URL}/marks/student-summary/${id}`, { headers })
+            ]);
+            setMarks(marksRes.data);
+            setCumulativeSummary(summaryRes.data);
         } catch (err) {
-            console.error('Error fetching marks:', err);
+            console.error('Error fetching marks/summary:', err);
+            setCumulativeSummary(null);
         }
     };
 
@@ -627,14 +639,14 @@ const ParentDashboard = () => {
 
                         <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:dark:bg-gray-800 md:rounded-2xl md:border md:border-dotted md:border-gray-200 md:dark:border-gray-700 cursor-pointer hover:bg-white dark:hover:bg-gray-700 transition-all group">
                             <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs md:text-sm overflow-hidden border border-indigo-200 dark:border-indigo-800 shadow-inner group-hover:scale-105 transition-transform">
-                                {profile.profilePhoto ? (
-                                    <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Parent" className="w-full h-full object-cover" />
+                                {user?.profilePhoto ? (
+                                    <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} alt="Parent" className="w-full h-full object-cover" />
                                 ) : (
-                                    profile.name?.charAt(0).toUpperCase() || 'P'
+                                    user?.name?.charAt(0).toUpperCase() || 'P'
                                 )}
                             </div>
                             <div className="text-right hidden lg:block">
-                                <p className="text-xs font-bold text-gray-900 dark:text-white leading-none mb-1">{profile.name || 'Parent'}</p>
+                                <p className="text-xs font-bold text-gray-900 dark:text-white leading-none mb-1">{user?.name || 'Parent'}</p>
                                 <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Guardian</p>
                             </div>
                         </div>
@@ -657,7 +669,7 @@ const ParentDashboard = () => {
                                             <span className="text-indigo-100 text-xs font-bold">{new Date().toDateString()}</span>
                                         </div>
                                         <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
-                                            Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-blue-100">{profile.name?.split(' ')[0]}</span> 👋
+                                            Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-blue-100">{user?.name?.split(' ')[0] || 'Parent'}</span> 👋
                                         </h1>
                                         <p className="text-indigo-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
                                             You are viewing progress for <span className="font-black text-white underline decoration-yellow-400 decoration-2 underline-offset-4">{currentChild?.name || 'Student'}</span>.
@@ -971,28 +983,213 @@ const ParentDashboard = () => {
 
                     {/* PERFORMANCE TAB */}
                     {activeTab === 'Performance' && (
-                        <div className="bg-white dark:bg-gray-800 rounded-[3rem] p-10 border border-gray-100 dark:border-gray-700 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-6">Exam Results</h2>
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="border-b border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                                        <th className="pb-3 pl-4">Subject</th>
-                                        <th className="pb-3">Exam</th>
-                                        <th className="pb-3 text-center">Marks</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                                    {marks.map(m => (
-                                        <tr key={m._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
-                                            <td className="py-4 pl-4 font-bold text-gray-700 dark:text-gray-300">{m.subjectId?.name}</td>
-                                            <td className="py-4 text-sm text-gray-500 dark:text-gray-400">{m.examId?.name}</td>
-                                            <td className="py-4 text-center">
-                                                <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg font-black text-sm">{m.marks}%</span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                            <div className="bg-white dark:bg-gray-800 rounded-[3rem] p-10 border border-gray-100 dark:border-gray-700 shadow-sm relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+                                <div className="flex items-center justify-between mb-10 relative z-10">
+                                    <div>
+                                        <h2 className="text-3xl font-black text-gray-900 dark:text-white leading-tight">Academic Result Center</h2>
+                                        <p className="text-gray-400 font-bold text-sm mt-1 uppercase tracking-widest">Official progress reports & certificates</p>
+                                    </div>
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 p-4 rounded-2xl">
+                                        <FaTrophy className="text-2xl" />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+
+                                    {/* Final Cumulative Card with Mobile Optimization */}
+                                    {cumulativeSummary && cumulativeSummary.isPublished && (
+                                        <div className="col-span-full mb-8">
+                                            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
+                                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
+
+                                                {/* Mobile Optimized Layout */}
+                                                <div className="md:hidden relative z-10">
+                                                    <div className="flex items-center justify-between mb-6">
+                                                        <span className="px-3 py-1 bg-white/20 text-white rounded-lg text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">Final Result</span>
+                                                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white backdrop-blur-md">
+                                                            <FaTrophy />
+                                                        </div>
+                                                    </div>
+
+                                                    <h3 className="text-2xl font-black text-white mb-1">Cumulative Record</h3>
+                                                    <p className="text-emerald-100 text-xs font-bold uppercase tracking-widest mb-8">Academic Session 2025-26</p>
+
+                                                    <div className="flex items-end justify-between mb-8">
+                                                        <div>
+                                                            <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest mb-1">Aggregate Score</p>
+                                                            <p className="text-4xl font-black text-white leading-none">{cumulativeSummary.percentage}%</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest mb-1">Rank</p>
+                                                            <p className="text-xl font-black text-white leading-none">Top 10%</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => setViewingReportCard({
+                                                            ...cumulativeSummary,
+                                                            exam: { name: 'Final Cumulative Result', type: 'Consolidated' },
+                                                            name: currentChild?.name,
+                                                            fatherName: user.name
+                                                        })}
+                                                        className="w-full py-4 bg-white text-emerald-800 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                                    >
+                                                        View Full Transcript
+                                                    </button>
+                                                </div>
+
+                                                {/* Desktop Layout */}
+                                                <div className="hidden md:flex relative z-10 items-center justify-between gap-10">
+                                                    <div className="flex items-start gap-8">
+                                                        <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center text-white backdrop-blur-md border border-white/20 shadow-2xl shrink-0">
+                                                            <FaTrophy className="text-5xl" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <span className="px-3 py-1 bg-emerald-500/30 text-emerald-50 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-400/30">Official Record</span>
+                                                                <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/10">2025-26</span>
+                                                            </div>
+                                                            <h3 className="text-4xl font-black text-white mb-2 tracking-tight">Final Cumulative Record</h3>
+                                                            <p className="text-emerald-100 text-sm font-medium max-w-md leading-relaxed">
+                                                                Overall academic performance summary including all unit tests, monthly assessments, and attendance records.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-8">
+                                                        <div className="text-right">
+                                                            <p className="text-5xl font-black text-white tracking-tighter mb-1">{cumulativeSummary.percentage}%</p>
+                                                            <p className="text-emerald-200 text-xs font-black uppercase tracking-widest">Aggregate Score</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setViewingReportCard({
+                                                                ...cumulativeSummary,
+                                                                exam: { name: 'Final Cumulative Result', type: 'Consolidated' },
+                                                                name: currentChild?.name,
+                                                                fatherName: user.name
+                                                            })}
+                                                            className="h-16 px-8 bg-white text-emerald-800 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all shadow-xl active:scale-95 flex items-center gap-3"
+                                                        >
+                                                            <FaPrint className="text-lg" /> View Transcript
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Exam Cards Grid */}
+                                    <div className="col-span-full">
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
+                                            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Recent Assessments</span>
+                                            <div className="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
+                                        </div>
+
+                                        {marks.length > 0 ? (
+                                            <>
+                                                {/* Mobile View: Compact List */}
+                                                <div className="md:hidden space-y-4">
+                                                    {Object.values(marks.reduce((acc, m) => {
+                                                        const examId = m.examId?._id || 'unknown';
+                                                        if (!acc[examId]) acc[examId] = {
+                                                            exam: m.examId,
+                                                            totalObtained: 0,
+                                                            totalMax: 0
+                                                        };
+                                                        acc[examId].totalObtained += m.marks;
+                                                        acc[examId].totalMax += (m.maxMarks || 100);
+                                                        return acc;
+                                                    }, {})).map((summary, idx) => (
+                                                        <div key={idx} className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                                                                        {((summary.totalObtained / summary.totalMax) * 100).toFixed(0)}%
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">{summary.exam?.name}</h4>
+                                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{summary.exam?.type}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setViewingReportCard({
+                                                                    ...summary,
+                                                                    name: currentChild?.name,
+                                                                    rollNo: currentChild?.rollNo || 'N/A',
+                                                                    fatherName: user.name,
+                                                                    percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
+                                                                })}
+                                                                className="w-full py-2.5 bg-gray-900 dark:bg-gray-700 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest"
+                                                            >
+                                                                View Report
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* Desktop View: Grid Cards */}
+                                                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    {Object.values(marks.reduce((acc, m) => {
+                                                        const examId = m.examId?._id || 'unknown';
+                                                        if (!acc[examId]) acc[examId] = {
+                                                            exam: m.examId,
+                                                            subjectResults: [],
+                                                            totalObtained: 0,
+                                                            totalMax: 0
+                                                        };
+                                                        acc[examId].subjectResults.push({
+                                                            subjectId: m.subjectId?._id,
+                                                            subjectName: m.subjectId?.name || 'Subject',
+                                                            obtained: m.marks,
+                                                            maxMarks: m.maxMarks || 100
+                                                        });
+                                                        acc[examId].totalObtained += m.marks;
+                                                        acc[examId].totalMax += (m.maxMarks || 100);
+                                                        return acc;
+                                                    }, {})).map(summary => (
+                                                        <div key={summary.exam?._id} className="p-8 bg-gray-50/50 dark:bg-gray-700/30 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 hover:shadow-xl hover:-translate-y-1 transition-all group/card">
+                                                            <div className="flex items-start justify-between mb-6">
+                                                                <div className="w-14 h-14 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm group-hover/card:bg-emerald-600 group-hover/card:text-white transition-all">
+                                                                    <FaFileAlt className="text-2xl" />
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{summary.exam?.type || 'Standard'}</p>
+                                                                    <p className="text-xs font-bold text-emerald-600">{((summary.totalObtained / summary.totalMax) * 100).toFixed(1)}% Score</p>
+                                                                </div>
+                                                            </div>
+                                                            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2 leading-tight">{summary.exam?.name || 'Academic Assessment'}</h3>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-8 font-medium">Verified result for {currentChild?.name.split(' ')[0]}.</p>
+                                                            <button
+                                                                onClick={() => setViewingReportCard({
+                                                                    ...summary,
+                                                                    name: currentChild?.name,
+                                                                    rollNo: currentChild?.rollNo || 'N/A',
+                                                                    fatherName: user.name, // Parent's name
+                                                                    percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
+                                                                })}
+                                                                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-100 dark:shadow-none"
+                                                            >
+                                                                View Report Card
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="col-span-full py-20 text-center">
+                                                <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center text-gray-200 dark:text-gray-700 mx-auto mb-4">
+                                                    <FaBook className="text-4xl" />
+                                                </div>
+                                                <p className="text-gray-400 font-bold">No academic reports available yet.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -1380,6 +1577,179 @@ const ParentDashboard = () => {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Report Card Premium Modal */}
+            {viewingReportCard && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2rem] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none print:static">
+                        {/* Tool Bar - Hidden in Print */}
+                        <div className="px-8 py-4 bg-gray-50 border-b flex justify-between items-center shrink-0 print:hidden">
+                            <div className="flex items-center gap-3">
+                                <FaTrophy className="text-yellow-500" />
+                                <h3 className="font-black text-gray-700 text-sm">Official Academic Report</h3>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => window.print()}
+                                    className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2"
+                                >
+                                    <FaPrint /> PRINT RECORD
+                                </button>
+                                <button
+                                    onClick={() => setViewingReportCard(null)}
+                                    className="p-2.5 bg-white text-gray-400 hover:text-red-500 rounded-xl border border-gray-200 transition-all shadow-sm"
+                                >
+                                    <FaTimesCircle className="text-lg" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Printable Body */}
+                        <div className="flex-1 overflow-y-auto p-10 md:p-16 print:overflow-visible print:p-0">
+                            <div className="border-4 border-emerald-600 p-1 relative min-h-[1000px]">
+                                <div className="border border-emerald-200 p-8 h-full bg-white relative">
+                                    {/* Brand Header */}
+                                    <div className="flex justify-between items-start mb-12 border-b-2 border-emerald-600 pb-8">
+                                        <div>
+                                            <img src={oasisFullLogo} alt="Logo" className="h-16 mb-4 filter contrast-125" />
+                                            <p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.3em]">Excellence in JEE/NEET Coaching</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <h1 className="text-4xl font-black text-emerald-900 mb-1">REPORT CARD</h1>
+                                            <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">{viewingReportCard.exam?.name} - 2026</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Student Info Grid */}
+                                    <div className="grid grid-cols-2 gap-y-10 mb-16 bg-gray-50/50 p-10 rounded-3xl border border-gray-100">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Student Name</label>
+                                                <p className="text-2xl font-black text-emerald-900 underline underline-offset-4 decoration-emerald-200">{viewingReportCard.name}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Roll Number</label>
+                                                <p className="text-lg font-bold text-gray-700">{viewingReportCard.rollNo}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4 text-right">
+                                            <div>
+                                                <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Father's Name</label>
+                                                <p className="text-lg font-bold text-gray-700">{viewingReportCard.fatherName || 'Not Provided'}</p>
+                                            </div>
+                                            <div className="flex justify-end gap-10">
+                                                <div>
+                                                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Class</label>
+                                                    <p className="text-lg font-bold text-emerald-600">Standard IX</p>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Section</label>
+                                                    <p className="text-lg font-bold text-emerald-600">Oasis-A1</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Marks Table */}
+                                    <div className="mb-16">
+                                        <table className="w-full border-collapse">
+                                            <thead>
+                                                <tr className="bg-emerald-600 text-white">
+                                                    <th className="px-6 py-4 text-left font-black text-xs uppercase tracking-widest">Subject</th>
+                                                    {viewingReportCard.exam?.type === 'Consolidated' ? (
+                                                        <>
+                                                            <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Unit (20%)</th>
+                                                            <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Monthly (30%)</th>
+                                                            <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Final (50%)</th>
+                                                            <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Total</th>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <th className="px-6 py-4 text-center font-black text-xs uppercase tracking-widest">Full Marks</th>
+                                                            <th className="px-6 py-4 text-center font-black text-xs uppercase tracking-widest">Obtained Marks</th>
+                                                        </>
+                                                    )}
+                                                    <th className="px-6 py-4 text-right font-black text-xs uppercase tracking-widest">Status / Grade</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y-2 divide-gray-100">
+                                                {viewingReportCard.subjectResults.map(sub => (
+                                                    <tr key={sub.subjectId} className="hover:bg-emerald-50/20 transition-colors">
+                                                        <td className="px-6 py-5 font-bold text-gray-800">{sub.subjectName}</td>
+                                                        {viewingReportCard.exam?.type === 'Consolidated' ? (
+                                                            <>
+                                                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.unit || 0}</td>
+                                                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.monthly || 0}</td>
+                                                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.final || 0}</td>
+                                                                <td className="px-4 py-5 text-center font-black text-emerald-600 text-lg">{sub.total || 0}</td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-6 py-5 text-center font-bold text-gray-500">{sub.maxMarks || 100}</td>
+                                                                <td className="px-6 py-5 text-center font-black text-emerald-600 text-lg">{sub.obtained || 0}</td>
+                                                            </>
+                                                        )}
+                                                        <td className="px-6 py-5 text-right">
+                                                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.4 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                                {((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.9 ? 'A+' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.8 ? 'A' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.7 ? 'B+' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.6 ? 'B' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.4 ? 'C' : 'FAIL'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr className="bg-emerald-50/50">
+                                                    <th className="px-6 py-6 text-left font-black text-emerald-900 border-t-2 border-emerald-600">OVERALL ASSESSMENT</th>
+                                                    {viewingReportCard.exam?.type === 'Consolidated' && (
+                                                        <>
+                                                            <th className="border-t-2 border-emerald-600"></th>
+                                                            <th className="border-t-2 border-emerald-600"></th>
+                                                            <th className="border-t-2 border-emerald-600"></th>
+                                                        </>
+                                                    )}
+                                                    <th className="px-6 py-6 text-center font-black text-emerald-900 border-t-2 border-emerald-600">{viewingReportCard.totalMax}</th>
+                                                    <th className="px-6 py-6 text-center font-black text-emerald-600 text-2xl border-t-2 border-emerald-600">{viewingReportCard.totalObtained}</th>
+                                                    <th className="px-6 py-6 text-right font-black text-emerald-900 border-t-2 border-emerald-600">{viewingReportCard.percentage}%</th>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+
+                                    {/* Performance Summary */}
+                                    <div className="grid grid-cols-2 gap-6 mb-20 text-center">
+                                        <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-emerald-100 transition-all">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Attendance</label>
+                                            <p className="text-3xl font-black text-gray-800">{viewingReportCard.attendancePercentage || attendancePercentage}%</p>
+                                        </div>
+                                        <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-emerald-100 transition-all">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Conduct</label>
+                                            <p className="text-3xl font-black text-emerald-600">{viewingReportCard.conduct || 'EXCELLENT'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Footer Signatures */}
+                                    <div className="mt-auto flex justify-between items-end pb-12 pt-12 border-t border-gray-100">
+                                        <div className="text-center w-48">
+                                            <div className="h-1 bg-gray-200 mb-2"></div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Class Teacher</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="flex flex-col items-center">
+                                                <div className="w-16 h-1 bg-emerald-600 mb-2"></div>
+                                                <img src={oasisLogo} alt="Seal" className="w-12 h-12 opacity-20 filter grayscale mb-2" />
+                                                <p className="text-[10px] font-black text-emerald-900 uppercase tracking-[0.2em]">Institute Seal</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-center w-48">
+                                            <div className="h-1 bg-gray-200 mb-2 font-handwriting italic text-gray-400 text-xs">Principal Signature</div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Authorized Signature</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

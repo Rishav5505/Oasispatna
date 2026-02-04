@@ -6,6 +6,7 @@ const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 const sendEmail = require('../utils/sendEmail');
+const sendAbsenceEmail = require('../utils/sendAbsenceEmail');
 const sendSMS = require('../utils/sendSMS');
 const jwt = require('jsonwebtoken');
 
@@ -47,19 +48,36 @@ router.post('/bulk', auth, roleAuth('teacher'), async (req, res) => {
       );
 
       if (s.status === 'absent') {
-        const student = await Student.findById(s.studentId).populate('parentId');
-        if (student && student.parentId) {
-          const parentId = student.parentId._id || student.parentId;
+        const student = await Student.findById(s.studentId).populate('userId').populate('parentId');
+        if (student) {
           const subject = await require('../models/Subject').findById(subjectId);
-          const message = `Dear Parent, your child ${student.name} was absent in ${subject ? subject.name : 'Class'} on ${date}.`;
+          const subjectName = subject ? subject.name : 'Class';
+          const message = `Dear Parent, your child ${student.name} was absent in ${subjectName} on ${new Date(date).toLocaleDateString()}.`;
 
-          const notification = new Notification({
-            recipient: parentId,
-            title: 'Attendance Alert',
-            message: message,
-            type: 'academic'
-          });
-          await notification.save();
+          // Prepare emails
+          const recipientEmails = [];
+          if (student.userId && student.userId.email) recipientEmails.push(student.userId.email);
+          if (student.parentId && student.parentId.email) recipientEmails.push(student.parentId.email);
+
+          if (recipientEmails.length > 0) {
+            await sendAbsenceEmail(recipientEmails, {
+              studentName: student.name,
+              subjectName: subjectName,
+              date: date
+            });
+          }
+
+          // In-App Notification for Parent
+          if (student.parentId) {
+            const parentId = student.parentId._id || student.parentId;
+            const notification = new Notification({
+              recipient: parentId,
+              title: 'Attendance Alert',
+              message: message,
+              type: 'academic'
+            });
+            await notification.save();
+          }
         }
       }
       return attendance;
@@ -88,27 +106,36 @@ router.post('/', auth, roleAuth('teacher'), async (req, res) => {
     );
 
     if (status === 'absent') {
-      const student = await Student.findById(studentId).populate('parentId');
-      if (student.parentId) {
-        const parentId = student.parentId._id || student.parentId;
+      const student = await Student.findById(studentId).populate('userId').populate('parentId');
+      if (student) {
         const subject = await require('../models/Subject').findById(subjectId);
-        const message = `Dear Parent, your child ${student.name} was absent in ${subject ? subject.name : 'Class'} on ${date}.`;
+        const subjectName = subject ? subject.name : 'Class';
+        const message = `Dear Parent, your child ${student.name} was absent in ${subjectName} on ${new Date(date).toLocaleDateString()}.`;
 
-        // Existing Email/SMS
-        const parentUser = await User.findById(parentId);
-        if (parentUser) {
-          sendEmail(parentUser.email, 'Attendance Notification', message);
-          // sendSMS(parentUser.phone, message);
+        // Prepare emails (Student & Parent)
+        const recipientEmails = [];
+        if (student.userId && student.userId.email) recipientEmails.push(student.userId.email);
+        if (student.parentId && student.parentId.email) recipientEmails.push(student.parentId.email);
+
+        if (recipientEmails.length > 0) {
+          await sendAbsenceEmail(recipientEmails, {
+            studentName: student.name,
+            subjectName: subjectName,
+            date: date
+          });
         }
 
-        // New In-App Notification
-        const notification = new Notification({
-          recipient: parentId,
-          title: 'Daily Attendance Alert',
-          message: message,
-          type: 'academic'
-        });
-        await notification.save();
+        // New In-App Notification for Parent
+        if (student.parentId) {
+          const parentId = student.parentId._id || student.parentId;
+          const notification = new Notification({
+            recipient: parentId,
+            title: 'Daily Attendance Alert',
+            message: message,
+            type: 'academic'
+          });
+          await notification.save();
+        }
       }
     }
 

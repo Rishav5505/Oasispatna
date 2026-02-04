@@ -21,7 +21,7 @@ import {
   FaMoneyBillWave, FaBullhorn, FaTasks, FaHistory, FaSearch,
   FaPlus, FaUserPlus, FaEnvelope, FaFilter, FaArrowUp, FaArrowDown,
   FaCheckCircle, FaExclamationTriangle, FaChartLine, FaRegClock,
-  FaCogs, FaSignOutAlt, FaChevronRight, FaFileInvoiceDollar, FaTimesCircle, FaLaptopCode, FaCalendarAlt, FaChartPie, FaTrophy
+  FaCogs, FaSignOutAlt, FaChevronRight, FaFileInvoiceDollar, FaTimesCircle, FaLaptopCode, FaCalendarAlt, FaChartPie, FaTrophy, FaFileAlt, FaPrint
 } from 'react-icons/fa';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
@@ -48,6 +48,16 @@ const AdminDashboard = () => {
   const [availableClasses, setAvailableClasses] = useState([]);
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [availableBatches, setAvailableBatches] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [selectedResultClass, setSelectedResultClass] = useState('');
+  const [selectedResultExam, setSelectedResultExam] = useState('');
+  const [availableExams, setAvailableExams] = useState([]);
+  const [examSummary, setExamSummary] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [viewingReportCard, setViewingReportCard] = useState(null);
+  const [showAddExamModal, setShowAddExamModal] = useState(false);
+  const [examForm, setExamForm] = useState({ name: '', type: 'monthly', date: new Date().toISOString().split('T')[0], subjects: [] });
   const [stats, setStats] = useState({});
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentDetails, setStudentDetails] = useState({ attendance: [], marks: [] });
@@ -144,6 +154,20 @@ const AdminDashboard = () => {
     };
   }, [token, user, authLoading]);
 
+  // Fetch exams when selected class changes for results tab
+  useEffect(() => {
+    if (activeTab === 'results' && selectedResultClass) {
+      fetchExamsForClass(selectedResultClass);
+    }
+  }, [selectedResultClass, activeTab]);
+
+  // Fetch exam summary when selected exam changes for results tab
+  useEffect(() => {
+    if (activeTab === 'results' && selectedResultExam) {
+      fetchExamSummary(selectedResultExam);
+    }
+  }, [selectedResultExam, activeTab]);
+
   // Fetch fees when tab changes to 'fees'
   useEffect(() => {
     if (activeTab === 'fees') {
@@ -200,8 +224,11 @@ const AdminDashboard = () => {
         },
       });
 
-      if (res.data.user?.profilePhoto) {
-        updateUser({ profilePhoto: res.data.user.profilePhoto });
+      if (res.data.user) {
+        updateUser({
+          profilePhoto: res.data.user.profilePhoto,
+          name: res.data.user.name
+        });
       }
 
       setPhotoFile(null);
@@ -235,8 +262,11 @@ const AdminDashboard = () => {
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         }
       });
-      if (res.data.user?.profilePhoto) {
-        updateUser({ profilePhoto: res.data.user.profilePhoto });
+      if (res.data.user) {
+        updateUser({
+          profilePhoto: res.data.user.profilePhoto,
+          name: res.data.user.name
+        });
       }
       setEditMode(false);
       setPhotoFile(null);
@@ -426,6 +456,120 @@ const AdminDashboard = () => {
       setLeads(res.data);
     } catch (err) {
       console.error('Error fetching leads:', err);
+    }
+  };
+
+  const fetchExamsForClass = async (classId) => {
+    try {
+      const res = await axios.get(`${config.API_URL}/exams/class/${classId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setAvailableExams(res.data);
+    } catch (err) {
+      console.error('Error fetching exams:', err);
+    }
+  };
+
+  const fetchExamSummary = async (examId) => {
+    if (!examId) return;
+    setLoadingSummary(true);
+    try {
+      let endpoint;
+      if (examId === 'total') {
+        endpoint = `${config.API_URL}/marks/class-summary/${selectedResultClass}`;
+      } else if (examId === 'total_monthly') {
+        endpoint = `${config.API_URL}/marks/class-summary/${selectedResultClass}?type=monthly`;
+      } else if (examId === 'total_unit') {
+        endpoint = `${config.API_URL}/marks/class-summary/${selectedResultClass}?type=unit`;
+      } else {
+        endpoint = `${config.API_URL}/marks/exam-summary/${examId}`;
+      }
+
+      const res = await axios.get(endpoint, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setExamSummary(res.data);
+    } catch (err) {
+      console.error('Error fetching exam summary:', err);
+      alert('Failed to fetch exam summary');
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  const handleCreateExam = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${config.API_URL}/exams`, { ...examForm, classId: selectedResultClass }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      alert('Exam created successfully');
+      setShowAddExamModal(false);
+      fetchExamsForClass(selectedResultClass);
+    } catch (err) {
+      alert('Failed to create exam: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handlePublishResults = async (examId) => {
+    if (!window.confirm('Are you sure you want to publish results? This will notify all students and parents.')) return;
+    setIsPublishing(true);
+    try {
+      await axios.post(`${config.API_URL}/exams/${examId}/publish`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchExamSummary(examId);
+      alert('Results published and notifications sent!');
+    } catch (err) {
+      console.error('Error publishing results:', err);
+      alert('Failed to publish results');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleUnpublishResults = async (examId) => {
+    if (!window.confirm('Are you sure you want to unpublish results? Visibility will be removed from student portals.')) return;
+    try {
+      await axios.post(`${config.API_URL}/exams/${examId}/unpublish`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchExamSummary(examId);
+      alert('Results unpublished');
+    } catch (err) {
+      console.error('Error unpublishing results:', err);
+      alert('Failed to unpublish results');
+    }
+  };
+
+  const handlePublishOverall = async (classId) => {
+    if (!window.confirm('Are you sure you want to publish the OVERALL CUMULATIVE results? This will make the final transcripts visible to students and parents.')) return;
+    setIsPublishing(true);
+    try {
+      await axios.post(`${config.API_URL}/marks/publish-overall/${classId}`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchExamSummary('total');
+      alert('Overall results published!');
+    } catch (err) {
+      console.error('Error publishing overall results:', err);
+      alert('Failed to publish overall results');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleUnpublishOverall = async (classId) => {
+    if (!window.confirm('Are you sure you want to unpublish overall results? Final transcripts will be hidden.')) return;
+    try {
+      await axios.post(`${config.API_URL}/marks/unpublish-overall/${classId}`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchExamSummary('total');
+      alert('Overall results unpublished');
+    } catch (err) {
+      console.error('Error unpublishing overall results:', err);
+      alert('Failed to unpublish overall results');
     }
   };
 
@@ -824,6 +968,7 @@ const AdminDashboard = () => {
             { id: 'fees', icon: FaMoneyBillWave, label: 'Fees Management' },
             { id: 'leads', icon: FaEnvelope, label: 'Demo Requests' },
             { id: 'communication', icon: FaBullhorn, label: 'Notice Center' },
+            { id: 'results', icon: FaFileAlt, label: 'Result Center' },
             { id: 'profile', icon: FaCogs, label: 'Profile Settings' },
           ].map(item => (
             <button
@@ -897,15 +1042,15 @@ const AdminDashboard = () => {
           <div className="flex items-center gap-2 md:gap-8">
             <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:rounded-2xl md:border md:border-dotted md:border-gray-200 group cursor-pointer transition-all">
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs md:text-sm overflow-hidden border border-indigo-200 shadow-inner group-hover:scale-105 transition-transform">
-                {profile.profilePhoto ? (
-                  <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Admin" className="w-full h-full object-cover" />
+                {user?.profilePhoto ? (
+                  <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} className="w-full h-full object-cover" />
                 ) : (
-                  profile.name?.charAt(0).toUpperCase() || 'A'
+                  user?.name?.charAt(0) || 'A'
                 )}
               </div>
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-gray-900 leading-none mb-1">{profile.name || 'Administrator'}</p>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{user.role}</p>
+                <p className="text-xs font-bold text-gray-900 leading-none mb-1">{user?.name || 'Administrator'}</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{user?.role}</p>
               </div>
             </div>
           </div>
@@ -949,7 +1094,7 @@ const AdminDashboard = () => {
                   { label: 'Add Student', icon: FaUserPlus, color: 'bg-emerald-500', bg: 'hover:bg-emerald-50', border: 'hover:border-emerald-200', action: () => setActiveTab('students') },
                   { label: 'New Teacher', icon: FaPlus, color: 'bg-indigo-600', bg: 'hover:bg-indigo-50', border: 'hover:border-indigo-200', action: () => setActiveTab('teachers') },
                   { label: 'Broadcast', icon: FaBullhorn, color: 'bg-orange-500', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200', action: () => setActiveTab('communication') },
-                  { label: 'Fee Report', icon: FaFileInvoiceDollar, color: 'bg-purple-600', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200', action: () => setActiveTab('fees') },
+                  { label: 'Exam Results', icon: FaFileAlt, color: 'bg-purple-600', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200', action: () => setActiveTab('results') },
                 ].map((act, i) => (
                   <button
                     key={i}
@@ -2047,22 +2192,183 @@ const AdminDashboard = () => {
             </div>
           )}
 
+          {activeTab === 'results' && (
+            <div className="space-y-8 animate-in slide-in-from-bottom-5 duration-500">
+              <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                  <div>
+                    <h2 className="text-3xl font-black text-gray-900 leading-tight">Result Center</h2>
+                    <p className="text-gray-400 font-bold mt-1 uppercase text-[10px] tracking-widest">Generate and publish class reports</p>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="min-w-[180px]">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-2">Select Class</label>
+                      <select
+                        className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all text-sm appearance-none cursor-pointer shadow-sm"
+                        value={selectedResultClass}
+                        onChange={(e) => { setSelectedResultClass(e.target.value); setSelectedResultExam(''); setExamSummary(null); }}
+                      >
+                        <option value="">Choose Class</option>
+                        {availableClasses.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="min-w-[220px]">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-2">Select Exam</label>
+                      <select
+                        className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all text-sm appearance-none cursor-pointer shadow-sm disabled:opacity-50"
+                        value={selectedResultExam}
+                        onChange={(e) => setSelectedResultExam(e.target.value)}
+                        disabled={!selectedResultClass}
+                      >
+                        <option value="">Choose Exam</option>
+                        {selectedResultClass && (
+                          <option value="total" className="text-indigo-600 font-black">TOTAL (OVERALL)</option>
+                        )}
+                      </select>
+                    </div>
+                    {selectedResultClass && (
+                      <button
+                        onClick={() => {
+                          setExamForm({ ...examForm, subjects: availableSubjects.filter(s => s.classId?._id === selectedResultClass || s.classId === selectedResultClass).map(s => s._id) });
+                          setShowAddExamModal(true);
+                        }}
+                        className="mt-6 md:mt-0 p-4 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all self-end"
+                        title="Add New Exam"
+                      >
+                        <FaPlus />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {!selectedResultExam ? (
+                  <div className="py-20 text-center bg-gray-50/50 rounded-[2rem] border border-dashed border-gray-200">
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-gray-300 mx-auto mb-4 shadow-sm">
+                      <FaFileAlt className="text-2xl" />
+                    </div>
+                    <p className="text-gray-400 font-bold">Please select a class and an exam to view results.</p>
+                  </div>
+                ) : loadingSummary ? (
+                  <div className="py-20 text-center">
+                    <FaHistory className="animate-spin text-4xl text-indigo-400 mx-auto mb-4" />
+                    <p className="text-gray-400 font-bold">Compiling academic reports...</p>
+                  </div>
+                ) : examSummary ? (
+                  <div className="animate-in fade-in duration-500">
+                    <div className="flex items-center justify-between mb-8 p-6 bg-indigo-50/30 rounded-3xl border border-indigo-50">
+                      <div className="flex items-center gap-6">
+                        <div className={`px-4 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest ${examSummary.isPublished ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' : 'bg-orange-100 text-orange-600 border border-orange-200'}`}>
+                          {examSummary.isPublished ? 'RESULTS PUBLISHED' : 'DRAFT (NOT PUBLISHED)'}
+                        </div>
+                        <div className="text-sm font-bold text-gray-600">
+                          {examSummary.results?.length || 0} Students Record Found
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        {selectedResultExam !== 'total' ? (
+                          examSummary.isPublished ? (
+                            <button onClick={() => handleUnpublishResults(selectedResultExam)} className="px-6 py-3 bg-white text-gray-600 border border-gray-200 rounded-2xl font-black text-xs hover:bg-gray-50 transition-all">UNPUBLISH</button>
+                          ) : (
+                            <button
+                              onClick={() => handlePublishResults(selectedResultExam)}
+                              disabled={isPublishing}
+                              className="px-8 py-3 bg-emerald-600 text-white rounded-2xl font-black text-xs hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all disabled:opacity-50"
+                            >
+                              {isPublishing ? 'PUBLISHING...' : 'PUBLISH RESULTS'}
+                            </button>
+                          )
+                        ) : (
+                          // Overall Publish logic
+                          examSummary.isPublished ? (
+                            <button onClick={() => handleUnpublishOverall(selectedResultClass)} className="px-6 py-3 bg-white text-gray-600 border border-gray-200 rounded-2xl font-black text-xs hover:bg-gray-50 transition-all uppercase">Hide Results</button>
+                          ) : (
+                            <button
+                              onClick={() => handlePublishOverall(selectedResultClass)}
+                              disabled={isPublishing}
+                              className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 uppercase"
+                            >
+                              {isPublishing ? 'PUBLISHING...' : 'Publish Publicly'}
+                            </button>
+                          )
+                        )}
+                        <button onClick={() => window.print()} className="p-3 bg-white text-indigo-600 border border-indigo-100 rounded-2xl hover:bg-indigo-50 transition-all shadow-sm">
+                          <FaPrint />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
+                            <th className="px-6 py-4">Rank</th>
+                            <th className="px-6 py-4">Student</th>
+                            <th className="px-6 py-4 text-center">Cumulative Score</th>
+                            <th className="px-6 py-4">Proficiency</th>
+                            <th className="px-6 py-4 text-right">Academic Output</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {(examSummary.results || []).map((res, idx) => (
+                            <tr key={res.studentId} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-6 py-6">
+                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm shadow-sm ${res.rank === 1 ? 'bg-yellow-400 text-white' : res.rank === 2 ? 'bg-gray-300 text-white' : res.rank === 3 ? 'bg-orange-400 text-white' : 'bg-gray-50 text-gray-400 border border-gray-100'}`}>
+                                  {res.rank}
+                                </div>
+                              </td>
+                              <td className="px-6 py-6">
+                                <div>
+                                  <p className="font-black text-gray-900 text-sm mb-1">{res.name}</p>
+                                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">REGISTERED ID: {res.rollNo}</p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-6 text-center">
+                                <p className="font-black text-gray-700 text-sm">{res.totalObtained}</p>
+                                <p className="text-[10px] font-bold text-gray-300 italic">out of {res.totalMax}</p>
+                              </td>
+                              <td className="px-6 py-6">
+                                <div className="flex items-center gap-4">
+                                  <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
+                                    <div className={`h-full rounded-full transition-all duration-1000 ${parseFloat(res.percentage) > 85 ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : parseFloat(res.percentage) > 60 ? 'bg-gradient-to-r from-indigo-400 to-violet-500' : 'bg-gradient-to-r from-rose-400 to-pink-500'}`} style={{ width: `${res.percentage}%` }}></div>
+                                  </div>
+                                  <span className="font-black text-gray-900 text-sm min-w-[50px]">{res.percentage}%</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-6 text-right">
+                                <button
+                                  onClick={() => setViewingReportCard(res)}
+                                  className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all transform active:scale-95"
+                                >
+                                  {selectedResultExam === 'total' ? 'Final Transcript' : 'View Report'}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'communication' && (
             <div className="max-w-4xl mx-auto space-y-10 animate-in slide-in-from-bottom-5 duration-500">
               <div className="text-center">
-                <div className="w-20 h-20 bg-orange-50 rounded-[2rem] flex items-center justify-center text-orange-500 text-3xl mx-auto mb-6">
+                <div className="w-20 h-20 bg-orange-50 rounded-[2rem] flex items-center justify-center text-orange-500 text-3xl mx-auto mb-6 shadow-sm border border-orange-100">
                   <FaBullhorn />
                 </div>
                 <h2 className="text-4xl font-black text-gray-900 mb-2">Notice Center</h2>
                 <p className="text-gray-400 font-bold">Broadcast updates to your entire academic community</p>
               </div>
 
-              <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-gray-100 shadow-2xl space-y-8">
+              <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-2xl space-y-8">
                 <form onSubmit={handleNoticeSubmit}>
                   <div className="space-y-6">
                     <div>
-                      <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 block">Target Distribution</label>
-                      <div className="flex flex-wrap gap-3 md:gap-4">
+                      <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 block ml-2">Target Distribution</label>
+                      <div className="flex flex-wrap gap-4">
                         {['student', 'parent', 'teacher'].map(role => (
                           <button
                             key={role}
@@ -2073,8 +2379,8 @@ const AdminDashboard = () => {
                                 : [...newNotice.targetRoles, role];
                               setNewNotice({ ...newNotice, targetRoles: roles });
                             }}
-                            className={`px-4 md:px-6 py-2.5 rounded-2xl text-[10px] md:text-xs font-black transition-all border ${newNotice.targetRoles.includes(role)
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100'
+                            className={`px-8 py-3.5 rounded-2xl text-[10px] font-black tracking-widest transition-all border ${newNotice.targetRoles.includes(role)
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl shadow-indigo-100'
                               : 'bg-white text-gray-400 border-gray-100 hover:border-indigo-100'
                               }`}
                           >
@@ -2085,11 +2391,11 @@ const AdminDashboard = () => {
                     </div>
 
                     <div>
-                      <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 block">Heading</label>
+                      <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 block ml-2">Heading</label>
                       <input
                         type="text"
                         placeholder="Urgent Maintenance / Holiday Update..."
-                        className="w-full px-8 py-5 bg-gray-50 border border-transparent rounded-[2rem] focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all"
+                        className="w-full px-8 py-5 bg-gray-50 border border-transparent rounded-[2rem] focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all shadow-inner"
                         value={newNotice.title}
                         onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
                         required
@@ -2097,11 +2403,11 @@ const AdminDashboard = () => {
                     </div>
 
                     <div>
-                      <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 block">Message Protocol</label>
+                      <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-3 block ml-2">Message Protocol</label>
                       <textarea
                         rows="6"
                         placeholder="Detailed announcement content goes here..."
-                        className="w-full px-8 py-5 bg-gray-50 border border-transparent rounded-[2rem] focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all resize-none"
+                        className="w-full px-8 py-5 bg-gray-50 border border-transparent rounded-[2rem] focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all resize-none shadow-inner"
                         value={newNotice.content}
                         onChange={(e) => setNewNotice({ ...newNotice, content: e.target.value })}
                         required
@@ -2110,9 +2416,9 @@ const AdminDashboard = () => {
                   </div>
                   <button
                     type="submit"
-                    className="w-full mt-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] font-black tracking-widest shadow-2xl shadow-indigo-200 transition-all scale-100 hover:scale-105 active:scale-95 flex items-center justify-center gap-4"
+                    className="w-full mt-10 py-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-[2rem] font-black tracking-widest shadow-2xl shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4 text-sm"
                   >
-                    <FaEnvelope /> INITIALIZE BROADCAST
+                    <FaEnvelope className="text-lg" /> INITIALIZE BROADCAST
                   </button>
                 </form>
               </div>
@@ -2121,57 +2427,125 @@ const AdminDashboard = () => {
 
           {activeTab === 'profile' && (
             <div className="max-w-2xl mx-auto animate-in fade-in duration-500">
-              <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-sm">
-                <div className="flex flex-col items-center mb-10">
-                  <div className="w-32 h-32 rounded-[2.5rem] bg-indigo-50 border-4 border-white shadow-xl flex items-center justify-center text-4xl text-indigo-600 font-black mb-6 relative group overflow-hidden">
+              <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-2xl shadow-gray-100/50">
+                <div className="flex flex-col items-center mb-12">
+                  <div className="w-40 h-40 rounded-[3rem] bg-indigo-50 border-8 border-white shadow-2xl flex items-center justify-center text-5xl text-indigo-600 font-black mb-8 relative group overflow-hidden">
                     {photoPreview ? (
                       <img src={photoPreview} className="w-full h-full object-cover" />
-                    ) : profile.profilePhoto ? (
-                      <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} className="w-full h-full object-cover" />
+                    ) : user?.profilePhoto ? (
+                      <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} className="w-full h-full object-cover" />
                     ) : profile.name?.charAt(0)}
-                    <label className="absolute inset-0 bg-indigo-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
-                      <FaPlus className="text-white" />
+                    <label className="absolute inset-0 bg-indigo-900/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
+                      <FaPlus className="text-white text-2xl mb-2" />
+                      <span className="text-[10px] font-black text-white uppercase tracking-widest">Update Photo</span>
                       <input type="file" className="hidden" onChange={handlePhotoChange} accept="image/*" />
                     </label>
                   </div>
                   {photoPreview && (
-                    <div className="flex gap-2 mb-4 animate-in slide-in-from-top duration-300">
+                    <div className="flex gap-4 mb-6 animate-in slide-in-from-top duration-500">
                       <button
                         onClick={handleQuickPhotoUpload}
                         disabled={uploadingPhoto}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2"
+                        className="px-6 py-3 bg-emerald-600 text-white rounded-2xl font-black text-xs shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2"
                       >
-                        {uploadingPhoto ? <FaHistory className="animate-spin" /> : <FaCheckCircle />} SAVE PHOTO
+                        {uploadingPhoto ? <FaHistory className="animate-spin" /> : <FaCheckCircle />} CONFIRM CHANGE
                       </button>
                       <button
                         onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
-                        className="px-4 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-300 transition-all"
+                        className="px-6 py-3 bg-gray-100 text-gray-500 rounded-2xl font-black text-xs hover:bg-gray-200 transition-all"
                       >
-                        CANCEL
+                        REVERT
                       </button>
                     </div>
                   )}
-                  <h2 className="text-3xl font-black text-gray-900">{profile.name}</h2>
-                  <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-1">Platform Admin</p>
+                  <h2 className="text-4xl font-black text-gray-900 leading-tight mb-2">{profile.name}</h2>
+                  <div className="flex items-center gap-3">
+                    <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100">Oasis Administrator</span>
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                  </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Canonical Name</label>
-                      <input type="text" value={editForm.name} className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:outline-none" readOnly={!editMode} />
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block mb-2">Canonical Identity</label>
+                      <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-bold text-gray-800 border border-transparent hover:border-indigo-100 transition-all shadow-inner">
+                        {profile.name}
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Encrypted ID</label>
-                      <input type="text" value={profile._id?.slice(-8).toUpperCase()} className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-mono text-indigo-400 focus:outline-none" readOnly />
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block mb-2">Platform Protocol ID</label>
+                      <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-mono text-indigo-500 border border-transparent hover:border-indigo-100 transition-all shadow-inner">
+                        #{profile._id?.slice(-8).toUpperCase()}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Emergency Contact</label>
-                    <input type="text" value={editForm.phone} className="w-full px-6 py-4 bg-gray-50 rounded-2xl font-bold text-gray-700 focus:outline-none" readOnly={!editMode} />
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block mb-2">Verified Communications</label>
+                    <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-bold text-gray-800 border border-transparent hover:border-indigo-100 transition-all shadow-inner">
+                      {profile.phone || '91XXXXXXXX'}
+                    </div>
                   </div>
-                  <button className="w-full py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-sm hover:bg-indigo-100 transition-all">Update Access Tokens</button>
+                  <button className="w-full py-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-[2rem] font-black tracking-widest shadow-2xl hover:scale-[1.02] active:scale-95 transition-all text-xs">
+                    ACCREDITED SECURITY SETTINGS
+                  </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Add Exam Modal */}
+          {showAddExamModal && (
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
+              <div className="bg-white rounded-[3rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+                <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                  <h2 className="text-2xl font-black text-gray-900">Provision Academic Exam</h2>
+                  <button onClick={() => setShowAddExamModal(false)} className="w-10 h-10 rounded-xl bg-white text-gray-400 hover:text-red-500 shadow-sm flex items-center justify-center transition-all">
+                    <FaTimesCircle className="text-xl" />
+                  </button>
+                </div>
+                <form onSubmit={handleCreateExam} className="p-10 space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-2">Session Title</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all shadow-inner"
+                        placeholder="e.g. Phase 1 - Monthly Test"
+                        value={examForm.name}
+                        onChange={e => setExamForm({ ...examForm, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-2">Testing Category</label>
+                        <select
+                          className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all appearance-none shadow-sm"
+                          value={examForm.type}
+                          onChange={e => setExamForm({ ...examForm, type: e.target.value })}
+                        >
+                          <option value="unit">Unit Test</option>
+                          <option value="monthly">Monthly Test</option>
+                          <option value="final">Final Exam</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-2">Execution Date</label>
+                        <input
+                          type="date"
+                          required
+                          className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all shadow-sm"
+                          value={examForm.date}
+                          onChange={e => setExamForm({ ...examForm, date: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <button type="submit" className="w-full py-5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-black tracking-widest shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-95">
+                    INITIALIZE EXAM PROTOCOL
+                  </button>
+                </form>
               </div>
             </div>
           )}
@@ -2365,9 +2739,164 @@ const AdminDashboard = () => {
           </div>
         )
       }
+      {/* Report Card Premium Modal */}
+      {
+        viewingReportCard && (
+          <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
+            <div className="bg-white rounded-[2rem] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none print:static">
+              {/* Tool Bar - Hidden in Print */}
+              <div className="px-8 py-4 bg-gray-50 border-b flex justify-between items-center shrink-0 print:hidden">
+                <div className="flex items-center gap-3">
+                  <FaTrophy className="text-yellow-500" />
+                  <h3 className="font-black text-gray-700 text-sm">Academic Report Preview</h3>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => window.print()}
+                    className="px-5 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                  >
+                    <FaPrint /> PRINT RECORD
+                  </button>
+                  <button
+                    onClick={() => setViewingReportCard(null)}
+                    className="p-2.5 bg-white text-gray-400 hover:text-red-500 rounded-xl border border-gray-200 transition-all shadow-sm"
+                  >
+                    <FaTimesCircle className="text-lg" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable Body */}
+              <div className="flex-1 overflow-y-auto p-10 md:p-16 print:overflow-visible print:p-0" id="printable-report-card">
+                <div className="border-4 border-indigo-600 p-1 relative min-h-[1000px]">
+                  <div className="border border-indigo-200 p-8 h-full bg-white relative">
+                    {/* Brand Header */}
+                    <div className="flex justify-between items-start mb-12 border-b-2 border-indigo-600 pb-8">
+                      <div>
+                        <img src={oasisFullLogo} alt="Logo" className="h-16 mb-4 filter contrast-125" />
+                        <p className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.3em]">Excellence in JEE/NEET Coaching</p>
+                      </div>
+                      <div className="text-right">
+                        <h1 className="text-4xl font-black text-indigo-900 mb-1">REPORT CARD</h1>
+                        <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">{examSummary?.examName} - 2026</p>
+                      </div>
+                    </div>
+
+                    {/* Student Info Grid */}
+                    <div className="grid grid-cols-2 gap-y-10 mb-16 bg-gray-50/50 p-10 rounded-3xl border border-gray-100">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Student Name</label>
+                          <p className="text-2xl font-black text-indigo-900 underline underline-offset-4 decoration-indigo-200">{viewingReportCard.name}</p>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Roll Number</label>
+                          <p className="text-lg font-bold text-gray-700">{viewingReportCard.rollNo}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4 text-right">
+                        <div>
+                          <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Father's Name</label>
+                          <p className="text-lg font-bold text-gray-700">{viewingReportCard.fatherName || 'Not Provided'}</p>
+                        </div>
+                        <div className="flex justify-end gap-10">
+                          <div>
+                            <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Class</label>
+                            <p className="text-lg font-bold text-indigo-600">Standard IX</p>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Section</label>
+                            <p className="text-lg font-bold text-indigo-600">Oasis-A1</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Marks Table */}
+                    <div className="mb-16">
+                      <table className="w-full border-collapse border-2 border-indigo-600">
+                        <thead>
+                          <tr className="bg-indigo-600 text-white">
+                            <th className="px-4 py-4 text-left font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Subject Name</th>
+                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Unit Test<br /><span className="text-[8px] opacity-70">(Max: 20)</span></th>
+                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Monthly Test<br /><span className="text-[8px] opacity-70">(Max: 30)</span></th>
+                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Final Term<br /><span className="text-[8px] opacity-70">(Max: 50)</span></th>
+                            <th className="px-4 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Total Marks<br /><span className="text-[8px] opacity-70">(Max: 100)</span></th>
+                            <th className="px-4 py-4 text-right font-black text-[10px] uppercase tracking-widest">Grade</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {viewingReportCard.subjectResults.map(sub => (
+                            <tr key={sub.subjectId} className="hover:bg-indigo-50/20 transition-colors">
+                              <td className="px-4 py-4 font-black text-gray-800 border-r border-gray-100">{sub.subjectName}</td>
+                              <td className="px-2 py-4 text-center font-bold text-gray-600 border-r border-gray-100 bg-gray-50/30">{sub.unit || 0}</td>
+                              <td className="px-2 py-4 text-center font-bold text-gray-600 border-r border-gray-100">{sub.monthly || 0}</td>
+                              <td className="px-2 py-4 text-center font-bold text-indigo-500 border-r border-gray-100 bg-indigo-50/10">{sub.final || 0}</td>
+                              <td className="px-4 py-4 text-center font-black text-indigo-700 text-lg border-r border-gray-100 bg-indigo-50/30">{sub.total || 0}</td>
+                              <td className="px-4 py-4 text-right">
+                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${sub.total >= 40 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                  {sub.total >= 90 ? 'A+' : sub.total >= 80 ? 'A' : sub.total >= 70 ? 'B+' : sub.total >= 60 ? 'B' : sub.total >= 40 ? 'C' : 'FAIL'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-indigo-600 text-white">
+                            <th className="px-6 py-6 text-left font-black text-[11px] uppercase border-r border-indigo-500">GRAND TOTAL ASSESSMENT</th>
+                            <th colSpan="3" className="px-6 py-6 text-center font-black opacity-60 text-[10px] border-r border-indigo-500">Manual Ledger Summation</th>
+                            <th className="px-6 py-6 text-center font-black text-white text-2xl border-r border-indigo-500">{viewingReportCard.totalObtained} <span className="text-xs opacity-60">/ {viewingReportCard.totalMax}</span></th>
+                            <th className="px-6 py-6 text-right font-black text-white text-xl">{viewingReportCard.percentage}%</th>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {/* Performance Summary */}
+                    <div className="grid grid-cols-3 gap-6 mb-20 text-center">
+                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-indigo-100 transition-all">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Rank in Class</label>
+                        <p className="text-3xl font-black text-gray-800">{viewingReportCard.rank}</p>
+                      </div>
+                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-indigo-100 transition-all">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Attendance</label>
+                        <p className="text-3xl font-black text-gray-800">{viewingReportCard.attendancePercentage}%</p>
+                      </div>
+                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-indigo-100 transition-all">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Conduct</label>
+                        <p className={`text-3xl font-black ${viewingReportCard.conduct === 'EXCELLENT' || viewingReportCard.conduct === 'VERY GOOD' ? 'text-emerald-600' : viewingReportCard.conduct === 'GOOD' ? 'text-indigo-600' : 'text-orange-500'}`}>
+                          {viewingReportCard.conduct}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Footer Signatures */}
+                    <div className="mt-auto flex justify-between items-end pb-12 pt-12 border-t border-gray-100">
+                      <div className="text-center w-48">
+                        <div className="h-1 bg-gray-200 mb-2"></div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Class Teacher</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="flex flex-col items-center">
+                          <div className="w-16 h-1 bg-indigo-600 mb-2"></div>
+                          <img src={oasisLogo} alt="Seal" className="w-12 h-12 opacity-20 filter grayscale mb-2" />
+                          <p className="text-[10px] font-black text-indigo-900 uppercase tracking-[0.2em]">Institute Seal</p>
+                        </div>
+                      </div>
+                      <div className="text-center w-48">
+                        <div className="h-1 bg-gray-200 mb-2 font-handwriting italic text-gray-400 text-xs">Principal Signature</div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Authorized Signature</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
     </div >
   );
 };
 
 export default AdminDashboard;
-

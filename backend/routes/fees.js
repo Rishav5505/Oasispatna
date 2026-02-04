@@ -75,11 +75,35 @@ router.post('/razorpay/verify', auth, roleAuth('parent'), async (req, res) => {
 
             await fee.save();
 
-            // Find Student Profile for notifications
-            const studentProfile = await Student.findById(studentId);
+            // Find Student Profile for notifications & emails
+            const studentProfile = await Student.findById(studentId).populate('userId').populate('parentId');
             if (studentProfile) {
+                // Send Receipt Email
+                const recipientEmails = [];
+                if (studentProfile.userId && studentProfile.userId.email) recipientEmails.push(studentProfile.userId.email);
+                if (studentProfile.parentId && studentProfile.parentId.email) recipientEmails.push(studentProfile.parentId.email);
+
+                if (recipientEmails.length > 0) {
+                    const sendFeeReceipt = require('../utils/sendFeeReceipt');
+                    try {
+                        await sendFeeReceipt(recipientEmails, {
+                            studentName: studentProfile.name,
+                            fatherName: studentProfile.fatherName,
+                            amount: amount,
+                            transactionId: paymentId,
+                            date: new Date(),
+                            mode: 'Online (Razorpay)',
+                            type: 'Online Payment',
+                            remarks: 'Auto-receipt for Razorpay transaction'
+                        });
+                        console.log('Razorpay receipt email sent to:', recipientEmails);
+                    } catch (emailErr) {
+                        console.error('Failed to send Razorpay receipt email:', emailErr);
+                    }
+                }
+
                 await new Notification({
-                    recipient: studentProfile.userId,
+                    recipient: studentProfile.userId?._id || studentProfile.userId,
                     title: 'Fee Payment Received',
                     message: `Payment of ₹${amount} received via Razorpay. Transaction ID: ${paymentId}.`,
                     type: 'fee'
@@ -87,7 +111,7 @@ router.post('/razorpay/verify', auth, roleAuth('parent'), async (req, res) => {
 
                 if (studentProfile.parentId) {
                     await new Notification({
-                        recipient: studentProfile.parentId,
+                        recipient: studentProfile.parentId?._id || studentProfile.parentId,
                         title: 'Fee Payment Confirmation',
                         message: `Payment of ₹${amount} confirmed for child ${studentProfile.name}.`,
                         type: 'fee'

@@ -117,7 +117,6 @@ const sendDemoEmail = async (email, name, course) => {
     const sendSmtpEmail = {
         to: [{ email: email }],
         htmlContent: htmlContent,
-        attachment: attachments.length > 0 ? attachments : undefined,
         sender: {
             email: senderEmail,
             name: "Oasis JEE Classes"

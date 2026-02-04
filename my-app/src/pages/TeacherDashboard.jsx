@@ -51,7 +51,7 @@ const TeacherDashboard = () => {
   const [marksClass, setMarksClass] = useState('');
   const [marksStudents, setMarksStudents] = useState([]);
   const [selectedMarkStudent, setSelectedMarkStudent] = useState(null);
-  const [newMark, setNewMark] = useState({ subjectId: '', marks: '', examId: '', remarks: '' });
+  const [newMark, setNewMark] = useState({ subjectId: '', marks: '', maxMarks: '100', examId: '', remarks: '' });
   const [exams, setExams] = useState([]);
   const [marksViewMode, setMarksViewMode] = useState('entry'); // 'entry' or 'view'
   const [classMarks, setClassMarks] = useState([]);
@@ -117,8 +117,11 @@ const TeacherDashboard = () => {
         }
       });
       alert('Profile photo updated successfully!');
-      if (res.data.user?.profilePhoto) {
-        updateUser({ profilePhoto: res.data.user.profilePhoto });
+      if (res.data.user) {
+        updateUser({
+          profilePhoto: res.data.user.profilePhoto,
+          name: res.data.user.name
+        });
       }
       setPhotoFile(null);
       setPhotoPreview(null);
@@ -325,7 +328,7 @@ const TeacherDashboard = () => {
         studentId: selectedMarkStudent._id
       }, { headers });
       alert('Marks and remarks uploaded successfully!');
-      setNewMark({ ...newMark, marks: '', remarks: '' }); // Clear marks and remarks but keep subject/exam
+      setNewMark({ ...newMark, marks: '', remarks: '' }); // Clear marks and remarks but keep subject/exam/maxMarks
       setSelectedMarkStudent(null);
       if (marksViewMode === 'view') fetchClassMarks(); // Refresh if in view mode
     } catch (err) {
@@ -462,14 +465,14 @@ const TeacherDashboard = () => {
           <div className="flex items-center gap-2 md:gap-6">
             <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:rounded-2xl md:border md:border-dotted md:border-gray-200 group cursor-pointer transition-all">
               <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs md:text-sm overflow-hidden border border-emerald-200 shadow-inner group-hover:scale-105 transition-transform">
-                {profile.profilePhoto ? (
-                  <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} alt="Teacher" className="w-full h-full object-cover" />
+                {user?.profilePhoto ? (
+                  <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} alt="Teacher" className="w-full h-full object-cover" />
                 ) : (
-                  profile.name?.charAt(0).toUpperCase()
+                  user?.name?.charAt(0).toUpperCase() || 'T'
                 )}
               </div>
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold text-gray-900 leading-none mb-1">{profile.name}</p>
+                <p className="text-xs font-bold text-gray-900 leading-none mb-1">{user?.name || 'Educator'}</p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Expert Educator</p>
               </div>
             </div>
@@ -493,7 +496,7 @@ const TeacherDashboard = () => {
                       <span className="text-emerald-50 text-xs font-bold">{new Date().toDateString()}</span>
                     </div>
                     <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
-                      Welcome Back, <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-100 to-white">{profile.name?.split(' ')[0] || 'Educator'}</span> 👨‍🏫
+                      Welcome Back, <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-100 to-white">{user?.name?.split(' ')[0] || 'Educator'}</span> 👨‍🏫
                     </h1>
                     <p className="text-emerald-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
                       You are managing <span className="font-black text-white underline decoration-emerald-200 decoration-2 underline-offset-4">{teacherData.batches.length || 0} batches</span> and impacting students with your expertise.
@@ -840,17 +843,29 @@ const TeacherDashboard = () => {
                         </div>
 
                         <form onSubmit={handleUploadMarks} className="space-y-6">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Score (%)</label>
-                            <input
-                              type="number"
-                              max="100"
-                              placeholder="0-100"
-                              className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-700 text-3xl text-center"
-                              value={newMark.marks}
-                              onChange={(e) => setNewMark({ ...newMark, marks: e.target.value })}
-                              required
-                            />
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Marks Obtained</label>
+                              <input
+                                type="number"
+                                placeholder="0"
+                                className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-700 text-3xl text-center"
+                                value={newMark.marks}
+                                onChange={(e) => setNewMark({ ...newMark, marks: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Full Marks</label>
+                              <input
+                                type="number"
+                                placeholder="100"
+                                className="w-full p-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-700 text-3xl text-center"
+                                value={newMark.maxMarks}
+                                onChange={(e) => setNewMark({ ...newMark, maxMarks: e.target.value })}
+                                required
+                              />
+                            </div>
                           </div>
                           <div className="space-y-2">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Pedagogical Remarks</label>
@@ -906,8 +921,8 @@ const TeacherDashboard = () => {
                                 <tr key={m._id} className="hover:bg-gray-50/50 transition-all">
                                   <td className="px-6 py-4 font-bold text-sm text-gray-800">{m.studentId?.name || 'Unknown'}</td>
                                   <td className="px-6 py-4 text-center">
-                                    <span className={`px-3 py-1 rounded-lg font-black text-sm ${m.marks >= 75 ? 'bg-emerald-50 text-emerald-600' : m.marks >= 40 ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
-                                      {m.marks}%
+                                    <span className={`px-3 py-1 rounded-lg font-black text-sm ${m.marks / (m.maxMarks || 100) >= 0.75 ? 'bg-emerald-50 text-emerald-600' : m.marks / (m.maxMarks || 100) >= 0.4 ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
+                                      {m.marks} / {m.maxMarks || 100}
                                     </span>
                                   </td>
                                   <td className="px-6 py-4 text-xs font-medium text-gray-500 max-w-[200px] truncate">{m.remarks || '---'}</td>
@@ -915,7 +930,7 @@ const TeacherDashboard = () => {
                                     <button
                                       onClick={() => {
                                         setSelectedMarkStudent(m.studentId);
-                                        setNewMark({ ...newMark, marks: m.marks, remarks: m.remarks || '' });
+                                        setNewMark({ ...newMark, marks: m.marks, maxMarks: m.maxMarks || 100, remarks: m.remarks || '' });
                                         setMarksViewMode('entry');
                                       }}
                                       className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
-import { FaUser, FaCalendarAlt, FaBook, FaBullhorn, FaDownload, FaMoneyBillWave, FaClipboardList, FaGraduationCap, FaEdit, FaSave, FaTimes, FaCamera, FaBell, FaChartLine, FaClock, FaStar, FaCheckCircle, FaChevronRight, FaSignOutAlt } from 'react-icons/fa';
+import { FaUser, FaCalendarAlt, FaBook, FaBullhorn, FaDownload, FaMoneyBillWave, FaClipboardList, FaGraduationCap, FaEdit, FaSave, FaTimes, FaCamera, FaBell, FaChartLine, FaClock, FaStar, FaCheckCircle, FaChevronRight, FaSignOutAlt, FaTrophy, FaFileAlt, FaPrint, FaTimesCircle } from 'react-icons/fa';
 import oasisLogo from '../assets/oasis_logo.png';
+import oasisFullLogo from '../assets/oasis_full_logo.png';
 import receiptBanner from '../assets/receipt_banner.png';
 import config from '../config';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
@@ -30,8 +31,10 @@ const StudentDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState(null);
+  const [viewingReportCard, setViewingReportCard] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('All');
   const [exams, setExams] = useState([]);
+  const [cumulativeSummary, setCumulativeSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState('overview');
   const [availableClasses, setAvailableClasses] = useState([]);
@@ -176,6 +179,7 @@ const StudentDashboard = () => {
         axios.get(`${config.API_URL}/study-material`, { headers }),
         axios.get(`${config.API_URL}/notices`, { headers }),
         axios.get(`${config.API_URL}/notifications`, { headers }),
+        axios.get(`${config.API_URL}/marks/student-summary/${user.id}`, { headers }),
       ];
 
       if (studentData?.classId) {
@@ -193,9 +197,10 @@ const StudentDashboard = () => {
       setMaterials(getData(3, []));
       setNotices(getData(4, []));
       setNotifications(getData(5, []));
+      setCumulativeSummary(results[6].status === 'fulfilled' ? results[6].value.data : null);
 
-      if (studentData?.classId && results[6]) {
-        setExams(results[6].status === 'fulfilled' ? results[6].value.data : []);
+      if (studentData?.classId && results[7]) {
+        setExams(results[7].status === 'fulfilled' ? results[7].value.data : []);
       } else {
         setExams([]);
       }
@@ -258,8 +263,11 @@ const StudentDashboard = () => {
 
       setPhotoFile(null);
       setPhotoPreview(null);
-      if (response.data.user?.profilePhoto) {
-        updateUser({ profilePhoto: response.data.user.profilePhoto });
+      if (response.data.user) {
+        updateUser({
+          profilePhoto: response.data.user.profilePhoto,
+          name: response.data.user.name
+        });
       }
       fetchAllData();
       alert('Profile photo updated successfully!');
@@ -327,8 +335,11 @@ const StudentDashboard = () => {
 
       setEditMode(false);
       setPhotoFile(null);
-      if (userResponse.data.user?.profilePhoto) {
-        updateUser({ profilePhoto: userResponse.data.user.profilePhoto });
+      if (userResponse.data.user) {
+        updateUser({
+          profilePhoto: userResponse.data.user.profilePhoto,
+          name: userResponse.data.user.name
+        });
       }
       fetchAllData(); // Refresh data
       alert('Profile updated successfully! All data saved to MongoDB.');
@@ -494,7 +505,7 @@ const StudentDashboard = () => {
                     Student Portal
                   </span>
                 </h1>
-                <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-bold truncate">Welcome, {(student.name || profile.name || 'Student').split(' ')[0]}</p>
+                <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-bold truncate">Welcome, {(user?.name || 'Student').split(' ')[0]}</p>
               </div>
             </div>
             <div className="flex items-center space-x-1 md:space-x-4">
@@ -509,14 +520,14 @@ const StudentDashboard = () => {
               </button>
               <div className="flex items-center space-x-1 md:space-x-3">
                 <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs md:text-base font-semibold overflow-hidden shadow-inner border border-white/20">
-                  {student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto ? (
-                    <img src={`${config.API_URL.replace('/api', '')}${student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
+                  {user?.profilePhoto ? (
+                    <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    (student.name || profile.name || 'S').charAt(0).toUpperCase()
+                    (user?.name || 'S').charAt(0).toUpperCase()
                   )}
                 </div>
                 <div className="hidden lg:block">
-                  <p className="font-medium text-gray-900 dark:text-white leading-none mb-1">{student.name || profile.name}</p>
+                  <p className="font-medium text-gray-900 dark:text-white leading-none mb-1">{user?.name || 'Student'}</p>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">ID: {user?.id?.slice(-6)}</p>
                 </div>
               </div>
@@ -576,8 +587,8 @@ const StudentDashboard = () => {
                         <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-2 md:border-4 border-white border-t-transparent"></div>
                       ) : photoPreview ? (
                         <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                      ) : student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto ? (
-                        <img src={`${config.API_URL.replace('/api', '')}${student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto}`} alt="Profile" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      ) : user?.profilePhoto ? (
+                        <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} alt="Profile" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                       ) : (
                         <div className="flex flex-col items-center">
                           <FaUser className="text-2xl md:text-4xl text-white opacity-90" />
@@ -622,7 +633,7 @@ const StudentDashboard = () => {
                     />
                   </div>
                   <div className="text-center md:text-left">
-                    <h2 className="text-xl md:text-3xl font-bold mb-1 md:mb-2">Welcome back, {student.name || profile.name}!</h2>
+                    <h2 className="text-xl md:text-3xl font-bold mb-1 md:mb-2">Welcome back, {user?.name || 'Student'}!</h2>
                     <p className="text-blue-100 text-xs md:text-base mb-2 md:mb-4">Ready to continue your learning journey?</p>
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-4 text-xs md:text-sm">
                       <span
@@ -1191,37 +1202,194 @@ const StudentDashboard = () => {
 
                 {/* Marks Section */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Academic Performance</h2>
-                    <div className="flex items-center space-x-2">
-                      <FaChartLine className="text-blue-600" />
-                      <span className="text-sm font-medium text-gray-600">Grade Report</span>
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h2 className="text-2xl font-black text-gray-900 leading-tight">Academic Reports</h2>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Official performance records</p>
+                    </div>
+                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
+                      <FaTrophy className="text-xl" />
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    {marks.length > 0 ? marks.map(m => (
-                      <div key={m._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <FaBook className="text-blue-600" />
+                  <div className="space-y-6">
+                    {cumulativeSummary && cumulativeSummary.isPublished && (
+                      <div className="p-6 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl border border-blue-500 shadow-xl relative overflow-hidden group mb-8">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+
+                        {/* Mobile Optimized Layout */}
+                        <div className="md:hidden relative">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg border border-white/10">
+                              <FaGraduationCap className="text-lg" />
+                            </div>
+                            <span className="text-[10px] font-black text-blue-100 uppercase tracking-widest bg-white/10 px-2 py-1 rounded">2025-26</span>
                           </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{m.subjectId?.name || 'Subject'}</h3>
-                            <p className="text-sm text-gray-600">{m.examId?.name || 'Exam'}</p>
+
+                          <h3 className="text-xl font-black text-white mb-1">Final Report</h3>
+                          <p className="text-xs font-bold text-blue-100 mb-6 block">Cumulative Performance Record</p>
+
+                          <div className="flex items-end justify-between bg-black/20 p-4 rounded-2xl border border-white/5 mb-4">
+                            <div>
+                              <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Aggregate</p>
+                              <p className="text-3xl font-black text-white leading-none">{cumulativeSummary.percentage}%</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Grade</p>
+                              <p className="text-xl font-black text-white leading-none">A+</p>
+                            </div>
                           </div>
+
+                          <button
+                            onClick={() => setViewingReportCard({
+                              ...cumulativeSummary,
+                              exam: { name: 'Overall Academic Performance', type: 'Consolidated' }
+                            })}
+                            className="w-full py-3 bg-white text-blue-700 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-50 transition-all shadow-lg active:scale-95"
+                          >
+                            View Final Transcript
+                          </button>
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-600">{m.marks}/100</div>
-                          <div className="text-xs text-gray-500">
-                            {m.marks >= 90 ? 'Excellent' : m.marks >= 80 ? 'Good' : m.marks >= 70 ? 'Average' : 'Needs Improvement'}
+
+                        {/* Desktop Layout (Hidden on Mobile) */}
+                        <div className="hidden md:flex relative flex-col md:flex-row items-center justify-between gap-6">
+                          <div className="flex items-start gap-4">
+                            <div className="w-14 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center text-white shrink-0 shadow-lg border border-white/10">
+                              <span className="text-[10px] font-black leading-none mb-1 opacity-70">FINAL</span>
+                              <FaGraduationCap className="text-2xl" />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-black text-white">Final Cumulative Record</h3>
+                              <p className="text-xs font-bold text-blue-100 uppercase tracking-widest mt-1">Academic Session 2025-26</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <p className="text-3xl font-black text-white leading-none mb-1">{cumulativeSummary.percentage}%</p>
+                              <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest">Aggregate Score</p>
+                            </div>
+                            <button
+                              onClick={() => setViewingReportCard({
+                                ...cumulativeSummary,
+                                exam: { name: 'Overall Academic Performance', type: 'Consolidated' }
+                              })}
+                              className="px-8 py-4 bg-white text-blue-700 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-50 transition-all shadow-xl active:scale-95"
+                            >
+                              View Final Transcript
+                            </button>
                           </div>
                         </div>
                       </div>
-                    )) : (
-                      <div className="text-center py-8">
-                        <FaBook className="text-gray-400 text-4xl mx-auto mb-4" />
-                        <p className="text-gray-500">No marks available yet</p>
+                    )}
+
+                    {marks.length > 0 ? (
+                      <>
+                        {/* Mobile View: Single Unified Card Style List */}
+                        <div className="md:hidden space-y-3">
+                          <div className="flex items-center gap-2 mb-2 px-1">
+                            <FaFileAlt className="text-gray-400" />
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Recent Exams</span>
+                          </div>
+
+                          {Object.values(marks.reduce((acc, m) => {
+                            const examId = m.examId?._id || 'unknown';
+                            if (!acc[examId]) acc[examId] = {
+                              exam: m.examId,
+                              totalObtained: 0,
+                              totalMax: 0
+                            };
+                            acc[examId].totalObtained += m.marks;
+                            acc[examId].totalMax += (m.maxMarks || 100);
+                            return acc;
+                          }, {})).map((summary, idx) => (
+                            <div key={idx} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-md ${idx % 2 === 0 ? 'bg-blue-500' : 'bg-indigo-500'}`}>
+                                  <span className="font-bold text-xs">{((summary.totalObtained / summary.totalMax) * 100).toFixed(0)}%</span>
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{summary.exam?.name}</h4>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{summary.exam?.type}</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => setViewingReportCard({
+                                  ...summary,
+                                  name: user.name,
+                                  rollNo: student.rollNo || user.id.slice(-6).toUpperCase(),
+                                  fatherName: student.fatherName,
+                                  percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
+                                })}
+                                className="w-8 h-8 flex items-center justify-center bg-gray-50 rounded-full text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              >
+                                <FaFileAlt />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Desktop View: Individual Detailed Cards */}
+                        <div className="hidden md:block space-y-6">
+                          {Object.values(marks.reduce((acc, m) => {
+                            const examId = m.examId?._id || 'unknown';
+                            if (!acc[examId]) acc[examId] = {
+                              exam: m.examId,
+                              subjectResults: [],
+                              totalObtained: 0,
+                              totalMax: 0
+                            };
+                            acc[examId].subjectResults.push({
+                              subjectId: m.subjectId?._id,
+                              subjectName: m.subjectId?.name || 'Subject',
+                              obtained: m.marks,
+                              maxMarks: m.maxMarks || 100
+                            });
+                            acc[examId].totalObtained += m.marks;
+                            acc[examId].totalMax += (m.maxMarks || 100);
+                            return acc;
+                          }, {})).map(summary => (
+                            <div key={summary.exam?._id} className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
+                              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 opacity-20 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform duration-500"></div>
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
+                                <div className="flex items-start gap-4">
+                                  <div className="w-12 h-14 bg-blue-600 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow-lg">
+                                    <span className="text-[10px] font-bold leading-none mb-1 opacity-70">EXAM</span>
+                                    <FaFileAlt className="text-lg" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h3 className="text-lg font-black text-gray-900 truncate">{summary.exam?.name || 'Academic Assessment'}</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{summary.exam?.type || 'Record'}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                  <div className="text-right">
+                                    <p className="text-2xl font-black text-blue-600 leading-none mb-1">{((summary.totalObtained / summary.totalMax) * 100).toFixed(1)}%</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{summary.totalObtained} / {summary.totalMax} MARKS</p>
+                                  </div>
+                                  <button
+                                    onClick={() => setViewingReportCard({
+                                      ...summary,
+                                      name: user.name,
+                                      rollNo: student.rollNo || user.id.slice(-6).toUpperCase(),
+                                      fatherName: student.fatherName,
+                                      percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
+                                    })}
+                                    className="px-6 py-3 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg active:scale-95"
+                                  >
+                                    VIEW REPORT
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-gray-200 mx-auto mb-4 shadow-sm">
+                          <FaBook className="text-2xl" />
+                        </div>
+                        <p className="text-gray-400 font-bold">No academic reports published yet.</p>
                       </div>
                     )}
                   </div>
@@ -1588,6 +1756,179 @@ const StudentDashboard = () => {
           </div>
         )}
       </div>
+      {/* Report Card Premium Modal */}
+      {viewingReportCard && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2rem] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none print:static">
+            {/* Tool Bar - Hidden in Print */}
+            <div className="px-8 py-4 bg-gray-50 border-b flex justify-between items-center shrink-0 print:hidden">
+              <div className="flex items-center gap-3">
+                <FaTrophy className="text-yellow-500" />
+                <h3 className="font-black text-gray-700 text-sm">Academic Report Preview</h3>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="px-5 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center gap-2"
+                >
+                  <FaPrint /> PRINT RECORD
+                </button>
+                <button
+                  onClick={() => setViewingReportCard(null)}
+                  className="p-2.5 bg-white text-gray-400 hover:text-red-500 rounded-xl border border-gray-200 transition-all shadow-sm"
+                >
+                  <FaTimesCircle className="text-lg" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Body */}
+            <div className="flex-1 overflow-y-auto p-10 md:p-16 print:overflow-visible print:p-0">
+              <div className="border-4 border-blue-600 p-1 relative min-h-[1000px]">
+                <div className="border border-blue-200 p-8 h-full bg-white relative">
+                  {/* Brand Header */}
+                  <div className="flex justify-between items-start mb-12 border-b-2 border-blue-600 pb-8">
+                    <div>
+                      <img src={oasisFullLogo} alt="Logo" className="h-16 mb-4 filter contrast-125" />
+                      <p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.3em]">Excellence in JEE/NEET Coaching</p>
+                    </div>
+                    <div className="text-right">
+                      <h1 className="text-4xl font-black text-blue-900 mb-1">REPORT CARD</h1>
+                      <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">{viewingReportCard.exam?.name} - 2026</p>
+                    </div>
+                  </div>
+
+                  {/* Student Info Grid */}
+                  <div className="grid grid-cols-2 gap-y-10 mb-16 bg-gray-50/50 p-10 rounded-3xl border border-gray-100">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Student Name</label>
+                        <p className="text-2xl font-black text-blue-900 underline underline-offset-4 decoration-blue-200">{viewingReportCard.name}</p>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Roll Number</label>
+                        <p className="text-lg font-bold text-gray-700">{viewingReportCard.rollNo}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-4 text-right">
+                      <div>
+                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Father's Name</label>
+                        <p className="text-lg font-bold text-gray-700">{viewingReportCard.fatherName || 'Not Provided'}</p>
+                      </div>
+                      <div className="flex justify-end gap-10">
+                        <div>
+                          <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Class</label>
+                          <p className="text-lg font-bold text-blue-600">Standard IX</p>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Section</label>
+                          <p className="text-lg font-bold text-blue-600">Oasis-A1</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Marks Table */}
+                  <div className="mb-16">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-blue-600 text-white">
+                          <th className="px-6 py-4 text-left font-black text-xs uppercase tracking-widest">Subject</th>
+                          {viewingReportCard.exam?.type === 'Consolidated' ? (
+                            <>
+                              <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Unit (20%)</th>
+                              <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Monthly (30%)</th>
+                              <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Final (50%)</th>
+                              <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Total</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="px-6 py-4 text-center font-black text-xs uppercase tracking-widest">Full Marks</th>
+                              <th className="px-6 py-4 text-center font-black text-xs uppercase tracking-widest">Obtained Marks</th>
+                            </>
+                          )}
+                          <th className="px-6 py-4 text-right font-black text-xs uppercase tracking-widest">Status / Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y-2 divide-gray-100">
+                        {viewingReportCard.subjectResults.map(sub => (
+                          <tr key={sub.subjectId} className="hover:bg-blue-50/20 transition-colors">
+                            <td className="px-6 py-5 font-bold text-gray-800">{sub.subjectName}</td>
+                            {viewingReportCard.exam?.type === 'Consolidated' ? (
+                              <>
+                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.unit || 0}</td>
+                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.monthly || 0}</td>
+                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.final || 0}</td>
+                                <td className="px-4 py-5 text-center font-black text-blue-600 text-lg">{sub.total || 0}</td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-6 py-5 text-center font-bold text-gray-500">{sub.maxMarks || 100}</td>
+                                <td className="px-6 py-5 text-center font-black text-blue-600 text-lg">{sub.obtained || 0}</td>
+                              </>
+                            )}
+                            <td className="px-6 py-5 text-right">
+                              <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.4 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                {((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.9 ? 'A+' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.8 ? 'A' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.7 ? 'B+' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.6 ? 'B' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.4 ? 'C' : 'FAIL'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-blue-50/50">
+                          <th className="px-6 py-6 text-left font-black text-blue-900 border-t-2 border-blue-600">OVERALL ASSESSMENT</th>
+                          {viewingReportCard.exam?.type === 'Consolidated' && (
+                            <>
+                              <th className="border-t-2 border-blue-600"></th>
+                              <th className="border-t-2 border-blue-600"></th>
+                              <th className="border-t-2 border-blue-600"></th>
+                            </>
+                          )}
+                          <th className="px-6 py-6 text-center font-black text-blue-900 border-t-2 border-blue-600">{viewingReportCard.totalMax}</th>
+                          <th className="px-6 py-6 text-center font-black text-blue-600 text-2xl border-t-2 border-blue-600">{viewingReportCard.totalObtained}</th>
+                          <th className="px-6 py-6 text-right font-black text-blue-900 border-t-2 border-blue-600">{viewingReportCard.percentage}%</th>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* Performance Summary */}
+                  <div className="grid grid-cols-2 gap-6 mb-20 text-center">
+                    <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-blue-100 transition-all">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Attendance</label>
+                      <p className="text-3xl font-black text-gray-800">{viewingReportCard.attendancePercentage || calculateAttendancePercentage()}%</p>
+                    </div>
+                    <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-blue-100 transition-all">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Conduct</label>
+                      <p className="text-3xl font-black text-blue-600">{viewingReportCard.conduct || 'GOOD'}</p>
+                    </div>
+                  </div>
+
+                  {/* Footer Signatures */}
+                  <div className="mt-auto flex justify-between items-end pb-12 pt-12 border-t border-gray-100">
+                    <div className="text-center w-48">
+                      <div className="h-1 bg-gray-200 mb-2"></div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Class Teacher</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-1 bg-blue-600 mb-2"></div>
+                        <img src={oasisLogo} alt="Seal" className="w-12 h-12 opacity-20 filter grayscale mb-2" />
+                        <p className="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em]">Institute Seal</p>
+                      </div>
+                    </div>
+                    <div className="text-center w-48">
+                      <div className="h-1 bg-gray-200 mb-2 font-handwriting italic text-gray-400 text-xs">Director Signature</div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Authorized Signature</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
