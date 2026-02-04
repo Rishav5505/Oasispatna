@@ -6,9 +6,9 @@ import oasisBannerLogo from '../assets/oasis_banner_new.png';
 
 const Footer = () => {
   return (
-    <footer className="bg-[#0f172a] text-white pt-24 pb-12 overflow-hidden relative">
+    <footer className="bg-[#000000] text-white pt-24 pb-12 overflow-hidden relative">
       {/* Background Decorative Element */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-50"></div>
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 via-[#f37021] to-black opacity-50"></div>
 
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 mb-12 lg:mb-20">
@@ -18,7 +18,7 @@ const Footer = () => {
             <Link to="/" className="inline-block mb-8 group">
               <img
                 src={oasisBannerLogo}
-                alt="Oasis IIT JEE"
+                alt="Oasis JEE Classes"
                 className="h-16 md:h-24 w-auto object-contain transition-all duration-300 group-hover:scale-105 rounded-xl shadow-lg border border-white/5"
               />
             </Link>
@@ -27,10 +27,10 @@ const Footer = () => {
             </p>
             <div className="flex space-x-4">
               {[
-                { icon: <FaFacebookF />, path: '#', color: 'hover:bg-blue-600' },
-                { icon: <FaTwitter />, path: '#', color: 'hover:bg-sky-500' },
-                { icon: <FaYoutube />, path: '#', color: 'hover:bg-red-600' },
-                { icon: <FaInstagram />, path: '#', color: 'hover:bg-pink-600' }
+                { icon: <FaFacebookF />, path: '#', color: 'hover:bg-[#f37021]' },
+                { icon: <FaTwitter />, path: '#', color: 'hover:bg-[#f37021]' },
+                { icon: <FaYoutube />, path: '#', color: 'hover:bg-[#f37021]' },
+                { icon: <FaInstagram />, path: '#', color: 'hover:bg-[#f37021]' }
               ].map((social, idx) => (
                 <a
                   key={idx}
@@ -53,7 +53,7 @@ const Footer = () => {
                     to={item === 'Home' ? '/' : `/${item.toLowerCase()}`}
                     className="text-gray-400 hover:text-white transition-colors duration-300 flex items-center gap-2 group"
                   >
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 scale-0 group-hover:scale-100 transition-transform"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#f37021] scale-0 group-hover:scale-100 transition-transform"></div>
                     {item}
                   </Link>
                 </li>
@@ -74,7 +74,7 @@ const Footer = () => {
                 'Online Test Series'
               ].map((course) => (
                 <li key={course} className="hover:text-white transition-colors cursor-pointer flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-indigo-500"></div>
+                  <div className="w-1 h-1 rounded-full bg-[#f37021]"></div>
                   {course}
                 </li>
               ))}
@@ -86,33 +86,33 @@ const Footer = () => {
             <h4 className="text-xl font-bold mb-8">Contact Us</h4>
             <ul className="space-y-6 text-gray-400">
               <li className="flex items-start gap-4">
-                <div className="p-3 bg-white/5 rounded-xl text-indigo-400"><FaMapMarkerAlt /></div>
-                <span className="text-sm">Above Corporation Bank, <br />Saguna More, Patna - 801503</span>
+                <div className="p-3 bg-white/5 rounded-xl text-orange-400"><FaMapMarkerAlt /></div>
+                <span className="text-sm">B/61, P.C. Colony, <br />Kankarbagh, Patna - 800020</span>
               </li>
               <li className="flex items-center gap-4">
-                <div className="p-3 bg-white/5 rounded-xl text-indigo-400"><FaPhoneAlt /></div>
-                <span className="text-sm">+91-0612-XXXXXXX</span>
+                <div className="p-3 bg-white/5 rounded-xl text-orange-400"><FaPhoneAlt /></div>
+                <span className="text-sm">+91-9155555244</span>
               </li>
               <li className="flex items-center gap-4">
-                <div className="p-3 bg-white/5 rounded-xl text-indigo-400"><FaEnvelope /></div>
-                <span className="text-sm">info@oasisjee.com</span>
+                <div className="p-3 bg-white/5 rounded-xl text-orange-400"><FaEnvelope /></div>
+                <span className="text-sm">oasispatna5555@gmail.com</span>
               </li>
               <li className="flex items-start gap-4">
-                <div className="p-3 bg-white/5 rounded-xl text-indigo-400"><FaClock /></div>
-                <span className="text-sm">Mon-Sat: 09:00 AM <br />to 08:00 PM</span>
+                <div className="p-3 bg-white/5 rounded-xl text-orange-400"><FaClock /></div>
+                <span className="text-sm">Mon-Sat: 08:00 AM <br />to 08:00 PM</span>
               </li>
             </ul>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-12 border-t border-white/5 flex flex-col md:row items-center justify-between gap-8">
+        <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-8">
           <p className="text-gray-500 text-sm text-center">
-            &copy; 2025 Oasis JEE Classes. All rights reserved.
+            &copy; 2026 Oasis JEE Classes. All rights reserved.
             <span className="mx-2 hidden sm:inline">|</span>
-            <span className="hover:text-indigo-400 cursor-pointer block sm:inline mt-2 sm:mt-0 transition-colors">Privacy Policy</span>
+            <span className="hover:text-orange-400 cursor-pointer block sm:inline mt-2 sm:mt-0 transition-colors">Privacy Policy</span>
             <span className="mx-2 hidden sm:inline">|</span>
-            <span className="hover:text-indigo-400 cursor-pointer block sm:inline mt-2 sm:mt-0 transition-colors">Terms of Service</span>
+            <span className="hover:text-orange-400 cursor-pointer block sm:inline mt-2 sm:mt-0 transition-colors">Terms of Service</span>
           </p>
           <div className="flex items-center gap-2 text-gray-600 text-xs italic">
             Made with ❤️ for the future engineers of India

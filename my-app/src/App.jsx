@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import AIFloatingBuddy from './components/AIFloatingBuddy';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -38,6 +39,7 @@ function App() {
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
+          <AIFloatingBuddy />
         </Router>
       </div>
     </AuthProvider>

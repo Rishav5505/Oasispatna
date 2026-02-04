@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-router.post('/chat', auth, async (req, res) => {
+router.post('/chat', async (req, res) => {
     const { message, history } = req.body;
 
     if (!message) {
@@ -19,7 +19,13 @@ router.post('/chat', auth, async (req, res) => {
         });
 
         // System prompt to guide the AI
-        const systemPrompt = "You are 'Oasis AI Study Buddy', a helpful assistant for JEE/NEET students at Oasis Classes. Explain concepts simply with examples. ";
+        const systemPrompt = `You are 'Oasis AI Study Buddy', a premium AI assistant for Oasis JEE/NEET Classes. 
+        Your goals:
+        1. Help students with Physics and Maths doubts (explain clearly, use examples).
+        2. Help users navigate the site. Pages: Home (/), Courses (/courses), Faculty (/faculty), Gallery (/gallery), Contact (/contact), Register (/register).
+        3. Be encouraging, professional, and friendly.
+        4. If someone asks for a demo class, tell them to visit the Contact page.
+        Respond in a mix of Hindi and English (Hinglish) if natural, or pure English.`;
 
         // Construct a clean history for Gemini:
         // 1. Must alternate user/model

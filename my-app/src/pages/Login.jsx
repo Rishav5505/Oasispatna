@@ -68,35 +68,35 @@ const Login = () => {
   };
 
   const roles = [
-    { id: 'student', label: 'Student', emoji: '👨‍🎓', color: 'blue' },
-    { id: 'teacher', label: 'Teacher', emoji: '👨‍🏫', color: 'green' },
-    { id: 'parent', label: 'Parent', emoji: '👨‍👩‍👦', color: 'purple' },
+    { id: 'student', label: 'Student', emoji: '👨‍🎓', color: 'orange' },
+    { id: 'teacher', label: 'Teacher', emoji: '👨‍🏫', color: 'gray' },
+    { id: 'parent', label: 'Parent', emoji: '👨‍👩‍👦', color: 'amber' },
     { id: 'admin', label: 'Admin', emoji: '⚙️', color: 'red' }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 flex items-center justify-center p-4">
-      <div className="bg-white bg-opacity-90 backdrop-blur-lg rounded-3xl shadow-2xl p-8 w-full max-w-md transform transition-all duration-300 relative">
+    <div className="min-h-screen bg-black bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-[0_0_50px_rgba(243,112,33,0.3)] p-8 w-full max-w-md transform transition-all duration-300 relative border border-orange-500/10">
         <Link
           to="/"
-          className="absolute top-6 left-6 text-gray-400 hover:text-blue-500 transition-colors flex items-center gap-1 text-sm font-semibold group"
+          className="absolute top-6 left-6 text-gray-400 hover:text-[#f37021] transition-colors flex items-center gap-1 text-xs font-black uppercase tracking-widest group"
         >
-          <span className="group-hover:-translate-x-1 transition-transform">←</span> Back
+          <span className="group-hover:-translate-x-1 transition-transform">←</span> Home
         </Link>
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg overflow-hidden p-1 border-2 border-blue-100">
+          <div className="w-16 h-16 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg overflow-hidden p-1 border-2 border-orange-100">
             <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-1">Portal Login</h2>
+          <h2 className="text-2xl font-black text-gray-900 mb-1 uppercase tracking-tight">Portal Login</h2>
 
-          <div className="flex justify-center gap-4 mb-4 mt-4">
+          <div className="flex justify-center gap-4 mb-4 mt-6">
             {roles.map((r) => {
               const isActive = role === r.id;
               const activeStyles = {
-                blue: 'bg-blue-100 border-blue-500 shadow-blue-200 text-blue-700',
-                green: 'bg-green-100 border-green-500 shadow-green-200 text-green-700',
-                purple: 'bg-purple-100 border-purple-500 shadow-purple-200 text-purple-700',
-                red: 'bg-red-100 border-red-500 shadow-red-200 text-red-700'
+                orange: 'bg-orange-100 border-[#f37021] shadow-orange-200 text-[#f37021]',
+                gray: 'bg-gray-100 border-gray-900 shadow-gray-200 text-gray-900',
+                amber: 'bg-amber-100 border-amber-600 shadow-amber-200 text-amber-600',
+                red: 'bg-red-100 border-red-600 shadow-red-200 text-red-600'
               };
 
               return (
@@ -104,41 +104,34 @@ const Login = () => {
                   key={r.id}
                   type="button"
                   onClick={() => setRole(r.id)}
-                  className={`flex flex-col items-center group transition-all duration-200 ${isActive ? 'scale-110' : 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0'}`}
+                  className={`flex flex-col items-center group transition-all duration-200 ${isActive ? 'scale-110' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-md border-2 transition-all ${isActive ? activeStyles[r.color] : 'bg-gray-50 border-gray-200 text-gray-400'
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-md border-2 transition-all ${isActive ? activeStyles[r.color] : 'bg-gray-50 border-gray-100 text-gray-400'
                     }`}>
                     {r.emoji}
                   </div>
-                  <span className={`text-[10px] font-bold mt-1.5 uppercase tracking-tighter ${isActive ? activeStyles[r.color].split(' ').pop() : 'text-gray-400'
+                  <span className={`text-[9px] font-black mt-2 uppercase tracking-tight ${isActive ? activeStyles[r.color].split(' ').pop() : 'text-gray-400'
                     }`}>
                     {r.label}
                   </span>
-                  {isActive && (
-                    <div className={`w-1.5 h-1.5 rounded-full mt-1 animate-pulse ${r.color === 'blue' ? 'bg-blue-500' :
-                      r.color === 'green' ? 'bg-green-500' :
-                        r.color === 'purple' ? 'bg-purple-500' : 'bg-red-500'
-                      }`}></div>
-                  )}
                 </button>
               );
             })}
           </div>
 
-          <p className="text-gray-500 text-sm">Sign in to your <span className="font-bold capitalize text-gray-700">{role}</span> account</p>
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Sign in as <span className="text-[#f37021]">{role}</span></p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <input
               type="email"
               placeholder="Email Address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 pl-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors duration-300 bg-gray-50"
+              className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold transition-all"
               required
             />
-            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">📧</span>
           </div>
 
           <div className="relative">
@@ -147,27 +140,26 @@ const Login = () => {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 pl-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors duration-300 bg-gray-50"
+              className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold transition-all"
               required
             />
-            <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">🔒</span>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-lg"
+            className="w-full bg-gradient-to-r from-[#f37021] to-black text-white p-5 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] shadow-xl shadow-orange-500/20 transition-all duration-300"
           >
-            Sign In
+            Sign In Now
           </button>
         </form>
 
-        <div className="flex justify-between items-center mt-6 text-sm">
-          <Link to="/register" className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-300">
-            Create Account
+        <div className="flex justify-between items-center mt-6 text-xs font-bold">
+          <Link to="/register" className="text-gray-500 hover:text-[#f37021] transition-colors uppercase tracking-tight">
+            New Student? Register
           </Link>
           <button
             onClick={() => setShowForgot(true)}
-            className="text-purple-600 hover:text-purple-800 font-medium transition-colors duration-300"
+            className="text-gray-500 hover:text-[#f37021] transition-colors uppercase tracking-tight"
           >
             Forgot Password?
           </button>

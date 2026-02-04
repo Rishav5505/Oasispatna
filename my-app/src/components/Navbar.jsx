@@ -27,13 +27,13 @@ const Navbar = () => {
   }, []);
 
   return (
-    <nav className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 ease-in-out ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-indigo-50' : 'bg-white border-b border-gray-100'}`}>
+    <nav className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 ease-in-out ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-orange-50' : 'bg-white border-b border-gray-100'}`}>
       <div className="w-full px-6 md:px-12 lg:px-16 h-16 md:h-20 flex justify-between items-center">
         <Link to="/" className="group flex items-center">
-          <div className="relative p-1.5 md:p-2 bg-white rounded-2xl shadow-lg border border-gray-100/50 group-hover:shadow-indigo-500/10 transition-all duration-300 transform group-hover:-translate-y-0.5">
+          <div className="relative p-1.5 md:p-2 bg-white rounded-2xl shadow-lg border border-gray-100/50 group-hover:shadow-orange-500/10 transition-all duration-300 transform group-hover:-translate-y-0.5">
             <img
               src={oasisBannerLogo}
-              alt="Oasis IIT JEE"
+              alt="Oasis JEE Classes"
               className="h-10 md:h-14 w-auto object-contain"
             />
           </div>
@@ -50,14 +50,16 @@ const Navbar = () => {
             { name: 'Gallery', path: '/gallery' },
             { name: 'Contact', path: '/contact' },
           ].map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className="relative text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-300 font-bold text-sm uppercase tracking-tight group/nav"
-            >
-              <span className="relative z-10">{link.name}</span>
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-300 group-hover/nav:w-full rounded-full"></span>
-            </Link>
+            link.name === 'Home' || link.name === 'About' || link.name === 'Courses' || link.name === 'Faculty' || link.name === 'Results' || link.name === 'Gallery' || link.name === 'Contact' ? (
+              <Link
+                key={link.path}
+                to={link.path}
+                className="relative text-slate-700 dark:text-slate-200 hover:text-[#f37021] dark:hover:text-orange-400 transition-all duration-300 font-bold text-sm uppercase tracking-tight group/nav"
+              >
+                <span className="relative z-10">{link.name}</span>
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#f37021] to-orange-600 transition-all duration-300 group-hover/nav:w-full rounded-full"></span>
+              </Link>
+            ) : null
           ))}
 
           <button
@@ -72,9 +74,9 @@ const Navbar = () => {
             )}
           </button>
 
-          <Link to="/login" className="relative group overflow-hidden bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white px-8 py-3.5 rounded-2xl transition-all duration-300 text-sm font-black shadow-xl shadow-indigo-500/20 transform hover:-translate-y-1 hover:shadow-indigo-500/40 active:scale-95">
+          <Link to="/login" className="relative group overflow-hidden bg-gradient-to-r from-orange-600 via-[#f37021] to-black text-white px-8 py-3.5 rounded-2xl transition-all duration-300 text-sm font-black shadow-xl shadow-orange-500/20 transform hover:-translate-y-1 hover:shadow-orange-500/40 active:scale-95">
             <span className="relative z-10">Student Login</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-black to-[#f37021] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           </Link>
         </div>
 

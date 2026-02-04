@@ -8,15 +8,23 @@ import config from '../../config';
 const Contact = () => {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', course: '' });
   const [activeFaq, setActiveFaq] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState({ message: '', type: '' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setStatus({ message: '', type: '' });
     try {
       await axios.post(`${config.API_URL}/leads`, form);
-      alert('Your enquiry has been received. Our team will contact you shortly.');
+      setStatus({ message: '✨ Success! We have received your inquiry and sent a confirmation email.', type: 'success' });
       setForm({ name: '', email: '', phone: '', message: '', course: '' });
+      setTimeout(() => setStatus({ message: '', type: '' }), 8000);
     } catch (error) {
-      alert('Something went wrong. Please call us directly.');
+      console.error('Submission error:', error);
+      setStatus({ message: '❌ Failed to send enquiry. Please try again or call us.', type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -218,11 +226,23 @@ const Contact = () => {
                     ></textarea>
                   </div>
 
+                  {status.message && (
+                    <div className={`p-4 rounded-2xl text-center font-bold animate-in fade-in slide-in-from-top-2 ${status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
+                      }`}>
+                      {status.message}
+                    </div>
+                  )}
+
                   <button
                     type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xl py-5 rounded-[2rem] transition-all shadow-2xl shadow-blue-200 flex items-center justify-center gap-3 active:scale-95 group"
+                    disabled={isSubmitting}
+                    className={`w-full font-black text-xl py-5 rounded-[2rem] transition-all shadow-2xl flex items-center justify-center gap-3 active:scale-95 group ${isSubmitting
+                        ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
+                      }`}
                   >
-                    Send Enquiry <FaPaperPlane className="group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-300" />
+                    {isSubmitting ? 'Sending Enquiry...' : 'Send Enquiry'}
+                    {!isSubmitting && <FaPaperPlane className="group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-300" />}
                   </button>
                 </form>
               </div>

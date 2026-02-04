@@ -19,7 +19,7 @@ import { FaLaptopCode } from 'react-icons/fa';
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
 const ParentDashboard = () => {
-    const { user, logout, loading: authLoading } = useContext(AuthContext);
+    const { user, logout, updateUser, loading: authLoading } = useContext(AuthContext);
     const [profile, setProfile] = useState({});
     const [children, setChildren] = useState([]);
     const [selectedChild, setSelectedChild] = useState(null);
@@ -111,12 +111,15 @@ const ParentDashboard = () => {
         formData.append('name', editForm.name);
 
         try {
-            await axios.put(`${config.API_URL}/auth/me`, formData, {
+            const res = await axios.put(`${config.API_URL}/auth/me`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     'Authorization': `Bearer ${token}`,
                 },
             });
+            if (res.data.user?.profilePhoto) {
+                updateUser({ profilePhoto: res.data.user.profilePhoto });
+            }
 
             setPhotoFile(null);
             setPhotoPreview(null);

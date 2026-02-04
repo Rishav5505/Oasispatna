@@ -19,7 +19,7 @@ import DoubtBoard from '../components/doubt/DoubtBoard';
 import { FaVideo, FaPlayCircle, FaLaptopCode, FaQuestionCircle } from 'react-icons/fa';
 
 const TeacherDashboard = () => {
-  const { user } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
   const [profile, setProfile] = useState({});
   const [teacherData, setTeacherData] = useState({ subjects: [], batches: [], classes: [] });
   const [activeTab, setActiveTab] = useState('overview');
@@ -110,13 +110,16 @@ const TeacherDashboard = () => {
     formData.append('profilePhoto', photoFile);
 
     try {
-      await axios.put(`${config.API_URL}/auth/me`, formData, {
+      const res = await axios.put(`${config.API_URL}/auth/me`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });
       alert('Profile photo updated successfully!');
+      if (res.data.user?.profilePhoto) {
+        updateUser({ profilePhoto: res.data.user.profilePhoto });
+      }
       setPhotoFile(null);
       setPhotoPreview(null);
       fetchTeacherProfile(); // Refresh profile data

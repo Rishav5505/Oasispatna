@@ -6,6 +6,7 @@ const leadSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   message: { type: String },
   course: { type: String },
+  batchTiming: { type: String },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Lead', leadSchema);

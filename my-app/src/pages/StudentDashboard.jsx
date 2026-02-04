@@ -19,7 +19,7 @@ import { FaVideo, FaPlayCircle, FaFlask, FaQuestionCircle, FaHome, FaRobot, FaQr
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const StudentDashboard = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, updateUser } = useContext(AuthContext);
   const [profile, setProfile] = useState({});
   const [student, setStudent] = useState({});
   const [attendance, setAttendance] = useState([]);
@@ -249,7 +249,7 @@ const StudentDashboard = () => {
       formData.append('profilePhoto', photoFile);
       formData.append('name', editForm.name);
 
-      await axios.put(`${config.API_URL}/auth/me`, formData, {
+      const response = await axios.put(`${config.API_URL}/auth/me`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`,
@@ -258,6 +258,9 @@ const StudentDashboard = () => {
 
       setPhotoFile(null);
       setPhotoPreview(null);
+      if (response.data.user?.profilePhoto) {
+        updateUser({ profilePhoto: response.data.user.profilePhoto });
+      }
       fetchAllData();
       alert('Profile photo updated successfully!');
     } catch (err) {
@@ -324,6 +327,9 @@ const StudentDashboard = () => {
 
       setEditMode(false);
       setPhotoFile(null);
+      if (userResponse.data.user?.profilePhoto) {
+        updateUser({ profilePhoto: userResponse.data.user.profilePhoto });
+      }
       fetchAllData(); // Refresh data
       alert('Profile updated successfully! All data saved to MongoDB.');
     } catch (err) {

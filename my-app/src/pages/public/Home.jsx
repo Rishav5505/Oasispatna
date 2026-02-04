@@ -38,6 +38,7 @@ const Home = () => {
     message: ''
   });
   const [formStatus, setFormStatus] = useState({ message: '', type: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const heroImages = [heroUp1, heroUp2, best1, best2, best3];
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
@@ -96,6 +97,7 @@ const Home = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormStatus({ message: '', type: '' });
+    setIsSubmitting(true);
 
     try {
       const response = await fetch(`${config.API_URL}/leads`, {
@@ -107,13 +109,17 @@ const Home = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setFormStatus({ message: data.message, type: 'success' });
+        setFormStatus({ message: '✨ Success! Your demo class is booked. Check your email for confirmation.', type: 'success' });
         setFormData({ name: '', email: '', phone: '', course: 'JEE Main', batchTiming: 'Morning', message: '' });
+        // Clear message after 5 seconds
+        setTimeout(() => setFormStatus({ message: '', type: '' }), 8000);
       } else {
-        setFormStatus({ message: data.message, type: 'error' });
+        setFormStatus({ message: data.message || 'Submission failed. Please try again.', type: 'error' });
       }
     } catch (err) {
-      setFormStatus({ message: 'Failed to submit. Please try again.', type: 'error' });
+      setFormStatus({ message: '❌ Connection error. Please try again later.', type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -625,9 +631,23 @@ const Home = () => {
 
               <button
                 type="submit"
-                className="w-full bg-white text-indigo-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 hover:scale-105 transition-all duration-300 shadow-lg"
+                disabled={isSubmitting}
+                className={`w-full py-4 rounded-lg font-bold text-lg transition-all duration-300 shadow-lg flex items-center justify-center gap-3 ${isSubmitting
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-white text-indigo-600 hover:bg-gray-100 hover:scale-[1.02] active:scale-95'
+                  }`}
               >
-                📞 Request Free Demo Class
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  <>📞 Request Free Demo Class</>
+                )}
               </button>
 
               {formStatus.message && (

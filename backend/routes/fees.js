@@ -126,31 +126,59 @@ router.post('/pay', auth, roleAuth('admin', 'parent'), async (req, res) => {
         await fee.save();
 
         // Find Student Profile to get User ID and Parent ID
-        const studentProfile = await Student.findById(studentId);
+        const studentProfile = await Student.findById(studentId).populate('userId').populate('parentId');
 
         if (studentProfile) {
-            console.log(`Recording payment for student: ${studentProfile.name}, userId: ${studentProfile.userId}, parentId: ${studentProfile.parentId}`);
+            console.log(`Recording payment for student: ${studentProfile.name}`);
+
+            // Prepare emails list & send receipt
+            const recipientEmails = [];
+            if (studentProfile.userId && studentProfile.userId.email) recipientEmails.push(studentProfile.userId.email);
+            if (studentProfile.parentId && studentProfile.parentId.email) recipientEmails.push(studentProfile.parentId.email);
+
+            if (status === 'Paid' && recipientEmails.length > 0) {
+                const sendFeeReceipt = require('../utils/sendFeeReceipt');
+                try {
+                    await sendFeeReceipt(recipientEmails, {
+                        studentName: studentProfile.name,
+                        fatherName: studentProfile.fatherName,
+                        amount: amount,
+                        transactionId: transactionId || fee._id.toString(),
+                        date: new Date(),
+                        mode: mode || 'Cash',
+                        type: type || 'Direct Payment',
+                        remarks: remarks
+                    });
+                    console.log('Fee receipt emails sent to:', recipientEmails);
+                } catch (emailErr) {
+                    console.error('Failed to send fee receipt email:', emailErr);
+                }
+            }
+
             // Create Notification for Student
-            try {
-                const studentNotif = new Notification({
-                    recipient: new mongoose.Types.ObjectId(studentProfile.userId),
-                    title: status === 'Paid' ? 'Fee Payment Received' : 'Payment Submitted',
-                    message: status === 'Paid'
-                        ? `We have received a payment of ₹${amount} for ${type || 'fees'}.`
-                        : `Payment proof of ₹${amount} submitted for verification.`,
-                    type: 'fee'
-                });
-                await studentNotif.save();
-                console.log('Notification sent to student:', studentProfile.userId);
-            } catch (notifErr) {
-                console.error('Error sending student notification:', notifErr);
+            const studentUserId = (studentProfile.userId && studentProfile.userId._id) ? studentProfile.userId._id : studentProfile.userId;
+            if (studentUserId) {
+                try {
+                    const studentNotif = new Notification({
+                        recipient: studentUserId,
+                        title: status === 'Paid' ? 'Fee Payment Received' : 'Payment Submitted',
+                        message: status === 'Paid'
+                            ? `We have received a payment of ₹${amount} for ${type || 'fees'}.`
+                            : `Payment proof of ₹${amount} submitted for verification.`,
+                        type: 'fee'
+                    });
+                    await studentNotif.save();
+                } catch (notifErr) {
+                    console.error('Error sending student notification:', notifErr);
+                }
             }
 
             // Create Notification for Parent (if linked)
             if (studentProfile.parentId) {
                 try {
+                    const recipientId = studentProfile.parentId._id || studentProfile.parentId;
                     const parentNotif = new Notification({
-                        recipient: new mongoose.Types.ObjectId(studentProfile.parentId),
+                        recipient: recipientId,
                         title: status === 'Paid' ? 'Fee Payment Confirmation' : 'Payment Submitted',
                         message: status === 'Paid'
                             ? `Payment of ₹${amount} received for ${studentProfile.name}.`

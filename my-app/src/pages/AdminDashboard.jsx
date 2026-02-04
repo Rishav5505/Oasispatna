@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import io from 'socket.io-client';
 import { Bar, Pie, Line, Doughnut } from 'react-chartjs-2';
 import { AuthContext } from '../contexts/AuthContext';
 import {
@@ -41,7 +42,7 @@ ChartJS.register(
 );
 
 const AdminDashboard = () => {
-  const { user, token, loading: authLoading } = useContext(AuthContext);
+  const { user, token, updateUser, loading: authLoading } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
   const [availableClasses, setAvailableClasses] = useState([]);
@@ -99,6 +100,7 @@ const AdminDashboard = () => {
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [newNotice, setNewNotice] = useState({ title: '', content: '', targetRoles: ['student', 'parent'] });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [leads, setLeads] = useState([]);
 
   useEffect(() => {
     // If auth is loading, do nothing yet
@@ -115,6 +117,31 @@ const AdminDashboard = () => {
     fetchProfile();
     fetchAllStudents();
     fetchMetadata();
+
+    // Socket implementation for real-time notifications
+    const socket = io(config.SOCKET_URL);
+    socket.on('connect', () => console.log('✅ Admin Connected to Socket Server'));
+
+    // Listen for new leads
+    socket.on('new-lead', (newLead) => {
+      console.log('📣 New demo request received:', newLead);
+      setLeads(prev => [newLead, ...prev]);
+
+      // Play notification sound
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.play();
+      } catch (err) {
+        console.log('Audio play failed:', err);
+      }
+
+      // Auto-switch notification or toast could be added here
+      alert(`New Demo Request from: ${newLead.name}`);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [token, user, authLoading]);
 
   // Fetch fees when tab changes to 'fees'
@@ -130,6 +157,9 @@ const AdminDashboard = () => {
     }
     if (activeTab === 'insights') {
       fetchInsights();
+    }
+    if (activeTab === 'leads') {
+      fetchLeads();
     }
   }, [activeTab]);
 
@@ -163,12 +193,16 @@ const AdminDashboard = () => {
       formData.append('profilePhoto', photoFile);
       formData.append('name', editForm.name);
 
-      await axios.put(`${config.API_URL}/auth/me`, formData, {
+      const res = await axios.put(`${config.API_URL}/auth/me`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`,
         },
       });
+
+      if (res.data.user?.profilePhoto) {
+        updateUser({ profilePhoto: res.data.user.profilePhoto });
+      }
 
       setPhotoFile(null);
       setPhotoPreview(null);
@@ -195,12 +229,15 @@ const AdminDashboard = () => {
       formData.append('address', editForm.address);
       if (photoFile) formData.append('profilePhoto', photoFile);
 
-      await axios.put(`${config.API_URL}/auth/me`, formData, {
+      const res = await axios.put(`${config.API_URL}/auth/me`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         }
       });
+      if (res.data.user?.profilePhoto) {
+        updateUser({ profilePhoto: res.data.user.profilePhoto });
+      }
       setEditMode(false);
       setPhotoFile(null);
       setPhotoPreview(null);
@@ -377,6 +414,18 @@ const AdminDashboard = () => {
         atRisk: [],
         subjectPerformance: []
       });
+    }
+  };
+
+  const fetchLeads = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${config.API_URL}/leads`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setLeads(res.data);
+    } catch (err) {
+      console.error('Error fetching leads:', err);
     }
   };
 
@@ -773,6 +822,7 @@ const AdminDashboard = () => {
             { id: 'schedule', icon: FaCalendarAlt, label: 'Schedule & Timings' },
             { id: 'insights', icon: FaChartPie, label: 'AI Insights' },
             { id: 'fees', icon: FaMoneyBillWave, label: 'Fees Management' },
+            { id: 'leads', icon: FaEnvelope, label: 'Demo Requests' },
             { id: 'communication', icon: FaBullhorn, label: 'Notice Center' },
             { id: 'profile', icon: FaCogs, label: 'Profile Settings' },
           ].map(item => (
@@ -1317,8 +1367,8 @@ const AdminDashboard = () => {
                       <div className="space-y-6">
                         {/* Note: In a real app, 'totalFee' would come from backend. Currently defaulting 0 or fetching if available */}
                         {(() => {
-                          const studentFees = fees.filter(f => f.studentId?._id === selectedFeeStudent._id || f.studentId === selectedFeeStudent._id);
-                          const totalPaid = studentFees.reduce((acc, curr) => acc + curr.amount, 0);
+                          const studentFees = fees.filter(f => (f.studentId?._id === selectedFeeStudent._id || f.studentId === selectedFeeStudent._id));
+                          const totalPaid = studentFees.reduce((acc, curr) => (curr.status === 'Paid' ? acc + curr.amount : acc), 0);
                           const totalFee = selectedFeeStudent.totalFee || 50000; // Default or fetched
                           const due = totalFee - totalPaid;
 
@@ -1905,6 +1955,90 @@ const AdminDashboard = () => {
                       ))}
                       {tests.length === 0 && (
                         <tr><td colSpan="4" className="text-center py-10 text-gray-400 font-bold italic">No academic tests found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'leads' && (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black text-gray-900">Demo Class Requests</h2>
+                  <p className="text-gray-400 font-bold text-sm">Potential students interested in a free demo</p>
+                </div>
+                <div className="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-black text-sm border border-indigo-100 shadow-sm">
+                  TOTAL LEADS: {leads.length}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                    <thead>
+                      <tr className="bg-gray-50/50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                        <th className="px-8 py-6">Student Info</th>
+                        <th className="px-8 py-6">Contact Details</th>
+                        <th className="px-8 py-6">Requested Course</th>
+                        <th className="px-8 py-6">Batch Time</th>
+                        <th className="px-8 py-6">Requested At</th>
+                        <th className="px-8 py-6">Message</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {leads.map((lead) => (
+                        <tr key={lead._id} className="group hover:bg-gray-50 transition-all">
+                          <td className="px-8 py-6">
+                            <p className="font-bold text-gray-900 text-sm">{lead.name}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Demo Enrollment</p>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                <FaEnvelope className="text-indigo-400" /> {lead.email}
+                              </p>
+                              <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                <span className="text-indigo-400">📞</span> {lead.phone}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase border border-indigo-100">
+                              {lead.course || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className="text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-lg border border-gray-200 uppercase">
+                              {lead.batchTiming || 'Any'}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6">
+                            <p className="text-xs font-bold text-gray-500">{new Date(lead.createdAt).toLocaleDateString()}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{new Date(lead.createdAt).toLocaleTimeString()}</p>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="max-w-xs">
+                              <p className="text-xs text-gray-600 italic leading-relaxed">
+                                {lead.message || 'No additional message provided.'}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {leads.length === 0 && (
+                        <tr>
+                          <td colSpan="5" className="px-8 py-20 text-center">
+                            <div className="flex flex-col items-center">
+                              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-200 text-4xl mb-4">
+                                📬
+                              </div>
+                              <p className="text-gray-400 font-bold">No demo requests found yet.</p>
+                            </div>
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
