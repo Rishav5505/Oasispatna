@@ -289,10 +289,13 @@ router.put('/me', auth, upload.single('profilePhoto'), async (req, res) => {
 
     if (req.file) {
       user.profilePhoto = `/uploads/${req.file.filename}`;
-      console.log('Profile photo saved:', user.profilePhoto);
+      console.log('Profile photo saving to DB:', user.profilePhoto);
+    } else {
+      console.log('No file received in request for profile update');
     }
 
-    await user.save();
+    const savedUser = await user.save();
+    console.log('User saved successfully. ProfilePhoto in DB:', savedUser.profilePhoto);
     console.log('User updated successfully:', user._id);
     res.json({ message: 'Profile updated', user: { ...user.toObject(), password: undefined } });
   } catch (err) {

@@ -18,7 +18,10 @@ export const AuthProvider = ({ children }) => {
       // Fetch user info
       axios.get(`${config.API_URL}/auth/me`)
         .then(res => {
-          setUser({ id: res.data._id, role: res.data.role, profilePhoto: res.data.profilePhoto, name: res.data.name });
+          console.log('User data loaded from session:', res.data);
+          // Ensure we safeguard strictly against missing id by mapping _id
+          const userData = { ...res.data, id: res.data._id };
+          setUser(userData);
           setMustChangePassword(res.data.mustChangePassword || false);
         })
         .catch(err => {
@@ -36,7 +39,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, selectedRole) => {
     const res = await axios.post(`${config.API_URL}/auth/login`, { email, password });
-    const { token: receivedToken, role, id, mustChangePassword: mcp } = res.data;
+    const { token: receivedToken, role, id, mustChangePassword: mcp, profilePhoto } = res.data;
 
     // Validate that the user's role matches the selected portal role
     if (selectedRole && role !== selectedRole) {
@@ -46,7 +49,11 @@ export const AuthProvider = ({ children }) => {
     setToken(receivedToken);
     sessionStorage.setItem('token', receivedToken);
     axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
-    setUser({ id, role, profilePhoto: res.data.profilePhoto, name: res.data.name });
+
+    // Construct user object carefully to match what /me returns
+    const userData = { ...res.data, id: id, _id: id };
+    console.log('User logged in:', userData);
+    setUser(userData);
     setMustChangePassword(mcp || false);
   };
 

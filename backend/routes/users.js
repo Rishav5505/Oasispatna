@@ -300,7 +300,7 @@ router.get('/students/all', auth, roleAuth('admin'), async (req, res) => {
   try {
     console.log('Fetching all students for admin dropdown...');
     const students = await Student.find()
-      .populate('userId', 'email')
+      .populate('userId', 'email profilePhoto')
       .populate('classId', 'name')
       .populate('batchId', 'name')
       .populate('parentId', 'name email')

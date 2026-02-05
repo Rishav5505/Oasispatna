@@ -1042,8 +1042,8 @@ const AdminDashboard = () => {
           <div className="flex items-center gap-2 md:gap-8">
             <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:rounded-2xl md:border md:border-dotted md:border-gray-200 group cursor-pointer transition-all">
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs md:text-sm overflow-hidden border border-indigo-200 shadow-inner group-hover:scale-105 transition-transform">
-                {user?.profilePhoto ? (
-                  <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} className="w-full h-full object-cover" />
+                {user?.profilePhoto || profile?.profilePhoto ? (
+                  <img src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`} className="w-full h-full object-cover" />
                 ) : (
                   user?.name?.charAt(0) || 'A'
                 )}
@@ -1307,8 +1307,12 @@ const AdminDashboard = () => {
                         >
                           <td className="px-4 md:px-8 py-6">
                             <div className="flex items-center gap-3 md:gap-4">
-                              <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 rounded-xl md:rounded-2xl flex items-center justify-center shadow-sm overflow-hidden p-2 group-hover:scale-110 transition-all">
-                                <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain opacity-40 group-hover:opacity-100 transition-all" />
+                              <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 rounded-xl md:rounded-2xl flex items-center justify-center shadow-sm overflow-hidden p-0 group-hover:scale-110 transition-all">
+                                {student.userId?.profilePhoto ? (
+                                  <img src={`${config.API_URL.replace('/api', '')}${student.userId.profilePhoto}`} alt="Profile" className="w-full h-full object-cover transition-all" />
+                                ) : (
+                                  <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain opacity-40 group-hover:opacity-100 transition-all p-2" />
+                                )}
                               </div>
                               <div className="min-w-0">
                                 <p className="font-bold text-gray-900 text-sm group-hover:text-indigo-600 transition-colors truncate">{student.name}</p>
@@ -1824,8 +1828,12 @@ const AdminDashboard = () => {
                       <tr key={teacher._id} className="group hover:bg-gray-50 transition-all">
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 font-bold text-xl shadow-sm">
-                              {(teacher.name || '?').charAt(0)}
+                            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 font-bold text-xl shadow-sm overflow-hidden">
+                              {teacher.profilePhoto ? (
+                                <img src={`${config.API_URL.replace('/api', '')}${teacher.profilePhoto}`} className="w-full h-full object-cover" />
+                              ) : (
+                                (teacher.name || '?').charAt(0)
+                              )}
                             </div>
                             <div>
                               <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{teacher.name}</p>
@@ -2432,8 +2440,8 @@ const AdminDashboard = () => {
                   <div className="w-40 h-40 rounded-[3rem] bg-indigo-50 border-8 border-white shadow-2xl flex items-center justify-center text-5xl text-indigo-600 font-black mb-8 relative group overflow-hidden">
                     {photoPreview ? (
                       <img src={photoPreview} className="w-full h-full object-cover" />
-                    ) : user?.profilePhoto ? (
-                      <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} className="w-full h-full object-cover" />
+                    ) : (user?.profilePhoto || profile?.profilePhoto) ? (
+                      <img src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`} className="w-full h-full object-cover" />
                     ) : profile.name?.charAt(0)}
                     <label className="absolute inset-0 bg-indigo-900/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
                       <FaPlus className="text-white text-2xl mb-2" />
