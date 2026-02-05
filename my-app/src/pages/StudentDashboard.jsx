@@ -521,7 +521,15 @@ const StudentDashboard = () => {
               <div className="flex items-center space-x-1 md:space-x-3">
                 <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs md:text-base font-semibold overflow-hidden shadow-inner border border-white/20">
                   {user?.profilePhoto || profile?.profilePhoto ? (
-                    <img src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`} alt="Profile" className="w-full h-full object-cover" />
+                    <img
+                      src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Student')}&background=random&color=fff&bold=true`;
+                      }}
+                    />
                   ) : (
                     (user?.name || 'S').charAt(0).toUpperCase()
                   )}
@@ -588,7 +596,15 @@ const StudentDashboard = () => {
                       ) : photoPreview ? (
                         <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                       ) : (user?.profilePhoto || profile?.profilePhoto) ? (
-                        <img src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`} alt="Profile" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        <img
+                          src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`}
+                          alt="Profile"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Student')}&background=random&color=fff&bold=true`;
+                          }}
+                        />
                       ) : (
                         <div className="flex flex-col items-center">
                           <FaUser className="text-2xl md:text-4xl text-white opacity-90" />
