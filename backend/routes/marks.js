@@ -217,6 +217,13 @@ router.get('/class-summary/:classId', auth, roleAuth('admin', 'teacher'), async 
     // 4. Get ALL attendance for these students
     const allAttendance = await Attendance.find({ studentId: { $in: studentIds } });
 
+    console.log(`[ClassSummary] ClassId: ${classId}`);
+    console.log(`[ClassSummary] Found ${students.length} students.`);
+    console.log(`[ClassSummary] Found ${allMarks.length} total marks records for these students.`);
+    if (allMarks.length > 0) {
+      console.log('[ClassSummary] Sample mark:', JSON.stringify(allMarks[0], null, 2));
+    }
+
     // 3. Map marks to students
     const summary = students.map(student => {
       const studentIdStr = student._id.toString();
@@ -263,6 +270,8 @@ router.get('/class-summary/:classId', auth, roleAuth('admin', 'teacher'), async 
         subjectsMap[subId].total += Number(m.marks || 0);
         totalObtained += Number(m.marks || 0);
       });
+
+      console.log(`[ClassSummary] Student: ${student.name}, Marks Count: ${studentMarks.length}, Total Obtained: ${totalObtained}`);
 
       // Scale totalMax based on number of subjects (Assuming each subject is out of 100 total)
       subjectResults.forEach(() => {
@@ -332,14 +341,27 @@ router.get('/exam-summary/:examId', auth, roleAuth('admin', 'teacher'), async (r
     const allMarks = await Marks.find({ examId: exam._id }).populate('subjectId', 'name');
 
     // 3. Map marks to students
+    // 3. Map marks to students
     const summary = students.map(student => {
       const studentMarks = allMarks.filter(m => m.studentId.toString() === student._id.toString());
 
       let totalObtained = 0;
       let totalMax = 0;
 
-      const subjectResults = exam.subjects.map(subject => {
-        const markRecord = studentMarks.find(m => m.subjectId._id.toString() === subject._id.toString());
+      // Dynamic Subject List: Union of Exam Subjects and Actually Marked Subjects
+      const examSubjectMap = new Map();
+      exam.subjects.forEach(s => examSubjectMap.set(s._id.toString(), { _id: s._id, name: s.name }));
+
+      studentMarks.forEach(m => {
+        if (m.subjectId && !examSubjectMap.has(m.subjectId._id.toString())) {
+          examSubjectMap.set(m.subjectId._id.toString(), { _id: m.subjectId._id, name: m.subjectId.name });
+        }
+      });
+
+      const uniqueSubjects = Array.from(examSubjectMap.values());
+
+      const subjectResults = uniqueSubjects.map(subject => {
+        const markRecord = studentMarks.find(m => m.subjectId && m.subjectId._id.toString() === subject._id.toString());
         const obtained = markRecord ? markRecord.marks : 0;
         const maxMarks = markRecord ? (markRecord.maxMarks || 100) : 100;
 
