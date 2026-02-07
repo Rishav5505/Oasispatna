@@ -2,6 +2,7 @@
 my-app/node_modules
 my-app/dist
 my-app/dist-ssr
+my-app/dev-dist
 my-app/*.local
 my-app/npm-debug.log*
 
