@@ -47,7 +47,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">Address</h3>
-                    <p className="text-gray-600">Above Corporation Bank, Saguna More, Patna, Bihar 800001</p>
+                    <p className="text-gray-600">Union Bank building near saguna more, Danapur patna - 801503</p>
                   </div>
                 </div>
 
@@ -59,7 +59,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">Phone</h3>
-                    <p className="text-gray-600">+91-XXXXXXXXXX</p>
+                    <p className="text-gray-600">9905424369, 8825198919</p>
                   </div>
                 </div>
 
@@ -71,7 +71,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">Email</h3>
-                    <p className="text-gray-600">info@oasisjee.com</p>
+                    <p className="text-gray-600">www.oasisjeeclasses.com</p>
                   </div>
                 </div>
               </div>
@@ -138,10 +138,12 @@ const Contact = () => {
                     required
                   >
                     <option value="">Select Course</option>
-                    <option value="JEE Main">JEE Main</option>
-                    <option value="JEE Advanced">JEE Advanced</option>
-                    <option value="NEET">NEET</option>
-                    <option value="Foundation">Foundation Course</option>
+                    <option value="GROUND ZERO">GROUND ZERO (Class 7)</option>
+                    <option value="NURTURE">NURTURE (Class 8)</option>
+                    <option value="SHAKSHAM">SHAKSHAM (Class 9)</option>
+                    <option value="DAKSH">DAKSH (Class 10)</option>
+                    <option value="ABHYAAS">ABHYAAS (Class 11)</option>
+                    <option value="TARGET">TARGET (Class 12)</option>
                   </select>
                 </div>
 
@@ -169,7 +171,7 @@ const Contact = () => {
       </div>
       <Footer />
       <a
-        href="https://wa.me/91XXXXXXXXXX"
+        href="https://wa.me/919905424369"
         className="fixed bottom-6 right-6 bg-green-500 text-white p-4 rounded-full shadow-lg hover:bg-green-600 transition-all duration-300 transform hover:scale-110 z-50"
         target="_blank"
         rel="noopener noreferrer"

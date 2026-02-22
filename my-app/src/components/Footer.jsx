@@ -23,18 +23,20 @@ const Footer = () => {
               />
             </Link>
             <p className="text-gray-400 text-lg leading-relaxed mb-10 max-w-sm">
-              Patna's premier coaching institute for IIT-JEE & Foundation. Empowering minds, transforming futures since 2014.
+              Patna's premier coaching institute for IIT-JEE & Foundation. Empowering minds, transforming futures since 2009.
             </p>
             <div className="flex space-x-4">
               {[
                 { icon: <FaFacebookF />, path: '#', color: 'hover:bg-[#f37021]' },
                 { icon: <FaTwitter />, path: '#', color: 'hover:bg-[#f37021]' },
-                { icon: <FaYoutube />, path: '#', color: 'hover:bg-[#f37021]' },
+                { icon: <FaYoutube />, path: 'https://youtube.com/@OASISJEECLASSES2.0', color: 'hover:bg-[#f37021]' },
                 { icon: <FaInstagram />, path: '#', color: 'hover:bg-[#f37021]' }
               ].map((social, idx) => (
                 <a
                   key={idx}
                   href={social.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={`w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-xl transition-all duration-300 ${social.color} hover:shadow-2xl hover:-translate-y-1`}
                 >
                   {social.icon}
@@ -66,11 +68,12 @@ const Footer = () => {
             <h4 className="text-xl font-bold mb-8">Our Programs</h4>
             <ul className="space-y-4 text-gray-400">
               {[
-                'JEE Foundation (9th-10th)',
-                'JEE Main (11th-12th)',
-                'JEE Advanced Intensive',
-                'Repeater/Dropper Batch',
-                'Scholarship Test (OTSE)',
+                'GROUND ZERO (Class 7)',
+                'NURTURE (Class 8)',
+                'SHAKSHAM (Class 9)',
+                'DAKSH (Class 10)',
+                'ABHYAAS (Class 11)',
+                'TARGET (Class 12)',
                 'Online Test Series'
               ].map((course) => (
                 <li key={course} className="hover:text-white transition-colors cursor-pointer flex items-center gap-2">
@@ -87,15 +90,15 @@ const Footer = () => {
             <ul className="space-y-6 text-gray-400">
               <li className="flex items-start gap-4">
                 <div className="p-3 bg-white/5 rounded-xl text-orange-400"><FaMapMarkerAlt /></div>
-                <span className="text-sm">B/61, P.C. Colony, <br />Kankarbagh, Patna - 800020</span>
+                <span className="text-sm">Union Bank building near saguna more<br />Danapur patna -801503</span>
               </li>
               <li className="flex items-center gap-4">
                 <div className="p-3 bg-white/5 rounded-xl text-orange-400"><FaPhoneAlt /></div>
-                <span className="text-sm">+91-9155555244</span>
+                <span className="text-sm">9905424369, 8825198919</span>
               </li>
               <li className="flex items-center gap-4">
                 <div className="p-3 bg-white/5 rounded-xl text-orange-400"><FaEnvelope /></div>
-                <span className="text-sm">oasispatna5555@gmail.com</span>
+                <span className="text-sm">www.oasisjeeclasses.com</span>
               </li>
               <li className="flex items-start gap-4">
                 <div className="p-3 bg-white/5 rounded-xl text-orange-400"><FaClock /></div>

@@ -24,6 +24,11 @@ import coaching10 from '../../assets/476640718_1290058428715783_7191377605329891
 import coaching11 from '../../assets/476644184_1290058588715767_7843985879107140710_n.jpg';
 import coaching12 from '../../assets/550492546_1326566672187200_6186828262730265257_n.jpg';
 
+// Faculty Photos
+import praveenPhoto from '../../assets/praveen_sir.jpeg';
+import kalpanaPhoto from '../../assets/kalpana_rani.jpg';
+import raviPhoto from '../../assets/ravi_shekhar.jpg';
+
 
 const Home = () => {
   const [faculty, setFaculty] = useState([]);
@@ -90,6 +95,26 @@ const Home = () => {
       .catch(err => console.error('Error fetching testimonials:', err));
   }, []);
 
+  useEffect(() => {
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+        }
+      });
+    }, observerOptions);
+
+    const revealElements = document.querySelectorAll('.reveal-on-scroll');
+    revealElements.forEach(el => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [faculty, courses, testimonials]); // Re-run when dynamic content loads
+
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -124,7 +149,7 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="min-h-screen bg-[#fffaf5] overflow-x-hidden">
       <Navbar />
 
       <section className="relative h-[calc(100vh-80px)] mt-[80px] w-screen flex items-center justify-center overflow-hidden bg-slate-900">
@@ -151,131 +176,89 @@ const Home = () => {
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[120px] animate-blob animation-delay-2000"></div>
         </div>
 
-        <div className="relative z-10 w-full pt-20">
-          <div className="text-center py-6 px-4">
-            <div className="inline-block bg-white/10 backdrop-blur-md rounded-full px-6 py-2 mb-8 border border-white/20 animate-reveal shadow-xl overflow-hidden relative">
-              <span className="relative text-xs md:text-sm font-bold text-white tracking-wider flex items-center gap-2">
-                <span className="animate-pulse text-indigo-400">🏆</span>
-                10+ Years of Excellence in JEE Coaching
-              </span>
+        <div className="container mx-auto px-4 relative z-10 flex flex-col md:flex-row items-center gap-12">
+          {/* Hero Left Content */}
+          <div className="flex-1 text-left animate-slide-left">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-orange-400 text-xs font-black uppercase tracking-widest mb-6 animate-pulse-soft">
+              <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+              Admissions Open 2026-27
             </div>
-
-            <h1 className="mb-6 leading-tight tracking-tight">
-              <span className="block text-4xl md:text-6xl font-black text-white mb-2 drop-shadow-2xl animate-reveal" style={{ animationDelay: '0.2s' }}>
-                Transform Your
-              </span>
-              <div className="flex justify-center">
-                <span className="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-300 animate-typewriter drop-shadow-[0_0_20px_rgba(251,146,60,0.5)] py-2 px-1">
-                  IIT Dream Into Reality
-                </span>
-              </div>
+            <h1 className="text-5xl md:text-8xl font-black text-white mb-6 leading-[0.9] tracking-tighter">
+              DREAM BIG.<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400">ACHIEVE BIG.</span>
             </h1>
-
-            <p className="text-lg md:text-xl mb-8 animate-reveal font-bold tracking-tight drop-shadow-md" style={{ animationDelay: '2.5s' }}>
-              <span className="text-indigo-300">Expert Faculty</span>
-              <span className="mx-2 text-white/30">•</span>
-              <span className="text-purple-300">Smart ERP System</span>
-              <span className="mx-2 text-white/30">•</span>
-              <span className="text-pink-300">Proven Results</span>
+            <p className="text-gray-300 text-lg md:text-xl font-medium max-w-xl mb-10 leading-relaxed">
+              Patna's most trusted institute for <span className="text-white font-black">JEE & NEET</span> preparation.
+              Join the legacy of toppers today.
             </p>
-
-            <p className="text-base md:text-lg mb-10 text-gray-200 font-medium leading-relaxed animate-reveal drop-shadow-sm" style={{ animationDelay: '2.7s' }}>
-              Join Patna's most trusted JEE coaching institute with
-              <span className="text-white font-bold mx-1 border-b border-indigo-500">95% success rate</span>
-              and personalized attention.
-            </p>
-
-            <div className="flex flex-wrap gap-4 justify-center mb-12 animate-reveal" style={{ animationDelay: '2.9s' }}>
-              <a href="#demo-form" className="group relative bg-white text-indigo-900 px-8 py-4 rounded-xl font-black text-base transition-all duration-300 shadow-xl hover:-translate-y-1 active:scale-95 overflow-hidden">
-                <span className="relative flex items-center gap-2">
-                  <span>📞</span> Book Free Demo Class
-                </span>
+            <div className="flex flex-wrap gap-4">
+              <a href="#demo-form" className="px-8 py-4 bg-orange-600 text-white font-black rounded-2xl hover:bg-orange-700 transition-all hover:scale-105 shadow-xl shadow-orange-900/40 uppercase tracking-widest text-sm">
+                Start Journey
               </a>
-              <a href="#courses" className="group relative bg-indigo-600/10 backdrop-blur-xl border border-white/20 text-white px-8 py-4 rounded-xl font-black text-base transition-all duration-300 hover:bg-white hover:text-indigo-900 hover:-translate-y-1 active:scale-95 shadow-lg">
-                <span className="relative flex items-center gap-2">
-                  <span>📚</span> Explore Courses
-                </span>
-              </a>
-            </div>
-
-            {/* Stats Overlay inside the glass container */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                <div className="text-3xl font-bold text-white">500+</div>
-                <div className="text-xs uppercase tracking-wider opacity-80 mt-1">Students</div>
-              </div>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                <div className="text-3xl font-bold text-white">95%</div>
-                <div className="text-xs uppercase tracking-wider opacity-80 mt-1">Success Rate</div>
-              </div>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                <div className="text-3xl font-bold text-white">50+</div>
-                <div className="text-xs uppercase tracking-wider opacity-80 mt-1">Expert Faculty</div>
-              </div>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                <div className="text-3xl font-bold text-white">10+</div>
-                <div className="text-xs uppercase tracking-wider opacity-80 mt-1">Years Exp.</div>
-              </div>
+              <Link to="/courses" className="px-8 py-4 bg-white/10 backdrop-blur-md text-white font-black rounded-2xl hover:bg-white/20 transition-all border border-white/20 uppercase tracking-widest text-sm">
+                Explore Courses
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Portal Login Section */}
-      <section id="portal-login" className="py-12 bg-white dark:bg-gray-950 border-b dark:border-gray-800 w-full">
+      {/* Portal Login Section - Premium Cream Theme */}
+      <section id="portal-login" className="py-16 bg-[#fffaf5] border-b border-orange-100 w-full reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4">
           <div className="max-w-5xl mx-auto">
-            <h3 className="text-center text-gray-700 font-semibold mb-4">🚀 Portal Login</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Link to="/login?role=student" className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-lg text-center hover:scale-105 transition-transform shadow-md">
-                <div className="text-3xl mb-2">👨‍🎓</div>
-                <div className="font-semibold text-sm">Student Portal</div>
-              </Link>
-              <Link to="/login?role=teacher" className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-lg text-center hover:scale-105 transition-transform shadow-md">
-                <div className="text-3xl mb-2">👨‍🏫</div>
-                <div className="font-semibold text-sm">Teacher Portal</div>
-              </Link>
-              <Link to="/login?role=parent" className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-4 rounded-lg text-center hover:scale-105 transition-transform shadow-md">
-                <div className="text-3xl mb-2">👨‍👩‍👦</div>
-                <div className="font-semibold text-sm">Parent Portal</div>
-              </Link>
-              <Link to="/login?role=admin" className="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-lg text-center hover:scale-105 transition-transform shadow-md">
-                <div className="text-3xl mb-2">⚙️</div>
-                <div className="font-semibold text-sm">Admin Portal</div>
-              </Link>
+            <h3 className="text-center text-orange-600 font-black uppercase tracking-[0.3em] text-[10px] mb-10 block italic">🚀 Student & Parent Portals</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { role: 'student', label: 'Student Portal', icon: '👨‍🎓', color: 'from-orange-50 to-orange-100' },
+                { role: 'teacher', label: 'Teacher Portal', icon: '👨‍🏫', color: 'from-orange-50 to-orange-100' },
+                { role: 'parent', label: 'Parent Portal', icon: '👨‍👩‍👦', color: 'from-orange-50 to-orange-100' },
+                { role: 'admin', label: 'Admin Portal', icon: '⚙️', color: 'from-orange-50 to-orange-100' }
+              ].map((portal, idx) => (
+                <Link key={idx} to={`/login?role=${portal.role}`} className={`bg-white border border-orange-100/50 text-gray-900 p-6 rounded-[2rem] text-center hover:bg-orange-600 hover:text-white transition-all shadow-xl shadow-orange-900/5 group transform hover:-translate-y-2 duration-500`}>
+                  <div className="text-3xl mb-4 group-hover:scale-110 transition-transform">{portal.icon}</div>
+                  <div className="font-black text-xs uppercase tracking-widest">{portal.label}</div>
+                </Link>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Courses & Batches Section */}
-      <section id="courses" className="py-24 w-full">
+      {/* Courses & Batches Section - Premium Cream Theme */}
+      <section id="courses" className="py-24 bg-white w-full reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">Our Courses & Batches</h2>
-            <p className="text-gray-600 text-lg">Comprehensive programs designed for JEE success</p>
+          <div className="text-center mb-16">
+            <span className="text-orange-600 font-black uppercase tracking-[0.3em] text-[10px] mb-3 block">Our Programs</span>
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight italic">Our Courses & <span className="text-orange-600">Batches</span></h2>
+            <p className="text-gray-600 text-lg font-medium">Comprehensive programs designed for JEE success</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {courses.map(course => (
-              <div key={course.id} className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6">
-                  <h3 className="text-2xl font-bold mb-2">{course.name}</h3>
-                  <p className="text-sm opacity-90">Duration: {course.duration}</p>
+              <div key={course.id} className="bg-[#fffaf5] rounded-[2.5rem] shadow-xl hover:shadow-orange-200/50 transition-all duration-500 overflow-hidden group border border-orange-100 flex flex-col">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-8">
+                  <h3 className="text-2xl font-black mb-2 uppercase tracking-tighter">{course.name}</h3>
+                  <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-xs font-bold uppercase tracking-widest border border-white/10">
+                    Duration: {course.duration}
+                  </div>
                 </div>
-                <div className="p-6">
-                  <p className="text-gray-600 mb-4">{course.description}</p>
-                  <div className="mb-4">
-                    <h4 className="font-semibold text-gray-800 mb-2">Key Features:</h4>
-                    <ul className="space-y-1">
+                <div className="p-8 flex-grow">
+                  <p className="text-gray-700 mb-6 font-medium italic">"{course.description}"</p>
+                  <div className="mb-8">
+                    <h4 className="font-black text-gray-900 mb-4 flex items-center gap-2 text-xs uppercase tracking-widest">
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-600"></span>
+                      Key Highlights:
+                    </h4>
+                    <ul className="space-y-3">
                       {course.features.map((feature, idx) => (
                         <li key={idx} className="text-sm text-gray-600 flex items-center">
-                          <span className="text-green-500 mr-2">✓</span> {feature}
+                          <span className="text-orange-600 mr-2 font-black">✓</span> {feature}
                         </li>
                       ))}
                     </ul>
                   </div>
-                  <a href="#demo-form" className="block text-center bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
+                  <a href="#demo-form" className="block text-center bg-orange-600 text-white px-6 py-4 rounded-2xl font-black hover:bg-gray-900 transition-all transform group-hover:scale-[1.02] shadow-lg shadow-orange-900/20 uppercase tracking-widest text-[10px]">
                     Enroll Now
                   </a>
                 </div>
@@ -283,106 +266,250 @@ const Home = () => {
             ))}
           </div>
 
-          <div className="mt-12 text-center">
-            <p className="text-gray-700 mb-4 text-lg font-semibold">📅 Batch Timings Available:</p>
+          <div className="mt-20 text-center">
+            <p className="text-orange-600 mb-6 text-xs font-black uppercase tracking-[0.3em]">📅 Batch Timings Available</p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <span className="bg-blue-100 text-blue-700 px-6 py-2 rounded-full font-semibold">Morning (6 AM - 9 AM)</span>
-              <span className="bg-green-100 text-green-700 px-6 py-2 rounded-full font-semibold">Day (9 AM - 12 PM)</span>
-              <span className="bg-purple-100 text-purple-700 px-6 py-2 rounded-full font-semibold">Evening (4 PM - 7 PM)</span>
-              <span className="bg-orange-100 text-orange-700 px-6 py-2 rounded-full font-semibold">Weekend Batches</span>
+              {[
+                { label: "Morning", time: "6 AM - 9 AM" },
+                { label: "Day", time: "9 AM - 12 PM" },
+                { label: "Evening", time: "4 PM - 7 PM" },
+                { label: "Weekend", time: "SAT & SUN" }
+              ].map((batch, i) => (
+                <div key={i} className="bg-white border border-orange-100 px-6 py-3 rounded-2xl hover:border-orange-600 transition-colors shadow-lg group italic">
+                  <span className="text-orange-600 text-[10px] font-black mr-2 uppercase tracking-widest">{batch.label}:</span>
+                  <span className="text-gray-900 font-bold text-xs">{batch.time}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Smart ERP Features Section */}
-      <section className="py-24 bg-indigo-600 w-full relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">Smart ERP System</h2>
-            <p className="text-indigo-100 text-lg">Technology-driven coaching for modern learning</p>
+      {/* Smart ERP Features Section - Premium Cream Theme */}
+      <section className="py-24 bg-[#fffaf5] w-full relative overflow-hidden reveal-on-scroll">
+        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+          <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-orange-400 rounded-full blur-[100px]"></div>
+          <div className="absolute bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-orange-100 rounded-full blur-[100px]"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="text-center mb-16">
+            <span className="text-orange-600 font-black uppercase tracking-[0.3em] text-[10px] mb-3 block italic">Why Oasis?</span>
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight italic">Everything you need to <span className="text-orange-600 underline decoration-orange-200 underline-offset-8">Succeed</span></h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-xl hover:shadow-xl transition-shadow">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
               <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                📊
+                📑
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Real-Time Attendance</h3>
-              <p className="text-gray-600">Track student attendance instantly with automated SMS alerts to parents</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Study Material</h3>
+              <p className="text-gray-600">Comprehensive and well-researched study material designed by subject experts</p>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-8 rounded-xl hover:shadow-xl transition-shadow">
+            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
               <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                👨‍👩‍👦
+                👨‍🏫
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Parent Dashboard</h3>
-              <p className="text-gray-600">Complete visibility into performance, attendance, fees, and progress reports</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Top Faculty</h3>
+              <p className="text-gray-600">Learning from highly qualified faculty with years of experience in JEE/NEET</p>
             </div>
 
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-xl hover:shadow-xl transition-shadow">
+            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
               <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                🔔
+                📝
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Live Notifications</h3>
-              <p className="text-gray-600">Instant updates on exams, results, notices, and important announcements</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Topic Tests</h3>
+              <p className="text-gray-600">Regular assessment with topic-wise tests to ensure conceptual clarity</p>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-8 rounded-xl hover:shadow-xl transition-shadow">
+            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
               <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                📈
+                ❄️
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Performance Analytics</h3>
-              <p className="text-gray-600">Detailed insights and visualizations to track academic progress over time</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Smart Class</h3>
+              <p className="text-gray-600">Comfortable learning environment with fully air-conditioned smart classrooms</p>
             </div>
 
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-8 rounded-xl hover:shadow-xl transition-shadow">
+            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
               <div className="w-16 h-16 bg-indigo-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
+                📷
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">CCTV Safety</h3>
+              <p className="text-gray-600">24/7 security and monitoring to ensure a safe learning environment</p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
+              <div className="w-16 h-16 bg-pink-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
+                ☝️
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Bio-metric</h3>
+              <p className="text-gray-600">Precise attendance tracking with instant notification to parents</p>
+            </div>
+
+            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
+              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl mb-4">
                 📚
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Online Study Material</h3>
-              <p className="text-gray-600">Access notes, practice papers, and resources anytime from student portal</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Doubt Clearing</h3>
+              <p className="text-gray-600">Dedicated sessions for one-on-one doubt resolution with faculty</p>
             </div>
 
-            <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-8 rounded-xl hover:shadow-xl transition-shadow">
-              <div className="w-16 h-16 bg-pink-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                💰
+            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
+              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center text-white text-3xl mb-4">
+                📈
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Fee Management</h3>
-              <p className="text-gray-600">Transparent fee tracking with online payment options and instant receipts</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Performance Tracking</h3>
+              <p className="text-gray-600">Regular performance analysis and personalized feedback for improvement</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Faculty Showcase Section */}
+      {/* Smart ERP System Section - Premium Cream Theme */}
+      <section id="erp-system" className="py-24 bg-[#fffaf5] w-full relative overflow-hidden reveal-on-scroll border-t border-orange-100">
+        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-100 rounded-full blur-[120px]"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight italic uppercase">Smart <span className="text-orange-600 ">ERP System</span></h2>
+            <p className="text-gray-600 text-lg font-medium">Technology-driven coaching for modern learning</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Real-Time Attendance",
+                desc: "Track student attendance instantly with automated SMS alerts to parents",
+                icon: "📊",
+                bg: "bg-blue-50"
+              },
+              {
+                title: "Parent Dashboard",
+                desc: "Complete visibility into performance, attendance, fees, and progress reports",
+                icon: "👨‍👩-👦",
+                bg: "bg-purple-50"
+              },
+              {
+                title: "Live Notifications",
+                desc: "Instant updates on exams, results, notices, and important announcements",
+                icon: "🔔",
+                bg: "bg-green-50"
+              },
+              {
+                title: "Performance Analytics",
+                desc: "Detailed insights and visualizations to track academic progress over time",
+                icon: "📈",
+                bg: "bg-orange-50"
+              },
+              {
+                title: "Online Study Material",
+                desc: "Access notes, practice papers, and resources anytime from student portal",
+                icon: "📚",
+                bg: "bg-indigo-50"
+              },
+              {
+                title: "Fee Management",
+                desc: "Transparent fee tracking with online payment options and instant receipts",
+                icon: "💰",
+                bg: "bg-pink-50"
+              }
+            ].map((feature, idx) => (
+              <div key={idx} className="bg-white p-8 rounded-[2rem] shadow-xl hover:-translate-y-2 transition-all duration-500 group">
+                <div className={`w-16 h-16 ${feature.bg} rounded-3xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform`}>
+                  {feature.title === "Real-Time Attendance" && <span className="text-orange-600">📊</span>}
+                  {feature.title === "Parent Dashboard" && <span className="text-purple-600">👥</span>}
+                  {feature.title === "Live Notifications" && <span className="text-green-600">🔔</span>}
+                  {feature.title === "Performance Analytics" && <span className="text-orange-600">📉</span>}
+                  {feature.title === "Online Study Material" && <span className="text-orange-600">📖</span>}
+                  {feature.title === "Fee Management" && <span className="text-pink-600">💸</span>}
+                </div>
+                <h3 className="text-xl font-black text-gray-900 mb-3">{feature.title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed font-medium">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Faculty Showcase Section - Premium Cream Aesthetics */}
       {faculty.length > 0 && (
-        <section className="py-24 bg-white dark:bg-gray-950 w-full">
-          <div className="max-w-7xl mx-auto px-4">
+        <section className="py-24 bg-[#fffaf5] w-full relative overflow-hidden reveal-on-scroll border-t border-orange-100">
+          {/* Decorative Background Element */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-orange-50/50 rounded-full blur-[120px] -z-10 animate-blob"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-600/30 rounded-full blur-[120px] animate-blob animation-delay-2000"></div>
+
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold text-gray-800 mb-4">Our Expert Faculty</h2>
               <p className="text-gray-600 text-lg">Learn from IIT alumni and experienced educators</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {faculty.map(member => (
-                <div key={member.id} className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 text-center">
-                  <div className="w-24 h-24 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-4xl mx-auto mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
+              {[
+                {
+                  id: 'praveen',
+                  name: 'Praveen Sir',
+                  subjects: 'Maths, Physics, Chemistry',
+                  classes: 'Founder & CEO',
+                  icon: '🎓',
+                  photo: praveenPhoto,
+                  gradient: 'from-orange-600 to-orange-700'
+                },
+                {
+                  id: 'kalpana',
+                  name: 'Kalpana Rani',
+                  subjects: 'English',
+                  classes: 'Subject Expert',
+                  icon: '👩‍🏫',
+                  photo: kalpanaPhoto,
+                  gradient: 'from-purple-500 to-pink-500'
+                },
+                {
+                  id: 'ravi',
+                  name: 'Ravi Shekhar',
+                  subjects: 'Physics, Chemistry',
+                  classes: 'Senior Mentor',
+                  icon: '👨‍🔬',
+                  photo: raviPhoto,
+                  gradient: 'from-orange-500 to-orange-600'
+                }
+              ].map(member => (
+                <div key={member.id} className="bg-white rounded-[2rem] shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100 group flex flex-col items-center">
+                  <div className="w-full h-64 relative overflow-hidden">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${member.gradient} opacity-5 group-hover:opacity-10 transition-opacity`}></div>
                     {member.photo ? (
-                      <img src={member.photo} alt={member.name} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      '👨‍🏫'
-                    )}
+                      <img
+                        src={member.photo}
+                        alt={member.name}
+                        className="w-full h-full object-cover object-top transform group-hover:scale-105 transition-transform duration-700"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div className="hidden absolute inset-0 flex items-center justify-center text-5xl opacity-30">
+                      {member.icon}
+                    </div>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">{member.name}</h3>
-                  <p className="text-indigo-600 font-semibold mb-2">{member.subjects}</p>
-                  <p className="text-gray-600 text-sm">{member.classes}</p>
+
+                  <div className="p-6 text-center w-full">
+                    <h3 className="text-xl font-black text-gray-900 mb-1">{member.name}</h3>
+                    <p className="text-orange-600 font-bold mb-3 uppercase tracking-wider text-[11px]">{member.subjects}</p>
+                    <div className="inline-block px-4 py-1 rounded-xl bg-orange-50 text-orange-700 text-[10px] font-black uppercase tracking-widest border border-orange-100 shadow-sm">
+                      {member.classes}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
 
             <div className="text-center mt-8">
-              <Link to="/faculty" className="inline-block bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
+              <Link to="/faculty" className="inline-block bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors">
                 View All Faculty →
               </Link>
             </div>
@@ -391,7 +518,7 @@ const Home = () => {
       )}
 
       {/* How It Works Section */}
-      <section className="py-24 bg-slate-50 dark:bg-gray-950 w-full">
+      <section className="py-24 bg-slate-50 dark:bg-gray-950 w-full reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-800 mb-4">How It Works</h2>
@@ -399,8 +526,8 @@ const Home = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-3 md:gap-6 max-w-4xl mx-auto">
-            <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-3 md:gap-6 p-4 md:p-6 bg-gray-50 rounded-2xl hover:bg-white hover:shadow-xl transition-all duration-300 border border-transparent hover:border-indigo-100">
-              <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white text-base md:text-xl font-black shrink-0 shadow-lg">
+            <div className="flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-3 md:gap-6 p-4 md:p-6 bg-gray-50 rounded-2xl hover:bg-white hover:shadow-xl transition-all duration-300 border border-transparent hover:border-orange-100">
+              <div className="w-10 h-10 md:w-14 md:h-14 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white text-base md:text-xl font-black shrink-0 shadow-lg">
                 1
               </div>
               <div>
@@ -444,7 +571,7 @@ const Home = () => {
 
       {/* Parent Testimonials Section */}
       {testimonials.length > 0 && (
-        <section className="py-20 bg-gradient-to-br from-indigo-50 to-purple-50 w-full">
+        <section className="py-20 bg-gradient-to-br from-orange-50 to-purple-50 w-full reveal-on-scroll">
           <div className="max-w-7xl mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold text-gray-800 mb-4">What Parents Say</h2>
@@ -464,7 +591,7 @@ const Home = () => {
                   key={testimonial.id}
                   className="snap-center shrink-0 w-[85vw] md:w-[380px] bg-white rounded-3xl shadow-xl p-8 border border-white/50 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 relative group"
                 >
-                  <div className="absolute top-6 right-8 text-4xl text-indigo-100 opacity-50 group-hover:text-indigo-200 transition-colors">
+                  <div className="absolute top-6 right-8 text-4xl text-orange-100 opacity-50 group-hover:text-orange-200 transition-colors">
                     "
                   </div>
                   <div className="flex mb-6">
@@ -474,13 +601,13 @@ const Home = () => {
                   </div>
                   <p className="text-gray-700 italic mb-8 leading-relaxed text-lg">"{testimonial.quote}"</p>
                   <div className="flex items-center gap-4 border-t pt-6 border-gray-50">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md">
                       {testimonial.parentName[0]}
                     </div>
                     <div>
                       <p className="font-black text-gray-900 leading-none mb-1">{testimonial.parentName}</p>
                       <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Parent of {testimonial.studentName}</p>
-                      <p className="text-xs text-indigo-600 font-bold mt-1 bg-indigo-50 inline-block px-2 py-0.5 rounded-full">{testimonial.achievement}</p>
+                      <p className="text-xs text-orange-600 font-bold mt-1 bg-orange-50 inline-block px-2 py-0.5 rounded-full">{testimonial.achievement}</p>
                     </div>
                   </div>
                 </div>
@@ -491,7 +618,7 @@ const Home = () => {
       )}
 
       {/* Events Gallery Section */}
-      <section className="py-24 w-full">
+      <section className="py-24 w-full reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-800 mb-4">Life at Oasis: Events Gallery</h2>
@@ -527,17 +654,17 @@ const Home = () => {
           </div>
 
           <div className="mt-12 text-center">
-            <Link to="/gallery" className="inline-block bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-1">
+            <Link to="/gallery" className="inline-block bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg hover:shadow-orange-500/30 transform hover:-translate-y-1">
               Explore Our Campus →
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Free Demo Enquiry Form Section */}
-      <section id="demo-form" className="py-24 bg-slate-900 text-white w-full">
+      {/* Free Demo Enquiry Form Section - Premium Cream Theme */}
+      <section id="demo-form" className="py-24 bg-[#fffaf5] text-gray-900 w-full reveal-on-scroll border-t border-orange-100">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="max-w-2xl mx-auto bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-2xl p-8 md:p-12 text-white">
+          <div className="max-w-2xl mx-auto bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-2xl p-8 md:p-12 text-white">
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold mb-4">Book Your Free Demo Class</h2>
               <p className="text-lg opacity-90">Take the first step towards your IIT dream</p>
@@ -595,9 +722,12 @@ const Home = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 rounded-lg text-gray-800 focus:ring-2 focus:ring-white outline-none"
                   >
-                    <option value="JEE Main">JEE Main</option>
-                    <option value="JEE Advanced">JEE Advanced</option>
-                    <option value="Foundation">Foundation (9th-10th)</option>
+                    <option value="GROUND ZERO">GROUND ZERO (Class 7)</option>
+                    <option value="NURTURE">NURTURE (Class 8)</option>
+                    <option value="SHAKSHAM">SHAKSHAM (Class 9)</option>
+                    <option value="DAKSH">DAKSH (Class 10)</option>
+                    <option value="ABHYAAS">ABHYAAS (Class 11)</option>
+                    <option value="TARGET">TARGET (Class 12)</option>
                   </select>
                 </div>
 
@@ -633,13 +763,13 @@ const Home = () => {
                 type="submit"
                 disabled={isSubmitting}
                 className={`w-full py-4 rounded-lg font-bold text-lg transition-all duration-300 shadow-lg flex items-center justify-center gap-3 ${isSubmitting
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-white text-indigo-600 hover:bg-gray-100 hover:scale-[1.02] active:scale-95'
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-white text-orange-600 hover:bg-orange-50 hover:scale-[1.02] active:scale-95'
                   }`}
               >
                 {isSubmitting ? (
                   <>
-                    <svg className="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5 text-orange-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -661,8 +791,8 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Contact & Location Section - Full Width */}
-      <section className="py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300 w-full">
+      {/* Contact & Location Section - Premium Cream Theme */}
+      <section className="py-24 bg-[#fffaf5] transition-colors duration-300 w-full reveal-on-scroll border-t border-orange-100">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-800 mb-4">Visit Us</h2>
@@ -684,8 +814,8 @@ const Home = () => {
                   <div className="ml-6">
                     <p className="text-xs font-bold text-indigo-600 uppercase tracking-[0.2em] mb-1">Address</p>
                     <p className="text-gray-800 font-bold leading-relaxed">
-                      Above Corporation Bank, Saguna More<br />
-                      Patna - 800001, Bihar
+                      Union Bank building near saguna more<br />
+                      Danapur patna -801503
                     </p>
                   </div>
                 </div>
@@ -696,7 +826,7 @@ const Home = () => {
                   </div>
                   <div className="ml-6">
                     <p className="text-xs font-bold text-purple-600 uppercase tracking-[0.2em] mb-1">Phone</p>
-                    <p className="text-gray-800 font-bold text-lg">+91-0612-XXXXXXX</p>
+                    <p className="text-gray-800 font-bold text-lg">9905424369, 8825198919</p>
                   </div>
                 </div>
 
@@ -705,8 +835,8 @@ const Home = () => {
                     ✉️
                   </div>
                   <div className="ml-6">
-                    <p className="text-xs font-bold text-pink-600 uppercase tracking-[0.2em] mb-1">Email</p>
-                    <p className="text-gray-800 font-bold">info@oasisjeeclasses.com</p>
+                    <p className="text-xs font-bold text-pink-600 uppercase tracking-[0.2em] mb-1">Website</p>
+                    <p className="text-gray-800 font-bold text-lg">www.oasisjeeclasses.com</p>
                   </div>
                 </div>
 

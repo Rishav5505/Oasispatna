@@ -1,41 +1,126 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { FaBookmark, FaClock, FaCheckCircle, FaRocket, FaGraduationCap, FaAngleRight } from 'react-icons/fa';
+import { FaBookmark, FaClock, FaCheckCircle, FaRocket, FaGraduationCap, FaAngleRight, FaTimes } from 'react-icons/fa';
+import config from '../../config';
 
 const Courses = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCourseName, setSelectedCourseName] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    course: '',
+    batchTiming: 'Morning',
+    message: ''
+  });
+  const [formStatus, setFormStatus] = useState({ message: '', type: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const courses = [
     {
-      title: 'JEE Foundation',
-      duration: '2 Years (Class 9th & 10th)',
-      description: 'Building a rock-solid foundation for future JEE aspirants. We focus on conceptual depth in Science and Math.',
-      features: ['NCERT + Olympiad Prep', 'Weekly Mental Ability Tests', 'Monthly Parent Meetings', 'Basic Concept Workshops'],
-      price: '₹45,000 /year',
+      title: 'GROUND ZERO',
+      duration: '1 Year (Class 7th)',
+      description: 'Specially designed for students going to class 7. We focus on scoring high marks in school exams and selection in NTSE & Junior Science Olympiads.',
+      features: ['High School Exam Marks', 'NTSE Selection focus', 'Junior Science Olympiad', 'Maths Olympiad Prep'],
+      price: 'Contact for Fee',
       icon: <FaGraduationCap />,
       gradient: 'from-blue-600 to-indigo-600',
       popular: false
     },
     {
-      title: 'JEE Main + Advanced',
-      duration: '2 Years (Class 11th & 12th)',
-      description: 'Our flagship intensive program designed to take you from basics to the peak of IIT JEE preparation.',
-      features: ['Daily Practice Papers (DPP)', 'All India Test Series', '24/7 Doubt Support', 'Personal Mentorship'],
-      price: '₹1,25,000 /year',
+      title: 'NURTURE',
+      duration: '1 Year (Class 8th)',
+      description: 'For students going to class 8. This course focuses on school excellence and selection in competitive exams like NTSE and Junior Science Olympiads.',
+      features: ['School Examination Excellence', 'NTSE Selection focus', 'Junior Science Olympiad', 'Maths Olympiad Prep'],
+      price: 'Contact for Fee',
       icon: <FaRocket />,
       gradient: 'from-indigo-600 to-purple-700',
-      popular: true
+      popular: false
     },
     {
-      title: 'JEE Repeater Batch',
-      duration: '1 Year (Tenth Passed)',
-      description: 'A focused, fast-track program for students dedicated to cracking JEE in their second attempt.',
-      features: ['Strict Academic Schedule', 'Advanced Problem Solving', 'Mental Resilience Sessions', 'Performance Analytics'],
-      price: '₹95,000 /year',
+      title: 'SHAKSHAM',
+      duration: '1 Year (Class 9th)',
+      description: 'A comprehensive course for class 9 students to build a solid foundation for grabbing top ranks in JEE, NEET & Higher Olympiads.',
+      features: ['Higher Science Olympiad', 'NTSE Selection focus', 'Maths Olympiad Prep', 'Solid JEE/NEET Foundation'],
+      price: 'Contact for Fee',
+      icon: <FaCheckCircle />,
+      gradient: 'from-green-600 to-emerald-600',
+      popular: false
+    },
+    {
+      title: 'DAKSH',
+      duration: '1 Year (Class 10th)',
+      description: 'Empowering class 10 students for board exam excellence while building a solid foundation for top ranks in JEE, NEET & Olympiads.',
+      features: ['Board Exam Excellence', 'Science & Maths Olympiads', 'JEE/NEET Foundation', 'Higher Level Problem Solving'],
+      price: 'Contact for Fee',
       icon: <FaBookmark />,
       gradient: 'from-purple-600 to-pink-600',
       popular: false
+    },
+    {
+      title: 'ABHYAAS',
+      duration: '1 Year (Class 11th)',
+      description: 'Our intensive course for class 11 aspirants. Focuses on scoring high marks in school exams and achieving top ranks in JEE Main & Advanced.',
+      features: ['Top Ranks in JEE Main/Adv', 'School Exam Excellence', 'Solid JEE/NEET/Olympiad Foundation', 'Advanced Study Material'],
+      price: 'Contact for Fee',
+      icon: <FaRocket />,
+      gradient: 'from-orange-600 to-red-600',
+      popular: true
+    },
+    {
+      title: 'TARGET',
+      duration: '1 Year (Class 12th)',
+      description: 'The final milestone course for class 12 students. Dedicated to grabbing top ranks in JEE Main, Advanced, and NEET with absolute precision.',
+      features: ['JEE Main & Advanced Mastery', 'High School Exam Marks', 'Top Rank Strategy', 'JEE/NEET/Olympiad Success'],
+      price: 'Contact for Fee',
+      icon: <FaRocket />,
+      gradient: 'from-red-600 to-orange-600',
+      popular: true
     }
   ];
+
+  const handleEnrollClick = (courseTitle) => {
+    setSelectedCourseName(courseTitle);
+    setFormData({ ...formData, course: courseTitle });
+    setIsModalOpen(true);
+  };
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormStatus({ message: '', type: '' });
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${config.API_URL}/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFormStatus({ message: '✨ Success! Your enquiry has been submitted. We will contact you soon.', type: 'success' });
+        setTimeout(() => {
+          setIsModalOpen(false);
+          setFormStatus({ message: '', type: '' });
+          setFormData({ name: '', email: '', phone: '', course: '', batchTiming: 'Morning', message: '' });
+        }, 3000);
+      } else {
+        setFormStatus({ message: data.message || 'Submission failed. Please try again.', type: 'error' });
+      }
+    } catch (err) {
+      setFormStatus({ message: '❌ Connection error. Please try again later.', type: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -99,12 +184,12 @@ const Courses = () => {
                     <span className="text-sm text-gray-400 font-medium uppercase tracking-wider block mb-1">Fee Structure</span>
                     <span className="text-3xl font-extrabold text-gray-900">{course.price}</span>
                   </div>
-                  <a
-                    href="/#demo-form"
+                  <button
+                    onClick={() => handleEnrollClick(course.title)}
                     className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 ${course.popular ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
                   >
                     Enroll Now <FaAngleRight className="group-hover:translate-x-1 transition-transform" />
-                  </a>
+                  </button>
                 </div>
               </div>
             ))}
@@ -139,9 +224,131 @@ const Courses = () => {
         </div>
       </section>
 
+      {/* Enquiry Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
+          <div className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-white relative">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-6 right-6 text-white/80 hover:text-white transition-colors"
+              >
+                <FaTimes size={24} />
+              </button>
+              <h3 className="text-3xl font-bold mb-2">Admission Enquiry</h3>
+              <p className="text-indigo-100">Course: <span className="font-bold text-white">{selectedCourseName}</span></p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-8 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Full Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter your name"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    required
+                    pattern="[0-9]{10}"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="10-digit number"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Email Address</label>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="your@email.com"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Course Selected</label>
+                  <select
+                    name="course"
+                    value={formData.course}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                  >
+                    <option value="GROUND ZERO">GROUND ZERO (Class 7)</option>
+                    <option value="NURTURE">NURTURE (Class 8)</option>
+                    <option value="SHAKSHAM">SHAKSHAM (Class 9)</option>
+                    <option value="DAKSH">DAKSH (Class 10)</option>
+                    <option value="ABHYAAS">ABHYAAS (Class 11)</option>
+                    <option value="TARGET">TARGET (Class 12)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Preferred Batch</label>
+                  <select
+                    name="batchTiming"
+                    value={formData.batchTiming}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                  >
+                    <option value="Morning">Morning</option>
+                    <option value="Day">Day</option>
+                    <option value="Evening">Evening</option>
+                    <option value="Weekend">Weekend</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Message (Optional)</label>
+                <textarea
+                  name="message"
+                  rows="2"
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  placeholder="Any questions?"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none"
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full py-4 rounded-xl font-bold text-white transition-all duration-300 shadow-lg ${isSubmitting ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'}`}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Enquiry'}
+              </button>
+
+              {formStatus.message && (
+                <div className={`p-4 rounded-xl text-center text-sm font-bold ${formStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {formStatus.message}
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );
 };
 
 export default Courses;
+

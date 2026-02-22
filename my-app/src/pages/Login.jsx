@@ -15,7 +15,6 @@ const Login = () => {
   const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP & New Password
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
-
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -26,15 +25,19 @@ const Login = () => {
     const queryRole = searchParams.get('role');
     if (queryRole) setRole(queryRole);
   }, [searchParams]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       // We pass the role to the login function in case the backend wants to verify it
       await login(email, password, role);
       navigate('/dashboard');
     } catch (err) {
       alert('Login failed: ' + (err.response?.data?.message || 'Invalid credentials'));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -147,9 +150,17 @@ const Login = () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-[#f37021] to-black text-white p-5 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] shadow-xl shadow-orange-500/20 transition-all duration-300"
+            disabled={isLoading}
+            className={`w-full bg-gradient-to-r from-[#f37021] to-black text-white p-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-3 ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:scale-[1.02] shadow-xl shadow-orange-500/20'}`}
           >
-            Sign In Now
+            {isLoading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Processing...
+              </>
+            ) : (
+              'Sign In Now'
+            )}
           </button>
         </form>
 

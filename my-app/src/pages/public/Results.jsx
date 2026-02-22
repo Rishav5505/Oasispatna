@@ -6,37 +6,37 @@ import { FaTrophy, FaMedal, FaStar, FaQuoteLeft, FaFire, FaChartBar } from 'reac
 const Results = () => {
   const toppers = [
     {
-      name: 'Rahul Sharma',
-      rank: 'AIR 45',
-      exam: 'JEE Advanced 2024',
-      score: '342/360',
+      name: 'Karan Kr Sharma',
+      rank: 'Maths-100, Sci-98',
+      exam: 'Board Achievement',
+      score: 'Outstanding Performance',
       icon: <FaMedal className="text-yellow-400" />,
       gradient: 'from-blue-900 via-blue-800 to-indigo-900',
       badge: 'Gold Tier'
     },
     {
-      name: 'Priya Singh',
-      rank: 'AIR 78',
-      exam: 'JEE Advanced 2024',
-      score: '335/360',
-      icon: <FaMedal className="text-gray-300" />,
+      name: 'Harsh Raj',
+      rank: 'Maths-99, Sci-100',
+      exam: 'Board Achievement',
+      score: 'Outstanding Performance',
+      icon: <FaMedal className="text-yellow-400" />,
       gradient: 'from-indigo-900 via-indigo-800 to-purple-900',
-      badge: 'Silver Tier'
+      badge: 'Gold Tier'
     },
     {
-      name: 'Amit Kumar',
-      rank: 'AIR 123',
-      exam: 'JEE Advanced 2024',
-      score: '318/360',
-      icon: <FaMedal className="text-orange-400" />,
+      name: 'Riya Rai',
+      rank: 'Maths-100, Sci-95',
+      exam: 'Board Achievement',
+      score: 'Outstanding Performance',
+      icon: <FaMedal className="text-yellow-400" />,
       gradient: 'from-purple-900 via-purple-800 to-pink-900',
-      badge: 'Bronze Tier'
+      badge: 'Gold Tier'
     },
     {
-      name: 'Sneha Patel',
-      rank: 'AIR 156',
-      exam: 'JEE Advanced 2024',
-      score: '312/360',
+      name: 'Aditya Pandey',
+      rank: 'Maths-98, Sci-95',
+      exam: 'Board Achievement',
+      score: 'Outstanding Performance',
       icon: <FaStar className="text-yellow-400" />,
       gradient: 'from-slate-900 via-slate-800 to-blue-900',
       badge: 'Star Performer'
@@ -44,10 +44,10 @@ const Results = () => {
   ];
 
   const stats = [
-    { label: 'Students in IITs', value: '1500+', icon: <FaTrophy />, color: 'text-yellow-400' },
-    { label: 'JEE Success Rate', value: '95%', icon: <FaFire />, color: 'text-orange-500' },
-    { label: 'Top 1000 AIRs', value: '450+', icon: <FaChartBar />, color: 'text-indigo-400' },
-    { label: 'Years of Trust', value: '10+', icon: <FaStar />, color: 'text-purple-400' }
+    { label: 'Successful Students', value: '1000+', icon: <FaTrophy />, color: 'text-yellow-400' },
+    { label: 'Success Rate', value: '95%', icon: <FaFire />, color: 'text-orange-500' },
+    { label: 'Years of Trust', value: '15+', icon: <FaStar />, color: 'text-purple-400' },
+    { label: 'Expert Faculty', value: '10+', icon: <FaChartBar />, color: 'text-indigo-400' }
   ];
 
   return (

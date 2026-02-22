@@ -6,40 +6,58 @@ import { FaGraduationCap, FaAward, FaChalkboardTeacher, FaLightbulb, FaUserShiel
 const Faculty = () => {
   const facultyList = [
     {
-      name: 'Dr. Vivek Pathak',
-      subject: 'Mathematics Expert',
-      qualification: 'B.Tech (IIT Delhi), M.Sc (Maths)',
-      experience: '18+ Years of Mentoring',
-      achievements: 'Guided 200+ students into top 1000 AIR',
+      name: 'Praveen Kumar',
+      subject: 'Mathematics',
+      qualification: 'M.Sc (Mathematics)',
+      experience: '10+ Years of Experience',
+      achievements: 'Founder & CEO of Oasis JEE Classes',
       imageBackground: 'bg-blue-600',
       icon: <FaGraduationCap />
     },
     {
-      name: 'Prof. S.K. Singh',
-      subject: 'Physics Senior Faculty',
-      qualification: 'B.Tech (IIT Kanpur), PhD in Physics',
-      experience: '15+ Years in JEE Coaching',
-      achievements: 'Author of "Advanced Physics for JEE"',
+      name: 'Priyawat Kumar',
+      subject: 'Physics',
+      qualification: 'B.Sc (Physics)',
+      experience: '5+ Years of Experience',
+      achievements: 'Expert in Conceptual Physics',
       imageBackground: 'bg-indigo-600',
       icon: <FaAward />
     },
     {
-      name: 'Dr. Anjali Gupta',
-      subject: 'Chemistry Specialist',
-      qualification: 'PhD in Chemistry (IIT Bombay)',
-      experience: '12+ Years Experience',
-      achievements: 'Recipient of National Teaching Award',
+      name: 'Abhishek Rahul',
+      subject: 'Geography & General Science',
+      qualification: 'M.Sc (Geography), B.Sc (Geo+Phy+chem+Bio)',
+      experience: '10+ Years of Experience',
+      achievements: 'Multi-disciplinary Science Expert',
       imageBackground: 'bg-purple-600',
       icon: <FaChalkboardTeacher />
     },
     {
-      name: 'Er. Rahul Verma',
-      subject: 'Inorganic & Organic Chem',
-      qualification: 'B.Tech (IIT BHU)',
-      experience: '10+ Years Experience',
-      achievements: 'Expert in Concept Mapping Techniques',
+      name: 'Kartikesh Jha',
+      subject: 'Chemistry',
+      qualification: 'B.Sc (Chemistry)',
+      experience: '5+ Years of Experience',
+      achievements: 'Specialist in Organic & Inorganic Chemistry',
       imageBackground: 'bg-pink-600',
       icon: <FaLightbulb />
+    },
+    {
+      name: 'Ajeet Kumar',
+      subject: 'English',
+      qualification: 'M.A (English)',
+      experience: '5+ Years of Experience',
+      achievements: 'Communication & Language Expert',
+      imageBackground: 'bg-orange-600',
+      icon: <FaAward />
+    },
+    {
+      name: 'Swati Kumari',
+      subject: 'Biology',
+      qualification: 'B.Sc (Biology)',
+      experience: '3+ Years of Experience',
+      achievements: 'NEET Specialist & Biology Mentor',
+      imageBackground: 'bg-green-600',
+      icon: <FaChalkboardTeacher />
     }
   ];
 

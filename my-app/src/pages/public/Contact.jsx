@@ -32,7 +32,7 @@ const Contact = () => {
     {
       icon: <FaPhoneAlt />,
       title: 'Call Support',
-      details: ['+91-0612-250XXXX', '+91-98765 43210'],
+      details: ['9905424369', '8825198919'],
       sub: 'Mon-Sat, 9AM-6PM',
       color: 'bg-blue-600',
       shadow: 'shadow-blue-200'
@@ -40,7 +40,7 @@ const Contact = () => {
     {
       icon: <FaEnvelope />,
       title: 'Email Address',
-      details: ['info@oasisjeeclasses.com', 'admissions@oasis.com'],
+      details: ['www.oasisjeeclasses.com', 'admission@oasisjeeclasses.com'],
       sub: '24/7 Response Time',
       color: 'bg-purple-600',
       shadow: 'shadow-purple-200'
@@ -48,7 +48,7 @@ const Contact = () => {
     {
       icon: <FaMapMarkerAlt />,
       title: 'Campus Location',
-      details: ['Above Corporation Bank,', 'Saguna More, Patna - 800001'],
+      details: ['Union Bank building near saguna more,', 'Danapur patna - 801503'],
       sub: 'Visit for Admission',
       color: 'bg-emerald-600',
       shadow: 'shadow-emerald-200'
@@ -132,7 +132,7 @@ const Contact = () => {
                   <div className="relative z-10">
                     <h3 className="text-2xl font-bold mb-4">Instant Support</h3>
                     <p className="text-blue-100 mb-8 max-w-xs">Chat with our admission experts directly on WhatsApp for immediate queries.</p>
-                    <a href="https://wa.me/919876543210" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] px-8 py-4 rounded-2xl font-black transition-all shadow-xl hover:-translate-y-1 active:scale-95">
+                    <a href="https://wa.me/919905424369" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] px-8 py-4 rounded-2xl font-black transition-all shadow-xl hover:-translate-y-1 active:scale-95">
                       <FaWhatsapp className="text-2xl" /> Message WhatsApp
                     </a>
                   </div>
@@ -207,10 +207,12 @@ const Contact = () => {
                         onChange={(e) => setForm({ ...form, course: e.target.value })}
                       >
                         <option value="">Choose a program</option>
-                        <option value="JEE Foundation">JEE Foundation (9th/10th)</option>
-                        <option value="JEE Main">JEE Main (11th/12th)</option>
-                        <option value="JEE Advanced">JEE Advanced Intensive</option>
-                        <option value="Repeater">Repeater/Dropper Batch</option>
+                        <option value="GROUND ZERO">GROUND ZERO (Class 7)</option>
+                        <option value="NURTURE">NURTURE (Class 8)</option>
+                        <option value="SHAKSHAM">SHAKSHAM (Class 9)</option>
+                        <option value="DAKSH">DAKSH (Class 10)</option>
+                        <option value="ABHYAAS">ABHYAAS (Class 11)</option>
+                        <option value="TARGET">TARGET (Class 12)</option>
                       </select>
                     </div>
                   </div>
@@ -237,8 +239,8 @@ const Contact = () => {
                     type="submit"
                     disabled={isSubmitting}
                     className={`w-full font-black text-xl py-5 rounded-[2rem] transition-all shadow-2xl flex items-center justify-center gap-3 active:scale-95 group ${isSubmitting
-                        ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
+                      ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
                       }`}
                   >
                     {isSubmitting ? 'Sending Enquiry...' : 'Send Enquiry'}
