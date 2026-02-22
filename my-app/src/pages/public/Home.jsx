@@ -176,14 +176,15 @@ const Home = () => {
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[120px] animate-blob animation-delay-2000"></div>
         </div>
 
-        <div className="container mx-auto px-4 relative z-10 flex flex-col gap-12">
-          {/* Centered Admissions Badge - Premium Style - Moved Up Further */}
-          <div className="w-full flex justify-center -mt-16 md:-mt-24 animate-slide-up">
-            <div className="inline-flex items-center gap-3 px-6 py-2.5 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-orange-400 text-[11px] font-black uppercase tracking-[0.3em] animate-pulse-soft shadow-2xl">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.8)]"></span>
-              Admissions Open 2026-27
-            </div>
+        {/* Premium Admissions Badge - Stuck to the absolute Top Edge */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 animate-slide-up">
+          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-orange-400 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse-soft shadow-2xl">
+            <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]"></span>
+            Admissions Open 2026-27
           </div>
+        </div>
+
+        <div className="container mx-auto px-4 relative z-10 flex flex-col gap-12">
 
           <div className="flex flex-col md:flex-row items-center gap-12">
             {/* Hero Left Content - Reverted to Left Aligned */}
