@@ -817,8 +817,8 @@ const AdminDashboard = () => {
       label: 'New Enrolments',
       data: [65, 59, 80, 81, 56, 95],
       fill: true,
-      borderColor: '#6366f1',
-      backgroundColor: 'rgba(99, 102, 241, 0.1)',
+      borderColor: '#f97316', // Orange-500
+      backgroundColor: 'rgba(249, 115, 22, 0.1)',
       tension: 0.4
     }]
   };
@@ -827,7 +827,7 @@ const AdminDashboard = () => {
     labels: ['Students', 'Teachers', 'Parents'],
     datasets: [{
       data: [stats.totalStudents, stats.totalTeachers, stats.totalParents],
-      backgroundColor: ['#6366f1', '#10b981', '#f59e0b'],
+      backgroundColor: ['#f97316', '#22c55e', '#fbbf24'], // Orange, Green, Amber
       borderWidth: 0,
     }]
   };
@@ -837,7 +837,7 @@ const AdminDashboard = () => {
     datasets: [{
       label: 'Fee Collection',
       data: [120000, 190000, 150000, 250000],
-      backgroundColor: '#6366f1',
+      backgroundColor: '#f97316',
       borderRadius: 12,
     }]
   };
@@ -901,7 +901,7 @@ const AdminDashboard = () => {
             <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50">
               <div>
                 <h2 className="text-2xl font-black text-gray-900">Attendance History</h2>
-                <p className="font-bold text-gray-500 text-sm">Target: <span className="text-indigo-600">{viewingAttendanceTeacher.name}</span></p>
+                <p className="font-bold text-gray-500 text-sm">Target: <span className="text-orange-600">{viewingAttendanceTeacher.name}</span></p>
               </div>
               <button onClick={() => setViewingAttendanceTeacher(null)} className="p-2 bg-white rounded-full text-gray-400 hover:text-red-500 shadow-sm transition-colors">
                 <FaTimesCircle className="text-2xl" />
@@ -922,7 +922,7 @@ const AdminDashboard = () => {
                     <tr key={log._id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-bold text-gray-700">{new Date(log.date).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-bold uppercase">
+                        <span className="px-2 py-1 bg-orange-50 text-orange-600 rounded-lg text-[10px] font-bold uppercase">
                           {log.className || 'General'}
                         </span>
                       </td>
@@ -946,13 +946,13 @@ const AdminDashboard = () => {
 
       {/* Sidebar - Pro Layout */}
       {/* Sidebar - Pro Layout */}
-      <aside className={`w-72 bg-gradient-to-b from-[#0f172a] via-[#1e1b4b] to-[#312e81] text-white flex-shrink-0 flex flex-col shadow-2xl z-30 fixed h-full transition-all duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 opacity-100 visible' : '-translate-x-full opacity-0 invisible'} lg:static lg:opacity-100 lg:visible`}>
-        <div className="p-6 flex items-center justify-between border-b border-indigo-800/50">
+      <aside className={`w-72 bg-gradient-to-b from-black via-gray-900 to-orange-950 text-white flex-shrink-0 flex flex-col shadow-2xl z-30 fixed h-full transition-all duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 opacity-100 visible' : '-translate-x-full opacity-0 invisible'} lg:static lg:opacity-100 lg:visible`}>
+        <div className="p-6 flex items-center justify-between border-b border-orange-800/20">
           {/* Replaced Logo Section */}
           <div className="w-full flex justify-center">
             <img src={oasisFullLogo} alt="Oasis Full Logo" className="h-12 md:h-16 object-contain brightness-110 drop-shadow-lg" />
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-indigo-300 hover:text-white absolute right-4 top-6">
+          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-orange-300 hover:text-white absolute right-4 top-6">
             <FaTimesCircle className="text-2xl" />
           </button>
         </div>
@@ -975,11 +975,11 @@ const AdminDashboard = () => {
               key={item.id}
               onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-semibold text-sm ${activeTab === item.id
-                ? 'bg-indigo-500 text-white shadow-indigo-900/50 shadow-lg translate-x-1'
-                : 'hover:bg-indigo-800/50 hover:text-white'
+                ? 'bg-orange-600 text-white shadow-orange-900/50 shadow-lg translate-x-1'
+                : 'hover:bg-orange-800/20 hover:text-white'
                 }`}
             >
-              <item.icon className={activeTab === item.id ? 'text-white' : 'text-indigo-400'} />
+              <item.icon className={activeTab === item.id ? 'text-white' : 'text-orange-400'} />
               {item.label}
               {activeTab === item.id && <FaChevronRight className="ml-auto text-[10px]" />}
             </button>
@@ -987,12 +987,12 @@ const AdminDashboard = () => {
         </nav>
 
         <div className="p-6 mt-auto">
-          <div className="bg-indigo-800/40 p-5 rounded-3xl border border-indigo-700/50">
+          <div className="bg-orange-800/20 p-5 rounded-3xl border border-orange-700/30">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-indigo-400/20 flex items-center justify-center text-indigo-300">
+              <div className="w-10 h-10 rounded-xl bg-orange-400/20 flex items-center justify-center text-orange-300">
                 <FaRegClock />
               </div>
-              <div className="text-[11px] font-bold text-indigo-200">Session Active</div>
+              <div className="text-[11px] font-bold text-orange-200">Session Active</div>
             </div>
             <button
               onClick={() => { sessionStorage.removeItem('token'); window.location.href = '/login'; }}
@@ -1011,7 +1011,7 @@ const AdminDashboard = () => {
           <div className="flex items-center gap-2 md:gap-6 flex-1 max-w-2xl">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 bg-gray-50 rounded-xl text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0"
+              className="lg:hidden p-2 bg-gray-50 rounded-xl text-orange-600 hover:bg-orange-50 transition-colors shrink-0"
             >
               <FaTasks className="text-xl" />
             </button>
@@ -1021,7 +1021,7 @@ const AdminDashboard = () => {
               </div>
               <div className="min-w-0">
                 <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
-                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-orange-800 dark:from-orange-400 dark:to-orange-500">
                     Admin Portal
                   </span>
                 </h1>
@@ -1041,7 +1041,7 @@ const AdminDashboard = () => {
           </div>
           <div className="flex items-center gap-2 md:gap-8">
             <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:rounded-2xl md:border md:border-dotted md:border-gray-200 group cursor-pointer transition-all">
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs md:text-sm overflow-hidden border border-indigo-200 shadow-inner group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs md:text-sm overflow-hidden border border-orange-200 shadow-inner group-hover:scale-105 transition-transform">
                 {user?.profilePhoto || profile?.profilePhoto ? (
                   <img
                     src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`}
@@ -1068,25 +1068,25 @@ const AdminDashboard = () => {
           {activeTab === 'overview' && (
             <>
               {/* Vibrant Welcome Banner */}
-              <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 p-6 md:p-10 shadow-2xl shadow-indigo-200/50 mb-6 md:mb-10 text-white">
+              <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-orange-600 via-orange-500 to-black p-6 md:p-10 shadow-2xl shadow-orange-200/50 mb-6 md:mb-10 text-white">
                 <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/10 blur-3xl rounded-full pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-pink-500/20 blur-3xl rounded-full pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-orange-500/20 blur-3xl rounded-full pointer-events-none"></div>
 
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">Admin Console</span>
-                      <span className="text-indigo-200 text-xs font-bold">{new Date().toDateString()}</span>
+                      <span className="text-orange-200 text-xs font-bold">{new Date().toDateString()}</span>
                     </div>
                     <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
-                      Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-200 to-indigo-100">{profile.name?.split(' ')[0] || 'Admin'}</span> 👋
+                      Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-200 to-orange-100">{profile.name?.split(' ')[0] || 'Admin'}</span> 👋
                     </h1>
-                    <p className="text-indigo-100 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
-                      You have <span className="font-black text-white underline decoration-pink-400 decoration-2 underline-offset-4">{stats.totalStudents || 0} active students</span> and <span className="font-black text-white">{stats.presentToday || 0}</span> present today.
+                    <p className="text-orange-100 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
+                      You have <span className="font-black text-white underline decoration-orange-400 decoration-2 underline-offset-4">{stats.totalStudents || 0} active students</span> and <span className="font-black text-white">{stats.presentToday || 0}</span> present today.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3 md:gap-4 w-full md:w-auto">
-                    <button onClick={() => setActiveTab('communication')} className="flex-1 md:flex-none bg-white text-indigo-600 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 group">
+                    <button onClick={() => setActiveTab('communication')} className="flex-1 md:flex-none bg-white text-orange-600 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-orange-50 transition-all flex items-center justify-center gap-2 group">
                       <FaBullhorn className="group-hover:rotate-12 transition-transform" /> POST UPDATE
                     </button>
                     <button onClick={() => alert('System report downloading...')} className="flex-1 md:flex-none bg-indigo-800/40 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-indigo-800/60 transition-all backdrop-blur-md">
@@ -1099,7 +1099,7 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                 {[
                   { label: 'Add Student', icon: FaUserPlus, color: 'bg-emerald-500', bg: 'hover:bg-emerald-50', border: 'hover:border-emerald-200', action: () => setActiveTab('students') },
-                  { label: 'New Teacher', icon: FaPlus, color: 'bg-indigo-600', bg: 'hover:bg-indigo-50', border: 'hover:border-indigo-200', action: () => setActiveTab('teachers') },
+                  { label: 'New Teacher', icon: FaPlus, color: 'bg-orange-600', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200', action: () => setActiveTab('teachers') },
                   { label: 'Broadcast', icon: FaBullhorn, color: 'bg-orange-500', bg: 'hover:bg-orange-50', border: 'hover:border-orange-200', action: () => setActiveTab('communication') },
                   { label: 'Exam Results', icon: FaFileAlt, color: 'bg-purple-600', bg: 'hover:bg-purple-50', border: 'hover:border-purple-200', action: () => setActiveTab('results') },
                 ].map((act, i) => (
@@ -1119,7 +1119,7 @@ const AdminDashboard = () => {
               {/* Stats & Clickable Cards */}
               <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                 {[
-                  { label: 'Students', value: stats.totalStudents, trend: '+12%', icon: FaUserGraduate, color: 'indigo', gradient: 'from-indigo-500 to-blue-500', action: () => setActiveTab('students') },
+                  { label: 'Students', value: stats.totalStudents, trend: '+12%', icon: FaUserGraduate, color: 'orange', gradient: 'from-orange-500 to-orange-600', action: () => setActiveTab('students') },
                   { label: 'Teachers', value: `${stats.presentTeachers || 0}/${stats.totalTeachers || 0}`, trend: 'Live', icon: FaChalkboardTeacher, color: 'emerald', gradient: 'from-emerald-500 to-teal-500', action: () => setActiveTab('teachers') },
                   { label: 'Present', value: `${stats.presentToday}`, trend: 'Good', icon: FaCalendarCheck, color: 'orange', gradient: 'from-orange-500 to-amber-500', action: null },
                   { label: 'Collection', value: `₹${((stats.totalFees || 0) / 1000).toFixed(1)}k`, trend: 'Live', icon: FaMoneyBillWave, color: 'rose', gradient: 'from-rose-500 to-pink-500', action: () => setActiveTab('fees') },
@@ -1135,7 +1135,7 @@ const AdminDashboard = () => {
                       <div className={`w-10 h-10 md:w-14 md:h-14 bg-${stat.color}-50 rounded-xl md:rounded-2xl flex items-center justify-center text-${stat.color}-600 text-base md:text-xl shadow-inner`}>
                         <stat.icon />
                       </div>
-                      <span className={`hidden sm:block text-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-600 text-[10px] font-black bg-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-50 px-3 py-1.5 rounded-full border border-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'indigo' : 'rose'}-100`}>
+                      <span className={`hidden sm:block text-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'orange' : 'rose'}-600 text-[10px] font-black bg-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'orange' : 'rose'}-50 px-3 py-1.5 rounded-full border border-${stat.trend.startsWith('+') ? 'emerald' : stat.trend === 'Good' ? 'orange' : 'rose'}-100`}>
                         {stat.trend}
                       </span>
                     </div>
@@ -1185,7 +1185,7 @@ const AdminDashboard = () => {
                   </div>
                   <div className="grid grid-cols-3 gap-4 w-full">
                     <div>
-                      <p className="text-2xl font-black text-indigo-600">{stats.totalStudents}</p>
+                      <p className="text-2xl font-black text-orange-600">{stats.totalStudents}</p>
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Students</p>
                     </div>
                     <div>
@@ -1208,7 +1208,7 @@ const AdminDashboard = () => {
                     <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3">
                       <FaMoneyBillWave className="text-emerald-500" /> Revenue Stream
                     </h2>
-                    <button className="text-xs font-black text-indigo-600 hover:underline">Download Ledger</button>
+                    <button className="text-xs font-black text-orange-600 hover:underline">Download Ledger</button>
                   </div>
                   <div className="h-64 mb-8">
                     <Bar
@@ -1226,10 +1226,10 @@ const AdminDashboard = () => {
                   </div>
                   <div className="p-6 bg-indigo-50 rounded-3xl flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Outstanding</p>
-                      <p className="text-2xl font-black text-indigo-900">₹8,45,200</p>
+                      <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Total Outstanding</p>
+                      <p className="text-2xl font-black text-orange-900">₹8,45,200</p>
                     </div>
-                    <button className="px-6 py-3 bg-white text-indigo-600 rounded-2xl font-black text-xs shadow-sm hover:scale-105 transition-all">RECOVER NOW</button>
+                    <button className="px-6 py-3 bg-white text-orange-600 rounded-2xl font-black text-xs shadow-sm hover:scale-105 transition-all">RECOVER NOW</button>
                   </div>
                 </div>
 
@@ -1241,7 +1241,7 @@ const AdminDashboard = () => {
                   <div className="space-y-4 flex-1">
                     {[
                       { title: 'Finalize Q3 Marks Entry', due: '2h ago', status: 'CRITICAL', color: 'rose', icon: FaCheckCircle },
-                      { title: 'Employee Payroll Approval', due: 'Tomorrow', status: 'PENDING', color: 'indigo', icon: FaRegClock },
+                      { title: 'Employee Payroll Approval', due: 'Tomorrow', status: 'PENDING', color: 'orange', icon: FaRegClock },
                       { title: 'Infrastructure Upgrade Plan', due: 'Sunday', status: 'PLANNING', color: 'emerald', icon: FaCogs },
                     ].map((task, i) => (
                       <div key={i} className="group p-5 bg-gray-50 rounded-3xl hover:bg-white border border-transparent hover:border-indigo-100 transition-all cursor-pointer flex items-center gap-4">
@@ -1601,7 +1601,7 @@ const AdminDashboard = () => {
                           <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-2 block">Amount (₹)</label>
                           <input
                             type="number"
-                            className="w-full p-4 bg-gray-50 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-rose-200"
+                            className="w-full p-4 bg-gray-50 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-200"
                             placeholder="Enter Amount"
                             value={feeForm.amount}
                             onChange={e => setFeeForm({ ...feeForm, amount: e.target.value })}
@@ -1611,7 +1611,7 @@ const AdminDashboard = () => {
                         <div>
                           <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-2 block">Payment Type</label>
                           <select
-                            className="w-full p-4 bg-gray-50 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-rose-200"
+                            className="w-full p-4 bg-gray-50 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-200"
                             value={feeForm.type}
                             onChange={e => setFeeForm({ ...feeForm, type: e.target.value })}
                           >
@@ -1625,13 +1625,13 @@ const AdminDashboard = () => {
                           <label className="text-xs font-black uppercase text-gray-400 tracking-widest mb-2 block">Remarks / Receipt Note</label>
                           <input
                             type="text"
-                            className="w-full p-4 bg-gray-50 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-rose-200"
+                            className="w-full p-4 bg-gray-50 rounded-xl font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-200"
                             placeholder="e.g. Paid via UPI, Transaction ID..."
                             value={feeForm.remarks}
                             onChange={e => setFeeForm({ ...feeForm, remarks: e.target.value })}
                           />
                         </div>
-                        <button type="submit" className="md:col-span-2 py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black shadow-lg shadow-rose-200 transition-all flex items-center justify-center gap-2">
+                        <button type="submit" className="md:col-span-2 py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-black shadow-lg shadow-orange-200 transition-all flex items-center justify-center gap-2">
                           <FaCheckCircle /> CONFIRM & SEND RECEIPT
                         </button>
                       </form>
@@ -1655,10 +1655,10 @@ const AdminDashboard = () => {
                               fees.filter(f => f.studentId?._id === selectedFeeStudent._id || f.studentId === selectedFeeStudent._id).map(fee => (
                                 <tr key={fee._id} className="hover:bg-gray-50">
                                   <td className="px-4 py-3 font-bold text-gray-600">{new Date(fee.date).toLocaleDateString()}</td>
-                                  <td className="px-4 py-3 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-lg px-2 w-fit">{fee.type}</td>
+                                  <td className="px-4 py-3 text-xs font-bold text-orange-600 bg-orange-50 rounded-lg px-2 w-fit">{fee.type}</td>
                                   <td className="px-4 py-3 font-black text-gray-800">₹{fee.amount.toLocaleString()}</td>
                                   <td className="px-4 py-3">
-                                    <button onClick={() => handleDownloadReceipt(fee)} className="text-xs font-bold text-rose-500 hover:underline">View Receipt</button>
+                                    <button onClick={() => handleDownloadReceipt(fee)} className="text-xs font-bold text-orange-500 hover:underline">View Receipt</button>
                                   </td>
                                 </tr>
                               ))
@@ -1676,7 +1676,7 @@ const AdminDashboard = () => {
                 <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xl font-black text-gray-900">Recent Global Transactions</h3>
-                    <button onClick={fetchFees} className="text-gray-400 hover:text-rose-500"><FaHistory /></button>
+                    <button onClick={fetchFees} className="text-gray-400 hover:text-orange-500"><FaHistory /></button>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
@@ -1721,14 +1721,14 @@ const AdminDashboard = () => {
                   <h2 className="text-2xl md:text-3xl font-black text-gray-900">Faculty Management</h2>
                   <p className="text-gray-400 font-bold text-sm">Track and onboard teaching staff</p>
                 </div>
-                <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 text-white px-6 py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-indigo-100 hover:scale-105 active:scale-95 transition-all">
+                <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-orange-600 text-white px-6 py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-orange-100 hover:scale-105 active:scale-95 transition-all">
                   <FaPlus /> ONBOARD TEACHER
                 </button>
               </div>
 
               <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm space-y-8">
                 <h3 className="text-xl font-black text-gray-900 flex items-center gap-3">
-                  <FaUserPlus className="text-emerald-500" /> New Faculty Entry
+                  <FaUserPlus className="text-orange-600" /> New Faculty Entry
                 </h3>
                 <form onSubmit={handleAddTeacher} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div className="space-y-2">
@@ -1750,10 +1750,10 @@ const AdminDashboard = () => {
                       {['Physics', 'Chemistry', 'Maths', 'Biology', 'English'].map(sub => {
                         const isSelected = teacherForm.subjects.split(',').map(s => s.trim()).includes(sub);
                         return (
-                          <label key={sub} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-transparent hover:border-indigo-100'}`}>
+                          <label key={sub} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-transparent hover:border-orange-100'}`}>
                             <input
                               type="checkbox"
-                              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                               checked={isSelected}
                               onChange={() => {
                                 const current = teacherForm.subjects.split(',').map(s => s.trim()).filter(x => x);
@@ -1761,7 +1761,7 @@ const AdminDashboard = () => {
                                 setTeacherForm({ ...teacherForm, subjects: updated.join(', ') });
                               }}
                             />
-                            <span className={`text-xs font-bold ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>{sub}</span>
+                            <span className={`text-xs font-bold ${isSelected ? 'text-orange-600' : 'text-gray-500'}`}>{sub}</span>
                           </label>
                         );
                       })}
@@ -1775,10 +1775,10 @@ const AdminDashboard = () => {
                       {['Class 9', 'Class 10'].map(cls => {
                         const isSelected = teacherForm.classes.split(',').map(s => s.trim()).includes(cls);
                         return (
-                          <label key={cls} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-transparent hover:border-emerald-100'}`}>
+                          <label key={cls} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-transparent hover:border-orange-100'}`}>
                             <input
                               type="checkbox"
-                              className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                              className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                               checked={isSelected}
                               onChange={() => {
                                 const current = teacherForm.classes.split(',').map(s => s.trim()).filter(x => x);
@@ -1786,7 +1786,7 @@ const AdminDashboard = () => {
                                 setTeacherForm({ ...teacherForm, classes: updated.join(', ') });
                               }}
                             />
-                            <span className={`text-xs font-bold ${isSelected ? 'text-emerald-600' : 'text-gray-500'}`}>{cls}</span>
+                            <span className={`text-xs font-bold ${isSelected ? 'text-orange-600' : 'text-gray-500'}`}>{cls}</span>
                           </label>
                         );
                       })}
@@ -1820,10 +1820,10 @@ const AdminDashboard = () => {
 
                   <div className="space-y-2 col-span-1 md:col-span-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Access Password</label>
-                    <input type="password" placeholder="Create strong password" value={teacherForm.password} onChange={(e) => setTeacherForm({ ...teacherForm, password: e.target.value })} className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all" />
+                    <input type="password" placeholder="Create strong password" value={teacherForm.password} onChange={(e) => setTeacherForm({ ...teacherForm, password: e.target.value })} className="w-full p-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-orange-100 focus:outline-none font-bold text-gray-700 transition-all" />
                   </div>
                   <div className="flex items-end pt-2">
-                    <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm transition-all shadow-lg shadow-indigo-100">REGISTER TEACHER</button>
+                    <button type="submit" className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-sm transition-all shadow-lg shadow-orange-100">REGISTER TEACHER</button>
                   </div>
                 </form>
               </div>
@@ -1843,7 +1843,7 @@ const AdminDashboard = () => {
                       <tr key={teacher._id} className="group hover:bg-gray-50 transition-all">
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 font-bold text-xl shadow-sm overflow-hidden">
+                            <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 font-bold text-xl shadow-sm overflow-hidden">
                               {teacher.profilePhoto ? (
                                 <img
                                   src={`${config.API_URL.replace('/api', '')}${teacher.profilePhoto}`}
@@ -1858,7 +1858,7 @@ const AdminDashboard = () => {
                               )}
                             </div>
                             <div>
-                              <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{teacher.name}</p>
+                              <p className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors">{teacher.name}</p>
                               <p className="text-xs text-gray-400 font-medium break-all">{teacher.email}</p>
                             </div>
                           </div>
@@ -1872,20 +1872,20 @@ const AdminDashboard = () => {
                           </div>
                         </td>
                         <td className="px-8 py-6">
-                          <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase border border-emerald-100">Active</span>
+                          <span className="px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-[10px] font-black uppercase border border-orange-100">Active</span>
                         </td>
                         <td className="px-8 py-6 text-right">
                           <div className="flex justify-end gap-3">
                             <button
                               onClick={() => handleViewTeacherAttendance(teacher)}
-                              className="p-3 bg-gray-50 text-indigo-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all font-bold text-xs flex items-center gap-2 group/btn"
+                              className="p-3 bg-gray-50 text-orange-500 hover:bg-orange-50 hover:text-orange-600 rounded-xl transition-all font-bold text-xs flex items-center gap-2 group/btn"
                               title="View Attendance History"
                             >
                               <FaHistory /> <span className="hidden group-hover/btn:inline">History</span>
                             </button>
                             <button
                               onClick={() => openAssignModal(teacher)}
-                              className="p-3 bg-gray-50 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all"
+                              className="p-3 bg-gray-50 text-gray-400 hover:bg-orange-50 hover:text-orange-600 rounded-xl transition-all"
                               title="Edit Assignments"
                             >
                               <FaCogs />
@@ -1910,7 +1910,7 @@ const AdminDashboard = () => {
                     <h2 className="text-3xl font-black text-gray-900 leading-tight">Executive Intelligence</h2>
                     <p className="text-gray-400 font-bold">Automated analysis of institutional performance</p>
                   </div>
-                  <button onClick={fetchInsights} className="px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-2">
+                  <button onClick={fetchInsights} className="px-6 py-2 bg-orange-50 text-orange-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-orange-600 hover:text-white transition-colors flex items-center gap-2">
                     <FaRegClock /> Refresh Analytics
                   </button>
                 </div>
@@ -1986,7 +1986,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-20 text-indigo-300">
+                  <div className="flex flex-col items-center justify-center py-20 text-orange-300">
                     <FaChartPie className="text-6xl mb-4 animate-pulse opacity-50" />
                     <p className="font-black text-xs uppercase tracking-widest">Analyzing Institutional Data...</p>
                   </div>
@@ -2003,7 +2003,7 @@ const AdminDashboard = () => {
                     <h2 className="text-3xl font-black text-gray-900 leading-tight">Master Schedule</h2>
                     <p className="text-gray-400 font-bold">Monitor live class activities and timings</p>
                   </div>
-                  <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-black text-2xl">
+                  <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 font-black text-2xl">
                     <FaRegClock />
                   </div>
                 </div>
@@ -2025,9 +2025,9 @@ const AdminDashboard = () => {
                             <div className="flex-1 md:border-l border-gray-100 md:pl-6 text-center md:text-left">
                               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
                                 <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-black uppercase tracking-widest">{cls.classId?.name || 'General'}</span>
-                                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">{cls.subjectId?.name}</span>
+                                <span className="px-3 py-1 bg-orange-50 text-orange-600 rounded-lg text-[10px] font-black uppercase tracking-widest">{cls.subjectId?.name}</span>
                               </div>
-                              <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{cls.title}</h3>
+                              <h3 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors">{cls.title}</h3>
                               <p className="text-sm text-gray-500 font-medium mt-1">Faculty: {cls.teacherId?.name || 'Unknown'}</p>
                             </div>
 
@@ -2061,15 +2061,15 @@ const AdminDashboard = () => {
                 <div className="relative z-10">
                   <h2 className="text-3xl font-black text-gray-900 mb-6">Academic Monitoring</h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100 relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
-                      <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">Total Assessments</p>
-                      <p className="text-5xl font-black text-indigo-600">{tests.length}</p>
+                    <div className="p-8 bg-orange-50 rounded-[2rem] border border-orange-100 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+                      <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-1">Total Assessments</p>
+                      <p className="text-5xl font-black text-orange-600">{tests.length}</p>
                     </div>
-                    <div className="p-8 bg-emerald-50 rounded-[2rem] border border-emerald-100 relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
-                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">Active Subjects</p>
-                      <p className="text-5xl font-black text-emerald-600">{[...new Set(tests.map(t => t.subjectId?.name || 'General'))].length}</p>
+                    <div className="p-8 bg-black/5 rounded-[2rem] border border-gray-100 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-gray-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Active Subjects</p>
+                      <p className="text-5xl font-black text-gray-900">{[...new Set(tests.map(t => t.subjectId?.name || 'General'))].length}</p>
                     </div>
                     <div className="p-8 bg-orange-50 rounded-[2rem] border border-orange-100 relative overflow-hidden group">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
@@ -2096,11 +2096,11 @@ const AdminDashboard = () => {
                         <tr key={test._id} className="group hover:bg-gray-50 transition-all">
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-bold text-xl shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 font-bold text-xl shadow-sm group-hover:bg-orange-600 group-hover:text-white transition-colors">
                                 <FaLaptopCode />
                               </div>
                               <div>
-                                <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors text-sm">{test.title}</p>
+                                <p className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors text-sm">{test.title}</p>
                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
                                   {test.questionPaperUrl ? 'PDF Attached' : 'Manual Entry'} • {test.totalMarks} Marks
                                 </p>
@@ -2121,7 +2121,7 @@ const AdminDashboard = () => {
                           <td className="px-8 py-6 text-right">
                             <button
                               onClick={() => handleViewTestResults(test)}
-                              className="px-6 py-3 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-black text-[10px] uppercase tracking-widest shadow-sm hover:shadow-indigo-200"
+                              className="px-6 py-3 bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white rounded-xl transition-all font-black text-[10px] uppercase tracking-widest shadow-sm hover:shadow-orange-200"
                             >
                               View Report
                             </button>
@@ -2145,7 +2145,7 @@ const AdminDashboard = () => {
                   <h2 className="text-2xl md:text-3xl font-black text-gray-900">Demo Class Requests</h2>
                   <p className="text-gray-400 font-bold text-sm">Potential students interested in a free demo</p>
                 </div>
-                <div className="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-black text-sm border border-indigo-100 shadow-sm">
+                <div className="bg-orange-50 text-orange-600 px-6 py-3 rounded-2xl font-black text-sm border border-orange-100 shadow-sm">
                   TOTAL LEADS: {leads.length}
                 </div>
               </div>
@@ -2173,15 +2173,15 @@ const AdminDashboard = () => {
                           <td className="px-8 py-6">
                             <div className="space-y-1">
                               <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                <FaEnvelope className="text-indigo-400" /> {lead.email}
+                                <FaEnvelope className="text-orange-400" /> {lead.email}
                               </p>
                               <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                <span className="text-indigo-400">📞</span> {lead.phone}
+                                <span className="text-orange-400">📞</span> {lead.phone}
                               </p>
                             </div>
                           </td>
                           <td className="px-8 py-6">
-                            <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase border border-indigo-100">
+                            <span className="px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-[10px] font-black uppercase border border-orange-100">
                               {lead.course || 'N/A'}
                             </span>
                           </td>
@@ -2234,7 +2234,7 @@ const AdminDashboard = () => {
                     <div className="min-w-[180px]">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-2">Select Class</label>
                       <select
-                        className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all text-sm appearance-none cursor-pointer shadow-sm"
+                        className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-orange-100 focus:outline-none font-bold text-gray-700 transition-all text-sm appearance-none cursor-pointer shadow-sm"
                         value={selectedResultClass}
                         onChange={(e) => { setSelectedResultClass(e.target.value); setSelectedResultExam(''); setExamSummary(null); }}
                       >
@@ -2245,14 +2245,14 @@ const AdminDashboard = () => {
                     <div className="min-w-[220px]">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-2">Select Exam</label>
                       <select
-                        className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all text-sm appearance-none cursor-pointer shadow-sm disabled:opacity-50"
+                        className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-orange-100 focus:outline-none font-bold text-gray-700 transition-all text-sm appearance-none cursor-pointer shadow-sm disabled:opacity-50"
                         value={selectedResultExam}
                         onChange={(e) => setSelectedResultExam(e.target.value)}
                         disabled={!selectedResultClass}
                       >
                         <option value="">Choose Exam</option>
                         {selectedResultClass && (
-                          <option value="total" className="text-indigo-600 font-black">TOTAL (OVERALL)</option>
+                          <option value="total" className="text-orange-600 font-black">TOTAL (OVERALL)</option>
                         )}
                       </select>
                     </div>
@@ -2262,7 +2262,7 @@ const AdminDashboard = () => {
                           setExamForm({ ...examForm, subjects: availableSubjects.filter(s => s.classId?._id === selectedResultClass || s.classId === selectedResultClass).map(s => s._id) });
                           setShowAddExamModal(true);
                         }}
-                        className="mt-6 md:mt-0 p-4 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all self-end"
+                        className="mt-6 md:mt-0 p-4 bg-orange-50 text-orange-600 rounded-2xl hover:bg-orange-600 hover:text-white transition-all self-end"
                         title="Add New Exam"
                       >
                         <FaPlus />
@@ -2280,12 +2280,12 @@ const AdminDashboard = () => {
                   </div>
                 ) : loadingSummary ? (
                   <div className="py-20 text-center">
-                    <FaHistory className="animate-spin text-4xl text-indigo-400 mx-auto mb-4" />
+                    <FaHistory className="animate-spin text-4xl text-orange-400 mx-auto mb-4" />
                     <p className="text-gray-400 font-bold">Compiling academic reports...</p>
                   </div>
                 ) : examSummary ? (
                   <div className="animate-in fade-in duration-500">
-                    <div className="flex items-center justify-between mb-8 p-6 bg-indigo-50/30 rounded-3xl border border-indigo-50">
+                    <div className="flex items-center justify-between mb-8 p-6 bg-orange-50/30 rounded-3xl border border-orange-50">
                       <div className="flex items-center gap-6">
                         <div className={`px-4 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest ${examSummary.isPublished ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' : 'bg-orange-100 text-orange-600 border border-orange-200'}`}>
                           {examSummary.isPublished ? 'RESULTS PUBLISHED' : 'DRAFT (NOT PUBLISHED)'}
@@ -2315,13 +2315,13 @@ const AdminDashboard = () => {
                             <button
                               onClick={() => handlePublishOverall(selectedResultClass)}
                               disabled={isPublishing}
-                              className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 uppercase"
+                              className="px-8 py-3 bg-orange-600 text-white rounded-2xl font-black text-xs hover:bg-orange-700 shadow-lg shadow-orange-100 transition-all disabled:opacity-50 uppercase"
                             >
                               {isPublishing ? 'PUBLISHING...' : 'Publish Publicly'}
                             </button>
                           )
                         )}
-                        <button onClick={() => window.print()} className="p-3 bg-white text-indigo-600 border border-indigo-100 rounded-2xl hover:bg-indigo-50 transition-all shadow-sm">
+                        <button onClick={() => window.print()} className="p-3 bg-white text-orange-600 border border-orange-100 rounded-2xl hover:bg-orange-50 transition-all shadow-sm">
                           <FaPrint />
                         </button>
                       </div>
@@ -2349,7 +2349,7 @@ const AdminDashboard = () => {
                               <td className="px-6 py-6">
                                 <div>
                                   <p className="font-black text-gray-900 text-sm mb-1">{res.name}</p>
-                                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">REGISTERED ID: {res.rollNo}</p>
+                                  <p className="text-[9px] font-black text-orange-400 uppercase tracking-[0.2em]">REGISTERED ID: {res.rollNo}</p>
                                 </div>
                               </td>
                               <td className="px-6 py-6 text-center">
@@ -2359,7 +2359,7 @@ const AdminDashboard = () => {
                               <td className="px-6 py-6">
                                 <div className="flex items-center gap-4">
                                   <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
-                                    <div className={`h-full rounded-full transition-all duration-1000 ${parseFloat(res.percentage) > 85 ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : parseFloat(res.percentage) > 60 ? 'bg-gradient-to-r from-indigo-400 to-violet-500' : 'bg-gradient-to-r from-rose-400 to-pink-500'}`} style={{ width: `${res.percentage}%` }}></div>
+                                    <div className={`h-full rounded-full transition-all duration-1000 ${parseFloat(res.percentage) > 85 ? 'bg-gradient-to-r from-orange-400 to-orange-500' : parseFloat(res.percentage) > 60 ? 'bg-gradient-to-r from-orange-400 to-orange-600' : 'bg-gradient-to-r from-orange-400 to-orange-500'}`} style={{ width: `${res.percentage}%` }}></div>
                                   </div>
                                   <span className="font-black text-gray-900 text-sm min-w-[50px]">{res.percentage}%</span>
                                 </div>
@@ -2367,7 +2367,7 @@ const AdminDashboard = () => {
                               <td className="px-6 py-6 text-right">
                                 <button
                                   onClick={() => setViewingReportCard(res)}
-                                  className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all transform active:scale-95"
+                                  className="px-6 py-3 bg-orange-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 shadow-xl shadow-orange-100 transition-all transform active:scale-95"
                                 >
                                   {selectedResultExam === 'total' ? 'Final Transcript' : 'View Report'}
                                 </button>
@@ -2410,8 +2410,8 @@ const AdminDashboard = () => {
                               setNewNotice({ ...newNotice, targetRoles: roles });
                             }}
                             className={`px-8 py-3.5 rounded-2xl text-[10px] font-black tracking-widest transition-all border ${newNotice.targetRoles.includes(role)
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl shadow-indigo-100'
-                              : 'bg-white text-gray-400 border-gray-100 hover:border-indigo-100'
+                              ? 'bg-orange-600 text-white border-orange-600 shadow-xl shadow-orange-100'
+                              : 'bg-white text-gray-400 border-gray-100 hover:border-orange-100'
                               }`}
                           >
                             {role.toUpperCase()}S
@@ -2425,7 +2425,7 @@ const AdminDashboard = () => {
                       <input
                         type="text"
                         placeholder="Urgent Maintenance / Holiday Update..."
-                        className="w-full px-8 py-5 bg-gray-50 border border-transparent rounded-[2rem] focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all shadow-inner"
+                        className="w-full px-8 py-5 bg-gray-50 border border-transparent rounded-[2rem] focus:bg-white focus:border-orange-100 focus:outline-none font-bold text-gray-700 transition-all shadow-inner"
                         value={newNotice.title}
                         onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
                         required
@@ -2437,7 +2437,7 @@ const AdminDashboard = () => {
                       <textarea
                         rows="6"
                         placeholder="Detailed announcement content goes here..."
-                        className="w-full px-8 py-5 bg-gray-50 border border-transparent rounded-[2rem] focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all resize-none shadow-inner"
+                        className="w-full px-8 py-5 bg-gray-50 border border-transparent rounded-[2rem] focus:bg-white focus:border-orange-100 focus:outline-none font-bold text-gray-700 transition-all resize-none shadow-inner"
                         value={newNotice.content}
                         onChange={(e) => setNewNotice({ ...newNotice, content: e.target.value })}
                         required
@@ -2446,7 +2446,7 @@ const AdminDashboard = () => {
                   </div>
                   <button
                     type="submit"
-                    className="w-full mt-10 py-6 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-[2rem] font-black tracking-widest shadow-2xl shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4 text-sm"
+                    className="w-full mt-10 py-6 bg-gradient-to-r from-orange-600 to-black text-white rounded-[2rem] font-black tracking-widest shadow-2xl shadow-orange-200 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4 text-sm"
                   >
                     <FaEnvelope className="text-lg" /> INITIALIZE BROADCAST
                   </button>
@@ -2459,7 +2459,7 @@ const AdminDashboard = () => {
             <div className="max-w-2xl mx-auto animate-in fade-in duration-500">
               <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-2xl shadow-gray-100/50">
                 <div className="flex flex-col items-center mb-12">
-                  <div className="w-40 h-40 rounded-[3rem] bg-indigo-50 border-8 border-white shadow-2xl flex items-center justify-center text-5xl text-indigo-600 font-black mb-8 relative group overflow-hidden">
+                  <div className="w-40 h-40 rounded-[3rem] bg-orange-50 border-8 border-white shadow-2xl flex items-center justify-center text-5xl text-orange-600 font-black mb-8 relative group overflow-hidden">
                     {photoPreview ? (
                       <img src={photoPreview} className="w-full h-full object-cover" />
                     ) : (user?.profilePhoto || profile?.profilePhoto) ? (
@@ -2472,7 +2472,7 @@ const AdminDashboard = () => {
                         }}
                       />
                     ) : profile.name?.charAt(0)}
-                    <label className="absolute inset-0 bg-indigo-900/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
+                    <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all cursor-pointer backdrop-blur-sm">
                       <FaPlus className="text-white text-2xl mb-2" />
                       <span className="text-[10px] font-black text-white uppercase tracking-widest">Update Photo</span>
                       <input type="file" className="hidden" onChange={handlePhotoChange} accept="image/*" />
@@ -2483,7 +2483,7 @@ const AdminDashboard = () => {
                       <button
                         onClick={handleQuickPhotoUpload}
                         disabled={uploadingPhoto}
-                        className="px-6 py-3 bg-emerald-600 text-white rounded-2xl font-black text-xs shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2"
+                        className="px-6 py-3 bg-orange-600 text-white rounded-2xl font-black text-xs shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center gap-2"
                       >
                         {uploadingPhoto ? <FaHistory className="animate-spin" /> : <FaCheckCircle />} CONFIRM CHANGE
                       </button>
@@ -2497,8 +2497,8 @@ const AdminDashboard = () => {
                   )}
                   <h2 className="text-4xl font-black text-gray-900 leading-tight mb-2">{profile.name}</h2>
                   <div className="flex items-center gap-3">
-                    <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-100">Oasis Administrator</span>
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                    <span className="px-4 py-1.5 bg-orange-50 text-orange-600 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border border-orange-100">Oasis Administrator</span>
+                    <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.5)]"></span>
                   </div>
                 </div>
 
@@ -2506,20 +2506,20 @@ const AdminDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block mb-2">Canonical Identity</label>
-                      <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-bold text-gray-800 border border-transparent hover:border-indigo-100 transition-all shadow-inner">
+                      <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-bold text-gray-800 border border-transparent hover:border-orange-100 transition-all shadow-inner">
                         {profile.name}
                       </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block mb-2">Platform Protocol ID</label>
-                      <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-mono text-indigo-500 border border-transparent hover:border-indigo-100 transition-all shadow-inner">
+                      <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-mono text-orange-500 border border-transparent hover:border-orange-100 transition-all shadow-inner">
                         #{profile._id?.slice(-8).toUpperCase()}
                       </div>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 block mb-2">Verified Communications</label>
-                    <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-bold text-gray-800 border border-transparent hover:border-indigo-100 transition-all shadow-inner">
+                    <div className="px-8 py-5 bg-gray-50 rounded-[2rem] font-bold text-gray-800 border border-transparent hover:border-orange-100 transition-all shadow-inner">
                       {profile.phone || '91XXXXXXXX'}
                     </div>
                   </div>
@@ -2548,7 +2548,7 @@ const AdminDashboard = () => {
                       <input
                         type="text"
                         required
-                        className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all shadow-inner"
+                        className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-orange-100 focus:outline-none font-bold text-gray-700 transition-all shadow-inner"
                         placeholder="e.g. Phase 1 - Monthly Test"
                         value={examForm.name}
                         onChange={e => setExamForm({ ...examForm, name: e.target.value })}
@@ -2558,7 +2558,7 @@ const AdminDashboard = () => {
                       <div>
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-2">Testing Category</label>
                         <select
-                          className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all appearance-none shadow-sm"
+                          className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-orange-100 focus:outline-none font-bold text-gray-700 transition-all appearance-none shadow-sm"
                           value={examForm.type}
                           onChange={e => setExamForm({ ...examForm, type: e.target.value })}
                         >
@@ -2572,14 +2572,14 @@ const AdminDashboard = () => {
                         <input
                           type="date"
                           required
-                          className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:outline-none font-bold text-gray-700 transition-all shadow-sm"
+                          className="w-full px-6 py-4 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-orange-100 focus:outline-none font-bold text-gray-700 transition-all shadow-sm"
                           value={examForm.date}
                           onChange={e => setExamForm({ ...examForm, date: e.target.value })}
                         />
                       </div>
                     </div>
                   </div>
-                  <button type="submit" className="w-full py-5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl font-black tracking-widest shadow-xl shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-95">
+                  <button type="submit" className="w-full py-5 bg-gradient-to-r from-orange-600 to-black text-white rounded-2xl font-black tracking-widest shadow-xl shadow-orange-100 transition-all hover:scale-[1.02] active:scale-95">
                     INITIALIZE EXAM PROTOCOL
                   </button>
                 </form>
@@ -2593,10 +2593,10 @@ const AdminDashboard = () => {
         showAssignModal && editingTeacher && (
           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
             <div className="bg-white rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-              <div className="p-8 bg-indigo-600 text-white flex justify-between items-center">
+              <div className="p-8 bg-orange-600 text-white flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-black">Manage Assignments</h3>
-                  <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-widest">{editingTeacher.name}</p>
+                  <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest">{editingTeacher.name}</p>
                 </div>
                 <button onClick={() => setShowAssignModal(false)} className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all">
                   <FaSignOutAlt className="rotate-180" />
@@ -2609,10 +2609,10 @@ const AdminDashboard = () => {
                     {['Physics', 'Chemistry', 'Maths', 'Biology', 'English'].map(sub => {
                       const isSelected = assignForm.subjects.split(',').map(s => s.trim()).includes(sub);
                       return (
-                        <label key={sub} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-transparent hover:border-indigo-100'}`}>
+                        <label key={sub} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-transparent hover:border-orange-100'}`}>
                           <input
                             type="checkbox"
-                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                             checked={isSelected}
                             onChange={() => {
                               const current = assignForm.subjects.split(',').map(s => s.trim()).filter(x => x);
@@ -2620,7 +2620,7 @@ const AdminDashboard = () => {
                               setAssignForm({ ...assignForm, subjects: updated.join(', ') });
                             }}
                           />
-                          <span className={`text-xs font-bold ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>{sub}</span>
+                          <span className={`text-xs font-bold ${isSelected ? 'text-orange-600' : 'text-gray-500'}`}>{sub}</span>
                         </label>
                       );
                     })}
@@ -2633,10 +2633,10 @@ const AdminDashboard = () => {
                     {['Class 9', 'Class 10'].map(cls => {
                       const isSelected = assignForm.classes.split(',').map(s => s.trim()).includes(cls);
                       return (
-                        <label key={cls} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-transparent hover:border-emerald-100'}`}>
+                        <label key={cls} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${isSelected ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-transparent hover:border-orange-100'}`}>
                           <input
                             type="checkbox"
-                            className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                            className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                             checked={isSelected}
                             onChange={() => {
                               const current = assignForm.classes.split(',').map(s => s.trim()).filter(x => x);
@@ -2644,7 +2644,7 @@ const AdminDashboard = () => {
                               setAssignForm({ ...assignForm, classes: updated.join(', ') });
                             }}
                           />
-                          <span className={`text-xs font-bold ${isSelected ? 'text-emerald-600' : 'text-gray-500'}`}>{cls}</span>
+                          <span className={`text-xs font-bold ${isSelected ? 'text-orange-600' : 'text-gray-500'}`}>{cls}</span>
                         </label>
                       );
                     })}
@@ -2675,7 +2675,7 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                <button type="submit" className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-100 transition-all transform hover:-translate-y-1">
+                <button type="submit" className="w-full py-5 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-sm shadow-xl shadow-orange-100 transition-all transform hover:-translate-y-1">
                   UPDATE ASSIGNMENTS
                 </button>
               </form>
@@ -2687,10 +2687,10 @@ const AdminDashboard = () => {
         showTestResultsModal && selectedTestResults && (
           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
             <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-              <div className="p-8 border-b border-indigo-50 bg-indigo-50/30 flex justify-between items-start shrink-0">
+              <div className="p-8 border-b border-orange-50 bg-orange-50/30 flex justify-between items-start shrink-0">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-widest">{selectedTestResults.subjectId?.name || 'Subject'}</span>
+                    <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-[10px] font-black uppercase tracking-widest">{selectedTestResults.subjectId?.name || 'Subject'}</span>
                     <span className="text-xs font-bold text-gray-400">|</span>
                     <span className="text-xs font-bold text-gray-400">{new Date(selectedTestResults.createdAt).toLocaleDateString()}</span>
                   </div>
@@ -2704,7 +2704,7 @@ const AdminDashboard = () => {
 
               <div className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
                 {loadingResults ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-indigo-500">
+                  <div className="flex flex-col items-center justify-center h-64 text-orange-500">
                     <FaHistory className="text-4xl animate-spin mb-4" />
                     <p className="font-bold text-xs uppercase tracking-widest">Generating Digital Report...</p>
                   </div>
@@ -2738,19 +2738,19 @@ const AdminDashboard = () => {
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 text-center">
-                                  <span className="font-black text-indigo-600 text-base">{result.score}</span>
+                                  <span className="font-black text-orange-600 text-base">{result.score}</span>
                                   <span className="text-gray-300 text-xs font-bold">/{selectedTestResults.totalMarks}</span>
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                   <div className="flex items-center justify-center gap-2">
                                     <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                      <div className={`h-full rounded-full ${percentage >= 75 ? 'bg-emerald-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${percentage}%` }}></div>
+                                      <div className={`h-full rounded-full ${percentage >= 75 ? 'bg-orange-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${percentage}%` }}></div>
                                     </div>
                                     <span className="text-[10px] font-bold text-gray-500">{percentage}%</span>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                  <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${percentage >= 40 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                  <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${percentage >= 40 ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
                                     {percentage >= 40 ? 'Qualified' : 'Needs Impr.'}
                                   </span>
                                 </td>
@@ -2790,7 +2790,7 @@ const AdminDashboard = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => window.print()}
-                    className="px-5 py-2 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                    className="px-5 py-2 bg-orange-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-orange-100 hover:bg-orange-700 transition-all flex items-center gap-2"
                   >
                     <FaPrint /> PRINT RECORD
                   </button>
@@ -2805,16 +2805,16 @@ const AdminDashboard = () => {
 
               {/* Printable Body */}
               <div className="flex-1 overflow-y-auto p-10 md:p-16 print:overflow-visible print:p-0" id="printable-report-card">
-                <div className="border-4 border-indigo-600 p-1 relative min-h-[1000px]">
-                  <div className="border border-indigo-200 p-8 h-full bg-white relative">
+                <div className="border-4 border-orange-600 p-1 relative min-h-[1000px]">
+                  <div className="border border-orange-200 p-8 h-full bg-white relative">
                     {/* Brand Header */}
-                    <div className="flex justify-between items-start mb-12 border-b-2 border-indigo-600 pb-8">
+                    <div className="flex justify-between items-start mb-12 border-b-2 border-orange-600 pb-8">
                       <div>
                         <img src={oasisFullLogo} alt="Logo" className="h-16 mb-4 filter contrast-125" />
-                        <p className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.3em]">Excellence in JEE/NEET Coaching</p>
+                        <p className="text-[12px] font-black text-orange-600 uppercase tracking-[0.3em]">Excellence in JEE/NEET Coaching</p>
                       </div>
                       <div className="text-right">
-                        <h1 className="text-4xl font-black text-indigo-900 mb-1">REPORT CARD</h1>
+                        <h1 className="text-4xl font-black text-orange-900 mb-1">REPORT CARD</h1>
                         <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">{examSummary?.examName} - 2026</p>
                       </div>
                     </div>
@@ -2823,27 +2823,27 @@ const AdminDashboard = () => {
                     <div className="grid grid-cols-2 gap-y-10 mb-16 bg-gray-50/50 p-10 rounded-3xl border border-gray-100">
                       <div className="space-y-4">
                         <div>
-                          <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Student Name</label>
-                          <p className="text-2xl font-black text-indigo-900 underline underline-offset-4 decoration-indigo-200">{viewingReportCard.name}</p>
+                          <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest block mb-1">Student Name</label>
+                          <p className="text-2xl font-black text-orange-900 underline underline-offset-4 decoration-orange-200">{viewingReportCard.name}</p>
                         </div>
                         <div>
-                          <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Roll Number</label>
+                          <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest block mb-1">Roll Number</label>
                           <p className="text-lg font-bold text-gray-700">{viewingReportCard.rollNo}</p>
                         </div>
                       </div>
                       <div className="space-y-4 text-right">
                         <div>
-                          <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Father's Name</label>
+                          <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest block mb-1">Father's Name</label>
                           <p className="text-lg font-bold text-gray-700">{viewingReportCard.fatherName || 'Not Provided'}</p>
                         </div>
                         <div className="flex justify-end gap-10">
                           <div>
-                            <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Class</label>
-                            <p className="text-lg font-bold text-indigo-600">Standard IX</p>
+                            <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest block mb-1">Class</label>
+                            <p className="text-lg font-bold text-orange-600">Standard IX</p>
                           </div>
                           <div>
-                            <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block mb-1">Section</label>
-                            <p className="text-lg font-bold text-indigo-600">Oasis-A1</p>
+                            <label className="text-[10px] font-black text-orange-400 uppercase tracking-widest block mb-1">Section</label>
+                            <p className="text-lg font-bold text-orange-600">Oasis-A1</p>
                           </div>
                         </div>
                       </div>
@@ -2851,27 +2851,27 @@ const AdminDashboard = () => {
 
                     {/* Marks Table */}
                     <div className="mb-16">
-                      <table className="w-full border-collapse border-2 border-indigo-600">
+                      <table className="w-full border-collapse border-2 border-orange-600">
                         <thead>
-                          <tr className="bg-indigo-600 text-white">
-                            <th className="px-4 py-4 text-left font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Subject Name</th>
-                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Unit Test<br /><span className="text-[8px] opacity-70">(Max: 20)</span></th>
-                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Monthly Test<br /><span className="text-[8px] opacity-70">(Max: 30)</span></th>
-                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Final Term<br /><span className="text-[8px] opacity-70">(Max: 50)</span></th>
-                            <th className="px-4 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-indigo-500">Total Marks<br /><span className="text-[8px] opacity-70">(Max: 100)</span></th>
+                          <tr className="bg-orange-600 text-white">
+                            <th className="px-4 py-4 text-left font-black text-[10px] uppercase tracking-widest border-r border-orange-500">Subject Name</th>
+                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-orange-500">Unit Test<br /><span className="text-[8px] opacity-70">(Max: 20)</span></th>
+                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-orange-500">Monthly Test<br /><span className="text-[8px] opacity-70">(Max: 30)</span></th>
+                            <th className="px-2 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-orange-500">Final Term<br /><span className="text-[8px] opacity-70">(Max: 50)</span></th>
+                            <th className="px-4 py-4 text-center font-black text-[10px] uppercase tracking-widest border-r border-orange-500">Total Marks<br /><span className="text-[8px] opacity-70">(Max: 100)</span></th>
                             <th className="px-4 py-4 text-right font-black text-[10px] uppercase tracking-widest">Grade</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {viewingReportCard.subjectResults.map(sub => (
-                            <tr key={sub.subjectId} className="hover:bg-indigo-50/20 transition-colors">
+                            <tr key={sub.subjectId} className="hover:bg-orange-50/20 transition-colors">
                               <td className="px-4 py-4 font-black text-gray-800 border-r border-gray-100">{sub.subjectName}</td>
                               <td className="px-2 py-4 text-center font-bold text-gray-600 border-r border-gray-100 bg-gray-50/30">{sub.unit || 0}</td>
                               <td className="px-2 py-4 text-center font-bold text-gray-600 border-r border-gray-100">{sub.monthly || 0}</td>
-                              <td className="px-2 py-4 text-center font-bold text-indigo-500 border-r border-gray-100 bg-indigo-50/10">{sub.final || 0}</td>
-                              <td className="px-4 py-4 text-center font-black text-indigo-700 text-lg border-r border-gray-100 bg-indigo-50/30">{sub.total || 0}</td>
+                              <td className="px-2 py-4 text-center font-bold text-orange-500 border-r border-gray-100 bg-orange-50/10">{sub.final || 0}</td>
+                              <td className="px-4 py-4 text-center font-black text-orange-700 text-lg border-r border-gray-100 bg-orange-50/30">{sub.total || 0}</td>
                               <td className="px-4 py-4 text-right">
-                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${sub.total >= 40 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${sub.total >= 40 ? 'bg-orange-50 text-orange-600' : 'bg-orange-50 text-orange-600'}`}>
                                   {sub.total >= 90 ? 'A+' : sub.total >= 80 ? 'A' : sub.total >= 70 ? 'B+' : sub.total >= 60 ? 'B' : sub.total >= 40 ? 'C' : 'FAIL'}
                                 </span>
                               </td>
@@ -2879,10 +2879,10 @@ const AdminDashboard = () => {
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="bg-indigo-600 text-white">
-                            <th className="px-6 py-6 text-left font-black text-[11px] uppercase border-r border-indigo-500">GRAND TOTAL ASSESSMENT</th>
-                            <th colSpan="3" className="px-6 py-6 text-center font-black opacity-60 text-[10px] border-r border-indigo-500">Manual Ledger Summation</th>
-                            <th className="px-6 py-6 text-center font-black text-white text-2xl border-r border-indigo-500">{viewingReportCard.totalObtained} <span className="text-xs opacity-60">/ {viewingReportCard.totalMax}</span></th>
+                          <tr className="bg-orange-600 text-white">
+                            <th className="px-6 py-6 text-left font-black text-[11px] uppercase border-r border-orange-500">GRAND TOTAL ASSESSMENT</th>
+                            <th colSpan="3" className="px-6 py-6 text-center font-black opacity-60 text-[10px] border-r border-orange-500">Manual Ledger Summation</th>
+                            <th className="px-6 py-6 text-center font-black text-white text-2xl border-r border-orange-500">{viewingReportCard.totalObtained} <span className="text-xs opacity-60">/ {viewingReportCard.totalMax}</span></th>
                             <th className="px-6 py-6 text-right font-black text-white text-xl">{viewingReportCard.percentage}%</th>
                           </tr>
                         </tfoot>
@@ -2891,17 +2891,17 @@ const AdminDashboard = () => {
 
                     {/* Performance Summary */}
                     <div className="grid grid-cols-3 gap-6 mb-20 text-center">
-                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-indigo-100 transition-all">
+                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-orange-100 transition-all">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Rank in Class</label>
                         <p className="text-3xl font-black text-gray-800">{viewingReportCard.rank}</p>
                       </div>
-                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-indigo-100 transition-all">
+                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-orange-100 transition-all">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Attendance</label>
                         <p className="text-3xl font-black text-gray-800">{viewingReportCard.attendancePercentage}%</p>
                       </div>
-                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-indigo-100 transition-all">
+                      <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-orange-100 transition-all">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Conduct</label>
-                        <p className={`text-3xl font-black ${viewingReportCard.conduct === 'EXCELLENT' || viewingReportCard.conduct === 'VERY GOOD' ? 'text-emerald-600' : viewingReportCard.conduct === 'GOOD' ? 'text-indigo-600' : 'text-orange-500'}`}>
+                        <p className={`text-3xl font-black ${viewingReportCard.conduct === 'EXCELLENT' || viewingReportCard.conduct === 'VERY GOOD' ? 'text-orange-600' : viewingReportCard.conduct === 'GOOD' ? 'text-orange-600' : 'text-orange-500'}`}>
                           {viewingReportCard.conduct}
                         </p>
                       </div>
@@ -2915,9 +2915,9 @@ const AdminDashboard = () => {
                       </div>
                       <div className="text-center">
                         <div className="flex flex-col items-center">
-                          <div className="w-16 h-1 bg-indigo-600 mb-2"></div>
+                          <div className="w-16 h-1 bg-orange-600 mb-2"></div>
                           <img src={oasisLogo} alt="Seal" className="w-12 h-12 opacity-20 filter grayscale mb-2" />
-                          <p className="text-[10px] font-black text-indigo-900 uppercase tracking-[0.2em]">Institute Seal</p>
+                          <p className="text-[10px] font-black text-orange-900 uppercase tracking-[0.2em]">Institute Seal</p>
                         </div>
                       </div>
                       <div className="text-center w-48">

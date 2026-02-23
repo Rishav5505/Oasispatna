@@ -185,7 +185,7 @@ const Login = () => {
                   placeholder="Enter your email"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors duration-300"
+                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors duration-300"
                   required
                 />
                 <div className="flex space-x-2">
@@ -211,7 +211,7 @@ const Login = () => {
                   placeholder="Enter OTP"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors duration-300"
+                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors duration-300"
                   required
                 />
                 <input
@@ -219,14 +219,14 @@ const Login = () => {
                   placeholder="New Password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none transition-colors duration-300"
+                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-orange-500 focus:outline-none transition-colors duration-300"
                   required
                   minLength={6}
                 />
                 <div className="flex space-x-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-3 rounded-lg font-semibold hover:from-purple-600 hover:to-indigo-700 transition-all duration-300"
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white p-3 rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300"
                   >
                     Reset Password
                   </button>

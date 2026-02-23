@@ -445,8 +445,8 @@ const ParentDashboard = () => {
             label: 'Marks %',
             data: marks.map(m => m.marks),
             fill: true,
-            borderColor: '#14b8a6', // Teal-500
-            backgroundColor: 'rgba(20, 184, 166, 0.1)',
+            borderColor: '#f37021', // Orange-500
+            backgroundColor: 'rgba(243, 112, 33, 0.1)',
             tension: 0.4
         }]
     };
@@ -471,13 +471,13 @@ const ParentDashboard = () => {
                 ></div>
             )}
 
-            {/* Sidebar - Teal/Emerald Gradient for Parent Identity */}
-            <aside className={`w-72 bg-gradient-to-b from-teal-950 via-teal-900 to-emerald-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-white flex-shrink-0 flex flex-col shadow-2xl z-30 fixed h-full transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static`}>
+            {/* Sidebar - Orange/Black Gradient for Parent Identity */}
+            <aside className={`w-72 bg-gradient-to-b from-black via-gray-900 to-orange-900/20 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 text-white flex-shrink-0 flex flex-col shadow-2xl z-30 fixed h-full transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static`}>
                 <div className="p-6 flex items-center justify-between border-b border-teal-800/50 dark:border-gray-800">
                     <div className="w-full flex justify-center">
                         <img src={oasisFullLogo} alt="Oasis Logo" className="h-16 object-contain brightness-110 drop-shadow-lg" />
                     </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-indigo-300 hover:text-white absolute right-4 top-6">
+                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-orange-300 hover:text-white absolute right-4 top-6">
                         <FaTimesCircle className="text-2xl" />
                     </button>
                 </div>
@@ -497,11 +497,11 @@ const ParentDashboard = () => {
                             key={item.id}
                             onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
                             className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-semibold text-sm ${activeTab === item.id
-                                ? 'bg-indigo-500 text-white shadow-indigo-900/50 shadow-lg translate-x-1'
-                                : 'hover:bg-indigo-800/50 hover:text-white'
+                                ? 'bg-orange-600 text-white shadow-orange-900/50 shadow-lg translate-x-1'
+                                : 'hover:bg-orange-800/20 hover:text-white'
                                 }`}
                         >
-                            <item.icon className={activeTab === item.id ? 'text-white' : 'text-indigo-400'} />
+                            <item.icon className={activeTab === item.id ? 'text-white' : 'text-orange-400'} />
                             {item.label}
                             {activeTab === item.id && <FaChevronRight className="ml-auto text-[10px]" />}
                         </button>
@@ -509,12 +509,12 @@ const ParentDashboard = () => {
                 </nav>
 
                 <div className="p-6 mt-auto">
-                    <div className="bg-indigo-800/40 p-5 rounded-3xl border border-indigo-700/50">
+                    <div className="bg-orange-800/20 p-5 rounded-3xl border border-orange-700/30">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-400/20 flex items-center justify-center text-indigo-300">
+                            <div className="w-10 h-10 rounded-xl bg-orange-400/20 flex items-center justify-center text-orange-300">
                                 <FaRegClock />
                             </div>
-                            <div className="text-[11px] font-bold text-indigo-200">Session Active</div>
+                            <div className="text-[11px] font-bold text-orange-200">Session Active</div>
                         </div>
                         <button
                             onClick={logout}
@@ -533,7 +533,7 @@ const ParentDashboard = () => {
                     <div className="flex items-center gap-2 md:gap-6 flex-1 max-w-2xl">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
-                            className="lg:hidden p-2 bg-gray-50 dark:bg-gray-800 rounded-xl text-indigo-600 shrink-0"
+                            className="lg:hidden p-2 bg-gray-50 dark:bg-gray-800 rounded-xl text-orange-600 shrink-0"
                         >
                             <FaTasks className="text-xl" />
                         </button>
@@ -543,7 +543,7 @@ const ParentDashboard = () => {
                             </div>
                             <div className="min-w-0">
                                 <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
-                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-600 dark:from-teal-400 dark:to-emerald-400">
+                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-orange-800 dark:from-orange-400 dark:to-orange-500">
                                         Parent Portal
                                     </span>
                                 </h1>
@@ -556,7 +556,7 @@ const ParentDashboard = () => {
                                 <select
                                     value={selectedChild}
                                     onChange={(e) => setSelectedChild(e.target.value)}
-                                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 font-bold text-sm text-indigo-600 dark:text-indigo-400 focus:ring-0 cursor-pointer outline-none transition-colors"
+                                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 font-bold text-sm text-orange-600 dark:text-orange-400 focus:ring-0 cursor-pointer outline-none transition-colors"
                                 >
                                     {children.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                                 </select>
@@ -568,9 +568,9 @@ const ParentDashboard = () => {
                         <div className="relative">
                             <button
                                 onClick={toggleNotifications}
-                                className={`p-2 md:p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors relative focus:outline-none ${isNotificationsOpen ? 'bg-gray-50 dark:bg-gray-800 text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}
+                                className={`p-2 md:p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors relative focus:outline-none ${isNotificationsOpen ? 'bg-gray-50 dark:bg-gray-800 text-orange-600 dark:text-orange-400' : 'text-gray-400'}`}
                             >
-                                <FaBell className={`text-lg md:text-xl transition-colors ${isNotificationsOpen ? 'text-indigo-500 dark:text-indigo-400' : 'text-gray-400'}`} />
+                                <FaBell className={`text-lg md:text-xl transition-colors ${isNotificationsOpen ? 'text-orange-500 dark:text-orange-400' : 'text-gray-400'}`} />
                                 {notifications.some(n => !n.read) && (
                                     <span className="absolute top-1.5 md:top-2 right-1.5 md:right-2.5 w-2 md:w-2.5 h-2 md:h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></span>
                                 )}
@@ -585,7 +585,7 @@ const ParentDashboard = () => {
                                     <div className="p-4 md:p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50 backdrop-blur-sm">
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-black text-gray-800 dark:text-white text-[10px] md:text-xs uppercase tracking-widest">Notifications</h3>
-                                            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full">{notifications.length} Total</span>
+                                            <span className="bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full">{notifications.length} Total</span>
                                         </div>
                                     </div>
                                     <div className="max-h-[50vh] lg:max-h-80 overflow-y-auto custom-scrollbar">
@@ -601,7 +601,7 @@ const ParentDashboard = () => {
                                                         className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group ${!n.read ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}
                                                     >
                                                         <div className="flex gap-3 md:gap-4">
-                                                            <div className={`mt-1 w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${!n.read ? 'bg-indigo-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                                                            <div className={`mt-1 w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${!n.read ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
                                                                 <FaBell className="text-[10px] md:text-xs" />
                                                             </div>
                                                             <div className="flex-1 min-w-0">
@@ -657,8 +657,8 @@ const ParentDashboard = () => {
                 <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 scroll-smooth">
                     {activeTab === 'Overview' && (
                         <>
-                            {/* Welcome Banner - Parent Indigo Style */}
-                            <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-6 md:p-10 shadow-2xl shadow-indigo-200/50 mb-6 md:mb-10 text-white">
+                            {/* Welcome Banner - Parent Orange Style */}
+                            <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-orange-600 via-orange-500 to-black p-6 md:p-10 shadow-2xl shadow-orange-200/50 mb-6 md:mb-10 text-white">
                                 <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/10 blur-3xl rounded-full pointer-events-none"></div>
                                 <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-yellow-500/20 blur-3xl rounded-full pointer-events-none"></div>
 
@@ -669,19 +669,19 @@ const ParentDashboard = () => {
                                             <span className="text-indigo-100 text-xs font-bold">{new Date().toDateString()}</span>
                                         </div>
                                         <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
-                                            Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-blue-100">{user?.name?.split(' ')[0] || 'Parent'}</span> 👋
+                                            Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-200 to-orange-50">{user?.name?.split(' ')[0] || 'Parent'}</span> 👋
                                         </h1>
-                                        <p className="text-indigo-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
+                                        <p className="text-orange-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
                                             You are viewing progress for <span className="font-black text-white underline decoration-yellow-400 decoration-2 underline-offset-4">{currentChild?.name || 'Student'}</span>.
                                             <br />
-                                            Attendance is <span className="font-black text-white">{attendancePercentage}%</span> and academic performance is <span className="font-black text-indigo-200">{avgMarks > 0 ? 'Optimal' : 'Tracking'}</span>.
+                                            Attendance is <span className="font-black text-white">{attendancePercentage}%</span> and academic performance is <span className="font-black text-orange-200">{avgMarks > 0 ? 'Optimal' : 'Tracking'}</span>.
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap gap-3 md:gap-4 w-full md:w-auto">
-                                        <button onClick={() => setActiveTab('Fees')} className="flex-1 md:flex-none bg-white text-indigo-700 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 group">
+                                        <button onClick={() => setActiveTab('Fees')} className="flex-1 md:flex-none bg-white text-orange-700 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-orange-50 transition-all flex items-center justify-center gap-2 group">
                                             <FaMoneyBillWave className="group-hover:rotate-12 transition-transform" /> PAY FEES
                                         </button>
-                                        <button onClick={() => window.print()} className="flex-1 md:flex-none bg-indigo-900/30 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-indigo-900/50 transition-all backdrop-blur-md">
+                                        <button onClick={() => window.print()} className="flex-1 md:flex-none bg-black/40 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-black/60 transition-all backdrop-blur-md">
                                             D'LOAD REPORT
                                         </button>
                                     </div>
@@ -731,7 +731,7 @@ const ParentDashboard = () => {
                                     <h3 className="text-xl font-black text-gray-800 flex items-center gap-2">
                                         <FaBullhorn className="text-orange-500" /> Latest Updates
                                     </h3>
-                                    <button onClick={() => setActiveTab('Notices')} className="text-xs font-bold text-indigo-600 hover:underline">View All</button>
+                                    <button onClick={() => setActiveTab('Notices')} className="text-xs font-bold text-orange-600 hover:underline">View All</button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {notices.slice(0, 2).map((notice, idx) => (

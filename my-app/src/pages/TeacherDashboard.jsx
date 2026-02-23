@@ -375,7 +375,7 @@ const TeacherDashboard = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-indigo-600 font-bold">Loading Teacher Portal...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-orange-600 font-bold">Loading Teacher Portal...</div>;
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden relative">
@@ -388,12 +388,12 @@ const TeacherDashboard = () => {
       )}
 
       {/* Sidebar - Hidden on mobile by default, toggled via state */}
-      <aside className={`w-72 bg-gradient-to-b from-teal-900 via-emerald-900 to-green-900 text-emerald-100 flex-shrink-0 flex flex-col shadow-2xl z-30 fixed inset-y-0 left-0 transform transition-transform duration-300 lg:translate-x-0 lg:static ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center justify-between border-b border-emerald-800/50">
+      <aside className={`w-72 bg-gradient-to-b from-black via-gray-900 to-orange-900 text-orange-100 flex-shrink-0 flex flex-col shadow-2xl z-30 fixed inset-y-0 left-0 transform transition-transform duration-300 lg:translate-x-0 lg:static ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 flex items-center justify-between border-b border-orange-800/50">
           <div className="w-full flex justify-center">
             <img src={oasisFullLogo} alt="Oasis Full Logo" className="h-16 object-contain brightness-110 drop-shadow-lg" />
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-emerald-300 hover:text-white absolute right-4 top-6">
+          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-orange-300 hover:text-white absolute right-4 top-6">
             <FaTimesCircle className="text-2xl" />
           </button>
         </div>
@@ -416,18 +416,18 @@ const TeacherDashboard = () => {
               key={item.id}
               onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-semibold text-sm ${activeTab === item.id
-                ? 'bg-emerald-500 text-white shadow-emerald-900/50 shadow-lg translate-x-1'
-                : 'hover:bg-emerald-800/50 hover:text-white'
+                ? 'bg-orange-600 text-white shadow-orange-900/50 shadow-lg translate-x-1'
+                : 'hover:bg-orange-800/50 hover:text-white'
                 }`}
             >
-              <item.icon className={activeTab === item.id ? 'text-white' : 'text-emerald-400'} />
+              <item.icon className={activeTab === item.id ? 'text-white' : 'text-orange-400'} />
               {item.label}
               {activeTab === item.id && <FaChevronRight className="ml-auto text-[10px]" />}
             </button>
           ))}
         </nav>
 
-        <div className="p-6 mt-auto border-t border-emerald-800/50">
+        <div className="p-6 mt-auto border-t border-orange-800/50">
           <button
             onClick={() => { sessionStorage.removeItem('token'); window.location.href = '/login'; }}
             className="w-full py-4 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-2xl font-black text-xs flex items-center justify-center gap-3 transition-all border border-red-500/20"
@@ -444,7 +444,7 @@ const TeacherDashboard = () => {
           <div className="flex items-center gap-2 md:gap-4 flex-1 max-w-2xl">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 bg-gray-50 rounded-xl text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0"
+              className="lg:hidden p-2 bg-gray-50 rounded-xl text-orange-600 hover:bg-orange-50 transition-colors shrink-0"
             >
               <FaClipboardList className="text-xl" />
             </button>
@@ -454,7 +454,7 @@ const TeacherDashboard = () => {
               </div>
               <div className="min-w-0">
                 <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
-                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-orange-800 dark:from-orange-400 dark:to-orange-500">
                     Teacher Portal
                   </span>
                 </h1>
@@ -464,7 +464,7 @@ const TeacherDashboard = () => {
           </div>
           <div className="flex items-center gap-2 md:gap-6">
             <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:rounded-2xl md:border md:border-dotted md:border-gray-200 group cursor-pointer transition-all">
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs md:text-sm overflow-hidden border border-emerald-200 shadow-inner group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs md:text-sm overflow-hidden border border-orange-200 shadow-inner group-hover:scale-105 transition-transform">
                 {user?.profilePhoto ? (
                   <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} alt="Teacher" className="w-full h-full object-cover" />
                 ) : (
@@ -485,30 +485,30 @@ const TeacherDashboard = () => {
             <div className="space-y-10 animate-in fade-in duration-500">
 
               {/* Teacher Welcome Banner */}
-              <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-6 md:p-10 shadow-2xl shadow-emerald-200/50 text-white">
+              <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400 p-6 md:p-10 shadow-2xl shadow-orange-200/50 text-white">
                 <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/10 blur-3xl rounded-full pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-teal-900/10 blur-3xl rounded-full pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-orange-900/10 blur-3xl rounded-full pointer-events-none"></div>
 
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">Faculty Portal</span>
-                      <span className="text-emerald-50 text-xs font-bold">{new Date().toDateString()}</span>
+                      <span className="text-orange-50 text-xs font-bold">{new Date().toDateString()}</span>
                     </div>
                     <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
-                      Welcome Back, <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-100 to-white">{user?.name?.split(' ')[0] || 'Educator'}</span> 👨‍🏫
+                      Welcome Back, <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-100 to-white">{user?.name?.split(' ')[0] || 'Educator'}</span> 👨‍🏫
                     </h1>
-                    <p className="text-emerald-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
-                      You are managing <span className="font-black text-white underline decoration-emerald-200 decoration-2 underline-offset-4">{teacherData.batches.length || 0} batches</span> and impacting students with your expertise.
+                    <p className="text-orange-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
+                      You are managing <span className="font-black text-white underline decoration-orange-200 decoration-2 underline-offset-4">{teacherData.batches.length || 0} batches</span> and impacting students with your expertise.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3 md:gap-4 w-full md:w-auto">
-                    <button onClick={() => setActiveTab('my-attendance')} className="flex-1 md:flex-none bg-white text-teal-600 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 group animate-pulse">
+                    <button onClick={() => setActiveTab('my-attendance')} className="flex-1 md:flex-none bg-white text-orange-600 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-orange-50 transition-all flex items-center justify-center gap-2 group animate-pulse">
                       <FaUserClock className="group-hover:rotate-12 transition-transform" />
                       {todayAttendance.length > 0 ? `${todayAttendance.length} DONE` : 'CHECK-IN'}
                     </button>
 
-                    <button onClick={() => setActiveTab('attendance')} className="flex-1 md:flex-none bg-teal-900/40 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-teal-900/60 transition-all backdrop-blur-md flex items-center justify-center gap-2">
+                    <button onClick={() => setActiveTab('attendance')} className="flex-1 md:flex-none bg-orange-900/40 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-orange-900/60 transition-all backdrop-blur-md flex items-center justify-center gap-2">
                       <FaCalendarCheck /> ATTENDANCE
                     </button>
                   </div>
@@ -517,12 +517,12 @@ const TeacherDashboard = () => {
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-8">
                 <div className="p-4 md:p-8 bg-white rounded-3xl md:rounded-[2.5rem] border border-gray-100 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-emerald-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
+                  <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-orange-500/10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
                   <div className="flex items-center justify-between mb-4 md:mb-8 relative">
-                    <div className="w-10 h-10 md:w-16 md:h-16 bg-emerald-50 rounded-xl md:rounded-[1.5rem] flex items-center justify-center text-emerald-600 text-base md:text-2xl shadow-inner group-hover:scale-110 transition-transform">
+                    <div className="w-10 h-10 md:w-16 md:h-16 bg-orange-50 rounded-xl md:rounded-[1.5rem] flex items-center justify-center text-orange-600 text-base md:text-2xl shadow-inner group-hover:scale-110 transition-transform">
                       <FaUsers />
                     </div>
-                    <span className="hidden sm:block text-emerald-600 text-[10px] font-black bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">ACTIVE</span>
+                    <span className="hidden sm:block text-orange-600 text-[10px] font-black bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100">ACTIVE</span>
                   </div>
                   <h3 className="text-2xl md:text-4xl font-[900] text-gray-800 mb-1 md:mb-2 relative tracking-tight">{teacherData.batches.length || 0}</h3>
                   <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest relative leading-none">Active Batches</p>
@@ -557,11 +557,11 @@ const TeacherDashboard = () => {
                 <h3 className="text-xl font-black text-gray-900 mb-8">Recent Activities</h3>
                 <div className="space-y-6">
                   {[
-                    { title: 'Attendance Marked', desc: 'Batch Alpha - Grade 10', time: '10 mins ago', icon: FaCheckCircle, color: 'emerald' },
+                    { title: 'Attendance Marked', desc: 'Batch Alpha - Grade 10', time: '10 mins ago', icon: FaCheckCircle, color: 'orange' },
                     { title: 'Notes Uploaded', desc: 'Physics - Chapter 4', time: '2 hours ago', icon: FaFileUpload, color: 'indigo' },
                   ].map((act, i) => (
                     <div key={i} className="flex items-center gap-6 p-4 hover:bg-gray-50 rounded-2xl transition-all">
-                      <div className={`w-12 h-12 bg-${act.color}-50 text-${act.color}-500 rounded-xl flex items-center justify-center`}>
+                      <div className={`w-12 h-12 bg-${act.color}-50 text-${act.color}-600 rounded-xl flex items-center justify-center`}>
                         <act.icon />
                       </div>
                       <div className="flex-1">
@@ -617,7 +617,7 @@ const TeacherDashboard = () => {
                 <button
                   onClick={handleMarkAttendance}
                   disabled={!selectedClass || !attendanceSubject || students.length === 0}
-                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white py-5 rounded-2xl font-black text-sm shadow-xl shadow-emerald-200/50 transition-all disabled:opacity-50 hover:scale-[1.01]"
+                  className="w-full bg-gradient-to-r from-orange-600 to-orange-400 hover:from-orange-700 hover:to-orange-500 text-white py-5 rounded-2xl font-black text-sm shadow-xl shadow-orange-200/50 transition-all disabled:opacity-50 hover:scale-[1.01]"
                 >
                   {loadingStudents ? 'LOADING RECORDS...' : 'FINALIZE AND SAVE ATTENDANCE'}
                 </button>
@@ -658,8 +658,8 @@ const TeacherDashboard = () => {
                       <p className="text-sm font-medium text-gray-500 bg-gray-50 p-4 rounded-2xl">
                         Ask students to open their dashboard and use the <span className="text-blue-600 font-bold tracking-tight">SCANNER</span> tool.
                       </p>
-                      <div className="flex items-center justify-center gap-2 text-emerald-500 font-black text-[10px] uppercase tracking-tighter">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                      <div className="flex items-center justify-center gap-2 text-orange-500 font-black text-[10px] uppercase tracking-tighter">
+                        <span className="w-2 h-2 bg-orange-500 rounded-full animate-ping"></span>
                         Secure Geofencing Active
                       </div>
                     </div>
@@ -674,8 +674,8 @@ const TeacherDashboard = () => {
                   <p className="text-sm">Student list will appear automatically after selection</p>
                 </div>
               ) : loadingStudents ? (
-                <div className="py-20 flex flex-col items-center justify-center text-emerald-500">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent mb-4"></div>
+                <div className="py-20 flex flex-col items-center justify-center text-orange-500">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent mb-4"></div>
                   <p className="font-bold">Syncing Student Records...</p>
                 </div>
               ) : students.length === 0 ? (
@@ -695,10 +695,10 @@ const TeacherDashboard = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {students.map(s => (
-                        <tr key={s._id} className="group hover:bg-emerald-50/30 transition-all">
+                        <tr key={s._id} className="group hover:bg-orange-50/30 transition-all">
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center font-black text-emerald-600">{(s.name || s.userId?.name || '?').charAt(0)}</div>
+                              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center font-black text-orange-600">{(s.name || s.userId?.name || '?').charAt(0)}</div>
                               <p className="font-bold text-gray-800 text-sm">{s.name || s.userId?.name || 'Unknown Student'}</p>
                             </div>
                           </td>
@@ -709,7 +709,7 @@ const TeacherDashboard = () => {
                                   key={status}
                                   onClick={() => setAttendanceData({ ...attendanceData, [s._id]: status })}
                                   className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${attendanceData[s._id] === status
-                                    ? status === 'present' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-red-500 text-white shadow-lg'
+                                    ? status === 'present' ? 'bg-orange-500 text-white shadow-lg' : 'bg-red-500 text-white shadow-lg'
                                     : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
                                     }`}
                                 >
