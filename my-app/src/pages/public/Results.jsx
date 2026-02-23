@@ -1,7 +1,7 @@
 import React from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { FaTrophy, FaMedal, FaStar, FaQuoteLeft, FaFire, FaChartBar } from 'react-icons/fa';
+import { FaTrophy, FaMedal, FaStar, FaQuoteLeft, FaFire, FaChartBar, FaArrowRight } from 'react-icons/fa';
 
 const Results = () => {
   const toppers = [
@@ -11,7 +11,7 @@ const Results = () => {
       exam: 'Board Achievement',
       score: 'Outstanding Performance',
       icon: <FaMedal className="text-yellow-400" />,
-      gradient: 'from-blue-900 via-blue-800 to-indigo-900',
+      gradient: 'from-orange-600 via-orange-500 to-orange-700',
       badge: 'Gold Tier'
     },
     {
@@ -20,7 +20,7 @@ const Results = () => {
       exam: 'Board Achievement',
       score: 'Outstanding Performance',
       icon: <FaMedal className="text-yellow-400" />,
-      gradient: 'from-indigo-900 via-indigo-800 to-purple-900',
+      gradient: 'from-slate-800 via-slate-900 to-black',
       badge: 'Gold Tier'
     },
     {
@@ -29,7 +29,7 @@ const Results = () => {
       exam: 'Board Achievement',
       score: 'Outstanding Performance',
       icon: <FaMedal className="text-yellow-400" />,
-      gradient: 'from-purple-900 via-purple-800 to-pink-900',
+      gradient: 'from-orange-500 via-orange-600 to-orange-400',
       badge: 'Gold Tier'
     },
     {
@@ -38,52 +38,52 @@ const Results = () => {
       exam: 'Board Achievement',
       score: 'Outstanding Performance',
       icon: <FaStar className="text-yellow-400" />,
-      gradient: 'from-slate-900 via-slate-800 to-blue-900',
+      gradient: 'from-slate-700 via-slate-800 to-slate-900',
       badge: 'Star Performer'
     }
   ];
 
   const stats = [
-    { label: 'Successful Students', value: '1000+', icon: <FaTrophy />, color: 'text-yellow-400' },
+    { label: 'Successful Students', value: '1000+', icon: <FaTrophy />, color: 'text-orange-600' },
     { label: 'Success Rate', value: '95%', icon: <FaFire />, color: 'text-orange-500' },
-    { label: 'Years of Trust', value: '15+', icon: <FaStar />, color: 'text-purple-400' },
-    { label: 'Expert Faculty', value: '10+', icon: <FaChartBar />, color: 'text-indigo-400' }
+    { label: 'Years of Trust', value: '15+', icon: <FaStar />, color: 'text-orange-400' },
+    { label: 'Expert Faculty', value: '10+', icon: <FaChartBar />, color: 'text-slate-900' }
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-[#fffaf5] flex flex-col selection:bg-orange-500 selection:text-white">
       <Navbar />
 
       {/* Hall of Fame Hero */}
-      <section className="relative py-28 bg-[#0f172a] overflow-hidden">
+      <section className="relative py-32 bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2"></div>
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[150px] translate-y-1/2 -translate-x-1/2"></div>
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[150px] translate-y-1/2 -translate-x-1/2"></div>
         </div>
         <div className="container mx-auto px-6 relative z-10 text-center">
-          <span className="inline-block py-1.5 px-4 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-sm font-bold mb-6 tracking-widest uppercase">
+          <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-6 block bg-orange-600/10 w-fit mx-auto px-4 py-1.5 rounded-full border border-orange-600/20">
             Legacy of Excellence
           </span>
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 leading-tight">
-            Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500">Hall of Fame</span>
+          <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 leading-tight tracking-tight">
+            Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-500 to-yellow-500">Hall of Fame</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-            Every year, our students break records and redefine success. Meet the warriors who conquered the toughest exam in the world.
+          <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed font-medium">
+            Every year, our students break records and redefine success. Meet the warriors who conquered the toughest exams with precision.
           </p>
         </div>
       </section>
 
       {/* Impact Stats */}
-      <section className="py-20 bg-white shadow-2xl relative z-20 -mt-10 overflow-hidden rounded-[4rem] max-w-7xl mx-auto mx-4 sm:mx-6 md:mx-auto">
+      <section className="py-20 bg-white shadow-2xl relative z-20 -mt-16 overflow-hidden rounded-[4rem] max-w-7xl mx-auto mx-4 sm:mx-6 md:mx-auto border border-orange-100">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, idx) => (
-              <div key={idx} className="text-center group p-4">
-                <div className={`text-4xl mb-4 flex justify-center ${stat.color} group-hover:scale-110 transition-transform duration-300`}>
+              <div key={idx} className="text-center group p-4 border-r border-orange-50 last:border-0">
+                <div className={`text-4xl mb-4 flex justify-center ${stat.color} group-hover:scale-110 group-hover:rotate-12 transition-all duration-300`}>
                   {stat.icon}
                 </div>
-                <div className="text-4xl md:text-5xl font-black text-gray-900 mb-2">{stat.value}</div>
-                <div className="text-sm font-bold text-gray-500 uppercase tracking-widest">{stat.label}</div>
+                <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2 tracking-tight">{stat.value}</div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -94,33 +94,34 @@ const Results = () => {
       <section className="py-24">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Elite Performers 2024</h2>
-            <p className="text-gray-500 text-lg">Leading the way to premier engineering institutions</p>
+            <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Champions League</span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight uppercase tracking-tight">Elite Performers <span className="text-orange-600">2024</span></h2>
+            <p className="text-gray-500 text-lg font-medium">Leading the way to premier institutions across India</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {toppers.map((topper, index) => (
               <div key={index} className="group relative">
-                <div className={`bg-gradient-to-br ${topper.gradient} rounded-[2.5rem] p-8 text-white h-full relative overflow-hidden transition-all duration-500 transform group-hover:-translate-y-4 shadow-2xl`}>
+                <div className={`bg-gradient-to-br ${topper.gradient} rounded-[3rem] p-8 text-white h-full relative overflow-hidden transition-all duration-500 transform group-hover:-translate-y-4 shadow-2xl shadow-orange-950/20`}>
                   {/* Decorative Overlay */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10"></div>
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-8 -mb-8"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-[20px]"></div>
+                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-8 -mb-8 blur-[20px]"></div>
 
-                  <div className="text-6xl mb-8 flex justify-center transform group-hover:scale-125 transition-transform duration-500">
+                  <div className="text-7xl mb-8 flex justify-center transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 drop-shadow-2xl">
                     {topper.icon}
                   </div>
                   <div className="text-center relative z-10">
-                    <span className="inline-block px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 text-white/80">
+                    <span className="inline-block px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold tracking-widest uppercase mb-6 text-white border border-white/20">
                       {topper.badge}
                     </span>
-                    <h3 className="text-2xl font-bold mb-1">{topper.name}</h3>
-                    <p className="text-blue-200 text-sm mb-6">{topper.exam}</p>
+                    <h3 className="text-3xl font-bold mb-1 tracking-tight uppercase">{topper.name}</h3>
+                    <p className="text-orange-100 text-xs font-bold uppercase tracking-widest mb-8">{topper.exam}</p>
 
-                    <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
-                      <div className="text-sm text-blue-100 mb-1">JEE RANK</div>
-                      <div className="text-4xl font-black tracking-tight">{topper.rank}</div>
-                      <div className="h-px bg-white/20 my-3"></div>
-                      <div className="text-xs text-blue-200">Score: {topper.score}</div>
+                    <div className="bg-black/20 backdrop-blur-xl rounded-[2rem] p-6 border border-white/10">
+                      <div className="text-[10px] text-white/60 font-bold uppercase tracking-widest mb-2">Academic Record</div>
+                      <div className="text-2xl font-bold tracking-tight">{topper.rank}</div>
+                      <div className="h-0.5 bg-gradient-to-r from-transparent via-white/20 to-transparent my-4"></div>
+                      <div className="text-[10px] text-orange-400 font-bold uppercase tracking-widest">{topper.score}</div>
                     </div>
                   </div>
                 </div>
@@ -131,12 +132,13 @@ const Results = () => {
       </section>
 
       {/* Stories of Triumph */}
-      <section className="py-24 bg-[#0f172a] relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-gray-50 to-transparent opacity-100"></div>
+      <section className="py-32 bg-slate-900 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#fffaf5] to-transparent z-0"></div>
         <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl font-extrabold text-white mb-4">From Aspirants to Achievers</h2>
-            <p className="text-gray-400">Real stories from the classrooms of Oasis</p>
+          <div className="text-center mb-20 mt-10">
+            <span className="text-orange-500 font-bold uppercase tracking-widest text-[11px] mb-3 block">Testimonials</span>
+            <h2 className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight leading-tight">From Aspirants to <span className="text-orange-500">Achievers</span></h2>
+            <p className="text-gray-400 text-xl font-medium">Real stories from the classrooms of Oasis</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl mx-auto">
@@ -144,27 +146,27 @@ const Results = () => {
               {
                 name: "Vikram Kumar",
                 rank: "AIR 234 (2023)",
-                msg: "Oasis is not just a coaching center; it's a family. The individual attention I received in my weak topics (Inorganic Chem) was the turning point for my AIR.",
-                col: "from-blue-600 to-indigo-700"
+                msg: "Oasis is not just a coaching center; it's a family. The individual attention I received in my weak topics (Inorganic Chem) was the turning point for my success.",
+                col: "from-orange-500 to-orange-700"
               },
               {
                 name: "Anjali Kumari",
                 rank: "AIR 567 (2023)",
-                msg: "The test series at Oasis are identical to the actual JEE level. It removed my exam fear completely. I would recommend Oasis to every serious aspirant in Bihar.",
-                col: "from-purple-600 to-indigo-700"
+                msg: "The test series at Oasis are identical to the actual exam level. It removed my exam fear completely. I would recommend Oasis to every serious aspirant.",
+                col: "from-slate-700 to-slate-900"
               }
             ].map((t, idx) => (
-              <div key={idx} className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group hover:bg-white/10 transition-all duration-300">
-                <FaQuoteLeft className="text-4xl text-indigo-500/30 absolute top-8 left-8" />
-                <div className="pl-10">
-                  <p className="text-xl text-gray-300 italic mb-8 leading-relaxed">"{t.msg}"</p>
-                  <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${t.col} flex items-center justify-center text-white font-bold text-xl`}>
+              <div key={idx} className="bg-white/5 border border-white/5 p-12 rounded-[3.5rem] backdrop-blur-md relative group hover:bg-white/10 transition-all duration-500 transform hover:scale-[1.02]">
+                <FaQuoteLeft className="text-6xl text-orange-500/20 absolute top-10 left-10" />
+                <div className="relative z-10">
+                  <p className="text-2xl text-gray-300 mb-10 leading-relaxed font-medium">"{t.msg}"</p>
+                  <div className="flex items-center gap-6">
+                    <div className={`w-16 h-16 rounded-[1.5rem] bg-gradient-to-br ${t.col} flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-orange-950/50`}>
                       {t.name[0]}
                     </div>
                     <div>
-                      <h4 className="text-white font-bold text-lg">{t.name}</h4>
-                      <p className="text-indigo-400 text-sm font-semibold">{t.rank}</p>
+                      <h4 className="text-white font-bold text-xl tracking-tight uppercase">{t.name}</h4>
+                      <p className="text-orange-500 font-bold uppercase tracking-widest text-[10px]">{t.rank}</p>
                     </div>
                   </div>
                 </div>
@@ -172,12 +174,12 @@ const Results = () => {
             ))}
           </div>
 
-          <div className="mt-20 text-center">
+          <div className="mt-24 text-center">
             <a
               href="/#demo-form"
-              className="inline-block px-10 py-5 bg-white text-indigo-900 font-extrabold rounded-2xl text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+              className="inline-flex items-center gap-4 px-12 py-5 bg-orange-600 text-white font-bold rounded-2xl text-sm shadow-2xl shadow-orange-950/40 hover:bg-orange-700 hover:-translate-y-1 transition-all duration-500 uppercase tracking-widest"
             >
-              Be the Next Topper
+              Be the Next Topper <FaArrowRight />
             </a>
           </div>
         </div>

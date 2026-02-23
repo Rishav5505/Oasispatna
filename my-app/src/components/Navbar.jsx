@@ -86,7 +86,7 @@ const Navbar = () => {
           </button>
 
 
-          <Link to="/login" className="relative group overflow-hidden bg-gradient-to-r from-orange-600 via-[#f37021] to-black text-white px-8 py-3.5 rounded-2xl transition-all duration-300 text-sm font-black shadow-xl shadow-orange-500/20 transform hover:-translate-y-1 hover:shadow-orange-500/40 active:scale-95">
+          <Link to="/login" className="relative group overflow-hidden bg-gradient-to-r from-orange-600 via-[#f37021] to-black text-white px-8 py-3.5 rounded-2xl transition-all duration-300 text-sm font-bold shadow-xl shadow-orange-500/20 transform hover:-translate-y-1 hover:shadow-orange-500/40 active:scale-95">
             <span className="relative z-10">Student Login</span>
             <div className="absolute inset-0 bg-gradient-to-r from-black to-[#f37021] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           </Link>
@@ -129,7 +129,7 @@ const Navbar = () => {
       {/* Side Navigation Drawer */}
       <div className={`fixed top-0 right-0 h-screen w-72 bg-white dark:bg-black z-[70] shadow-2xl transform transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${isOpen ? 'translate-x-0' : 'translate-x-full'} lg:hidden flex flex-col border-l border-gray-100 dark:border-gray-800`}>
         <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
-          <span className="text-lg font-black text-gray-800 dark:text-gray-100 tracking-tight">Navigation</span>
+          <span className="text-lg font-bold text-gray-800 dark:text-gray-100 tracking-tight">Navigation</span>
           <button
             onClick={() => setIsOpen(false)}
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400"
@@ -164,7 +164,7 @@ const Navbar = () => {
           <div className="pt-6 mt-6 border-t border-gray-100 dark:border-gray-800 space-y-3">
             <a
               href="/#demo-form"
-              className="block w-full text-center bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+              className="block w-full text-center bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white px-6 py-4 rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
               onClick={() => setIsOpen(false)}
             >
               <span className="flex items-center justify-center gap-2">
@@ -173,7 +173,7 @@ const Navbar = () => {
             </a>
             <Link
               to="/login"
-              className="block w-full text-center bg-gradient-to-r from-orange-600 via-[#f37021] to-black text-white px-6 py-4 rounded-2xl font-black text-sm uppercase tracking-wider shadow-xl shadow-orange-500/20 active:scale-95 transition-all"
+              className="block w-full text-center bg-gradient-to-r from-orange-600 via-[#f37021] to-black text-white px-6 py-4 rounded-2xl font-bold text-sm uppercase tracking-widest shadow-xl shadow-orange-500/20 active:scale-95 transition-all"
               onClick={() => setIsOpen(false)}
             >
               Student Login

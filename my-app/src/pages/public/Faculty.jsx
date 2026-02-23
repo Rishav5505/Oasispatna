@@ -1,7 +1,7 @@
 import React from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { FaGraduationCap, FaAward, FaChalkboardTeacher, FaLightbulb, FaUserShield, FaBrain } from 'react-icons/fa';
+import { FaGraduationCap, FaAward, FaChalkboardTeacher, FaLightbulb, FaUserShield, FaBrain, FaArrowRight } from 'react-icons/fa';
 
 const Faculty = () => {
   const facultyList = [
@@ -11,7 +11,7 @@ const Faculty = () => {
       qualification: 'M.Sc (Mathematics)',
       experience: '10+ Years of Experience',
       achievements: 'Founder & CEO of Oasis JEE Classes',
-      imageBackground: 'bg-blue-600',
+      imageBackground: 'bg-orange-600',
       icon: <FaGraduationCap />
     },
     {
@@ -20,7 +20,7 @@ const Faculty = () => {
       qualification: 'B.Sc (Physics)',
       experience: '5+ Years of Experience',
       achievements: 'Expert in Conceptual Physics',
-      imageBackground: 'bg-indigo-600',
+      imageBackground: 'bg-slate-900',
       icon: <FaAward />
     },
     {
@@ -29,7 +29,7 @@ const Faculty = () => {
       qualification: 'M.Sc (Geography), B.Sc (Geo+Phy+chem+Bio)',
       experience: '10+ Years of Experience',
       achievements: 'Multi-disciplinary Science Expert',
-      imageBackground: 'bg-purple-600',
+      imageBackground: 'bg-orange-700',
       icon: <FaChalkboardTeacher />
     },
     {
@@ -38,7 +38,7 @@ const Faculty = () => {
       qualification: 'B.Sc (Chemistry)',
       experience: '5+ Years of Experience',
       achievements: 'Specialist in Organic & Inorganic Chemistry',
-      imageBackground: 'bg-pink-600',
+      imageBackground: 'bg-slate-800',
       icon: <FaLightbulb />
     },
     {
@@ -47,7 +47,7 @@ const Faculty = () => {
       qualification: 'M.A (English)',
       experience: '5+ Years of Experience',
       achievements: 'Communication & Language Expert',
-      imageBackground: 'bg-orange-600',
+      imageBackground: 'bg-orange-500',
       icon: <FaAward />
     },
     {
@@ -56,7 +56,7 @@ const Faculty = () => {
       qualification: 'B.Sc (Biology)',
       experience: '3+ Years of Experience',
       achievements: 'NEET Specialist & Biology Mentor',
-      imageBackground: 'bg-green-600',
+      imageBackground: 'bg-slate-700',
       icon: <FaChalkboardTeacher />
     }
   ];
@@ -75,71 +75,71 @@ const Faculty = () => {
     {
       icon: <FaUserShield />,
       title: "Individual Mentorship",
-      desc: "Personalized focus on every student's weak areas through one-on-one doubt clearing sessions."
+      desc: "Personalized focus on every student's weak areas through one-on-one doubt sessions."
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#fffaf5] flex flex-col selection:bg-orange-500 selection:text-white">
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative py-28 bg-[#0f172a] overflow-hidden">
+      <section className="relative py-32 bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
-          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
         </div>
         <div className="container mx-auto px-6 relative z-10 text-center">
-          <span className="inline-block py-1.5 px-4 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-6">
-            Meet Our Experts
+          <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-6 block bg-orange-600/10 w-fit mx-auto px-4 py-1.5 rounded-full border border-orange-600/20">
+            Meet Our Brain Trust
           </span>
-          <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
-            Learn from the <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">Best Minds</span>
+          <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 leading-tight tracking-tight">
+            Learn from the <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-400">Best Minds</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Our faculty consists of IIT alumni and industry veterans dedicated to nurturing the next generation of engineers.
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium">
+            Our faculty consists of industry veterans and academic experts dedicated to nurturing the next generation of engineers.
           </p>
         </div>
       </section>
 
       {/* Faculty Grid */}
-      <section className="py-24 relative -mt-16 z-20">
+      <section className="py-24 relative -mt-20 z-20">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto">
             {facultyList.map((faculty, index) => (
-              <div key={index} className="group bg-white rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 border border-gray-100 flex flex-col">
-                <div className={`h-48 ${faculty.imageBackground} flex items-center justify-center relative overflow-hidden`}>
-                  <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')]"></div>
-                  <div className="text-7xl text-white/90 transform group-hover:scale-110 transition-transform duration-500 z-10">
+              <div key={index} className="group bg-white rounded-[3rem] overflow-hidden shadow-2xl hover:shadow-orange-200/50 transition-all duration-500 border border-orange-100 flex flex-col h-full transform hover:-translate-y-2">
+                <div className={`h-56 ${faculty.imageBackground} flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform duration-700`}>
+                  <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+                  <div className="text-8xl text-white transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 z-10 drop-shadow-2xl">
                     {faculty.icon}
                   </div>
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-2 text-center">
-                      <span className="text-white text-xs font-bold tracking-widest uppercase">Senior Faculty</span>
+                  <div className="absolute bottom-6 left-6 right-6">
+                    <div className="bg-black/20 backdrop-blur-xl border border-white/10 rounded-2xl p-3 text-center">
+                      <span className="text-white text-[10px] font-bold tracking-widest uppercase">Academic Expert</span>
                     </div>
                   </div>
                 </div>
-                <div className="p-8 flex flex-col flex-grow text-center">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-1">{faculty.name}</h3>
-                  <p className="text-indigo-600 font-semibold text-sm mb-6 uppercase tracking-wider">{faculty.subject}</p>
+                <div className="p-10 flex flex-col flex-grow text-center">
+                  <h3 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight uppercase">{faculty.name}</h3>
+                  <p className="text-orange-600 font-bold text-xs mb-8 uppercase tracking-widest underline decoration-2 decoration-orange-600/20 underline-offset-4">{faculty.subject}</p>
 
-                  <div className="space-y-4 text-sm text-gray-600 text-left mb-8 flex-grow">
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></div>
-                      <span><strong>Education:</strong> {faculty.qualification}</span>
+                  <div className="space-y-4 text-sm text-gray-600 text-left mb-10 flex-grow font-medium leading-relaxed">
+                    <div className="flex items-start gap-4 group/item">
+                      <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center group-hover/item:bg-orange-500 transition-colors flex-shrink-0">
+                        <FaGraduationCap className="text-orange-500 group-hover/item:text-white transition-colors text-xs" />
+                      </div>
+                      <span><strong className="text-gray-900">Education:</strong><br />{faculty.qualification}</span>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></div>
-                      <span><strong>Experience:</strong> {faculty.experience}</span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></div>
-                      <span><strong>Track Record:</strong> {faculty.achievements}</span>
+                    <div className="flex items-start gap-4 group/item">
+                      <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center group-hover/item:bg-orange-500 transition-colors flex-shrink-0">
+                        <FaAward className="text-orange-500 group-hover/item:text-white transition-colors text-xs" />
+                      </div>
+                      <span><strong className="text-gray-900">Experience:</strong><br />{faculty.experience}</span>
                     </div>
                   </div>
 
-                  <button className="w-full py-3 bg-gray-50 border border-gray-100 text-gray-900 font-bold rounded-xl hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all duration-300">
-                    View Profile
+                  <button className="w-full py-4 bg-slate-900 text-white font-bold uppercase tracking-widest text-[11px] rounded-[1.5rem] hover:bg-orange-600 transition-all duration-500 shadow-xl shadow-slate-900/10">
+                    Connect with Mentor
                   </button>
                 </div>
               </div>
@@ -149,44 +149,46 @@ const Faculty = () => {
       </section>
 
       {/* Teaching Philosophy */}
-      <section className="py-24 bg-white overflow-hidden relative">
+      <section className="py-32 bg-white overflow-hidden relative border-t border-orange-50">
         <div className="container mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-center max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-20 items-center max-w-7xl mx-auto">
             <div>
-              <span className="text-indigo-600 font-bold tracking-widest uppercase text-xs mb-4 block">Our Methodology</span>
-              <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-8 leading-tight">
-                More than just Teaching, <span className="text-indigo-600">Pure Mentorship.</span>
+              <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-4 block">Our Methodology</span>
+              <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-10 leading-tight tracking-tight">
+                More than just Teaching, <span className="text-orange-600">Pure Mentorship.</span>
               </h2>
-              <div className="space-y-8">
+              <div className="space-y-10">
                 {philosophies.map((p, idx) => (
-                  <div key={idx} className="flex gap-6 group">
-                    <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-3xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 flex-shrink-0 shadow-sm">
+                  <div key={idx} className="flex gap-8 group">
+                    <div className="w-20 h-20 rounded-[2rem] bg-orange-50 flex items-center justify-center text-4xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-all duration-500 flex-shrink-0 shadow-xl shadow-orange-950/5 group-hover:rotate-6">
                       {p.icon}
                     </div>
                     <div>
-                      <h4 className="text-xl font-bold text-gray-900 mb-2">{p.title}</h4>
-                      <p className="text-gray-500 leading-relaxed">{p.desc}</p>
+                      <h4 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight uppercase">{p.title}</h4>
+                      <p className="text-gray-500 leading-relaxed font-medium text-lg">{p.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
             <div className="relative">
-              <div className="bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-[3rem] p-12 text-white shadow-2xl relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                <h3 className="text-3xl font-bold mb-8 relative z-10">Join the Best</h3>
-                <p className="text-indigo-100 text-lg mb-10 leading-relaxed relative z-10">
-                  Become a part of the most successful JEE community in Patna. Our doors are always open for dedicated students who dream big.
+              <div className="bg-slate-900 rounded-[4rem] p-16 text-white shadow-2xl relative overflow-hidden border border-white/5">
+                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-pulse"></div>
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-orange-600/20 rounded-full blur-[80px]"></div>
+
+                <h3 className="text-5xl font-bold mb-8 relative z-10 tracking-tight leading-tight">Unlock Your <br /><span className="text-orange-500">True Potential</span></h3>
+                <p className="text-gray-400 text-xl mb-12 leading-relaxed relative z-10 font-medium">
+                  Become a part of the most successful education community in Bihar. Our doors are always open for dedicated students who dream big.
                 </p>
                 <a
                   href="/#demo-form"
-                  className="inline-block px-8 py-4 bg-white text-indigo-900 font-extrabold rounded-2xl hover:bg-indigo-50 transition-all duration-300 shadow-xl relative z-10"
+                  className="inline-flex items-center gap-4 px-10 py-6 bg-orange-600 text-white font-bold rounded-2xl text-[11px] uppercase tracking-widest shadow-2xl shadow-orange-900/40 relative z-10"
                 >
-                  Book a Counselor Session
+                  Book Counselor Session <FaArrowRight />
                 </a>
               </div>
               {/* Decorative element */}
-              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-indigo-500 rounded-full blur-[80px] opacity-20"></div>
+              <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-orange-500 rounded-full blur-[100px] opacity-20"></div>
             </div>
           </div>
         </div>

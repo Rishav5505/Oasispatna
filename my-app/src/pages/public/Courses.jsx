@@ -26,7 +26,7 @@ const Courses = () => {
       features: ['High School Exam Marks', 'NTSE Selection focus', 'Junior Science Olympiad', 'Maths Olympiad Prep'],
       price: 'Contact for Fee',
       icon: <FaGraduationCap />,
-      gradient: 'from-blue-600 to-indigo-600',
+      gradient: 'from-orange-500 to-orange-600',
       popular: false
     },
     {
@@ -36,7 +36,7 @@ const Courses = () => {
       features: ['School Examination Excellence', 'NTSE Selection focus', 'Junior Science Olympiad', 'Maths Olympiad Prep'],
       price: 'Contact for Fee',
       icon: <FaRocket />,
-      gradient: 'from-indigo-600 to-purple-700',
+      gradient: 'from-slate-800 to-slate-900',
       popular: false
     },
     {
@@ -46,7 +46,7 @@ const Courses = () => {
       features: ['Higher Science Olympiad', 'NTSE Selection focus', 'Maths Olympiad Prep', 'Solid JEE/NEET Foundation'],
       price: 'Contact for Fee',
       icon: <FaCheckCircle />,
-      gradient: 'from-green-600 to-emerald-600',
+      gradient: 'from-orange-600 to-orange-700',
       popular: false
     },
     {
@@ -56,7 +56,7 @@ const Courses = () => {
       features: ['Board Exam Excellence', 'Science & Maths Olympiads', 'JEE/NEET Foundation', 'Higher Level Problem Solving'],
       price: 'Contact for Fee',
       icon: <FaBookmark />,
-      gradient: 'from-purple-600 to-pink-600',
+      gradient: 'from-slate-700 to-slate-800',
       popular: false
     },
     {
@@ -66,7 +66,7 @@ const Courses = () => {
       features: ['Top Ranks in JEE Main/Adv', 'School Exam Excellence', 'Solid JEE/NEET/Olympiad Foundation', 'Advanced Study Material'],
       price: 'Contact for Fee',
       icon: <FaRocket />,
-      gradient: 'from-orange-600 to-red-600',
+      gradient: 'from-orange-500 to-yellow-500',
       popular: true
     },
     {
@@ -76,7 +76,7 @@ const Courses = () => {
       features: ['JEE Main & Advanced Mastery', 'High School Exam Marks', 'Top Rank Strategy', 'JEE/NEET/Olympiad Success'],
       price: 'Contact for Fee',
       icon: <FaRocket />,
-      gradient: 'from-red-600 to-orange-600',
+      gradient: 'from-orange-600 to-orange-800',
       popular: true
     }
   ];
@@ -123,72 +123,77 @@ const Courses = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#fffaf5] flex flex-col selection:bg-orange-500 selection:text-white">
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative py-28 bg-[#0f172a] overflow-hidden">
+      <section className="relative py-32 bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
-          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
         </div>
         <div className="container mx-auto px-6 relative z-10 text-center">
-          <span className="inline-block py-1 px-3 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-semibold mb-6">
+          <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-6 block bg-orange-600/10 w-fit mx-auto px-4 py-1.5 rounded-full border border-orange-600/20">
             Explore Our Programs
           </span>
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 leading-tight">
-            Transform Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">IIT Journey</span>
+          <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 leading-tight tracking-tight">
+            Transform Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400">IIT Journey</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium">
             Industry-leading mentorship combined with technology-driven learning to ensure your success in JEE.
           </p>
         </div>
       </section>
 
       {/* Courses Grid */}
-      <section className="py-24 relative -mt-16 z-20">
+      <section className="py-24 relative -mt-20 z-20">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
             {courses.map((course, index) => (
-              <div key={index} className={`relative group bg-white rounded-[2.5rem] p-8 shadow-xl hover:shadow-2xl transition-all duration-500 border border-gray-100 flex flex-col ${course.popular ? 'ring-2 ring-indigo-600 ring-offset-4 ring-offset-gray-50' : ''}`}>
+              <div key={index} className={`relative group bg-white rounded-[3rem] p-10 shadow-2xl hover:shadow-orange-200/50 transition-all duration-500 border border-orange-100 flex flex-col h-full ${course.popular ? 'ring-4 ring-orange-500 ring-offset-8 ring-offset-[#fffaf5]' : ''}`}>
                 {course.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-6 py-1 rounded-full text-sm font-bold shadow-lg">
-                    Most Popular
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-xl border border-white/10">
+                    ⭐ Most Popular
                   </div>
                 )}
 
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${course.gradient} flex items-center justify-center text-3xl text-white mb-8 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`w-20 h-20 rounded-[1.5rem] bg-gradient-to-br ${course.gradient} flex items-center justify-center text-4xl text-white mb-10 shadow-xl shadow-orange-900/10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
                   {course.icon}
                 </div>
 
-                <h3 className="text-3xl font-bold text-gray-900 mb-3">{course.title}</h3>
-                <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-6">
+                <h3 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight uppercase">{course.title}</h3>
+                <div className="flex items-center gap-2 text-orange-600 font-bold mb-8 text-[11px] uppercase tracking-widest">
                   <FaClock className="text-sm" />
                   <span>{course.duration}</span>
                 </div>
-                <p className="text-gray-600 mb-8 leading-relaxed">
+
+                <p className="text-gray-600 mb-8 leading-relaxed font-medium">
                   {course.description}
                 </p>
 
-                <div className="space-y-4 mb-10 flex-grow">
+                <div className="space-y-4 mb-12 flex-grow">
                   {course.features.map((feature, fIndex) => (
-                    <div key={fIndex} className="flex items-center gap-3">
-                      <FaCheckCircle className="text-indigo-500 flex-shrink-0" />
-                      <span className="text-gray-700 font-medium">{feature}</span>
+                    <div key={fIndex} className="flex items-center gap-4 group/item">
+                      <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center group-hover/item:bg-orange-500 transition-colors">
+                        <FaCheckCircle className="text-orange-500 group-hover/item:text-white transition-colors text-xs" />
+                      </div>
+                      <span className="text-gray-700 font-bold text-sm tracking-tight">{feature}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-auto border-t border-gray-100 pt-8 text-center sm:text-left">
-                  <div className="mb-6">
-                    <span className="text-sm text-gray-400 font-medium uppercase tracking-wider block mb-1">Fee Structure</span>
-                    <span className="text-3xl font-extrabold text-gray-900">{course.price}</span>
+                <div className="mt-auto border-t border-orange-50 pt-10">
+                  <div className="mb-8 flex items-baseline justify-between">
+                    <div>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-1">Fee Structure</span>
+                      <span className="text-2xl font-bold text-gray-900 tracking-tight">{course.price}</span>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleEnrollClick(course.title)}
-                    className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 ${course.popular ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+                    className={`w-full py-5 rounded-[1.5rem] font-bold uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 transition-all duration-500 ${course.popular ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-2xl shadow-orange-900/20' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl'}`}
                   >
-                    Enroll Now <FaAngleRight className="group-hover:translate-x-1 transition-transform" />
+                    Enroll Now <FaAngleRight className="group-hover:translate-x-2 transition-transform" />
                   </button>
                 </div>
               </div>
@@ -198,25 +203,29 @@ const Courses = () => {
       </section>
 
       {/* Enrolment Process */}
-      <section className="py-24 bg-white">
+      <section className="py-32 bg-white relative overflow-hidden">
         <div className="container mx-auto px-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">How to Join Oasis</h2>
-              <p className="text-gray-500 text-lg">Your step-by-step path to excellence</p>
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-20">
+              <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Admission Guide</span>
+              <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4 tracking-tight">How to <span className="text-orange-600 underline decoration-8 decoration-orange-600/20">Join Oasis</span></h2>
+              <p className="text-gray-500 text-xl font-medium">Your step-by-step path to academic excellence</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 relative">
+              {/* Connector line for desktop */}
+              <div className="hidden md:block absolute top-[25%] left-0 w-full h-0.5 bg-orange-100 -z-0"></div>
               {[
-                { step: "01", title: "Enquiry", desc: "Talk to our counselors" },
-                { step: "02", title: "Demo Class", desc: "Experience our teaching" },
-                { step: "03", title: "Admission", desc: "Submit documentation" },
-                { step: "04", title: "Batch Start", desc: "Begin your journey" }
+                { step: "01", title: "Enquiry", desc: "Talk to our expert counselors" },
+                { step: "02", title: "Demo Class", desc: "Experience our IIT alumni teaching" },
+                { step: "03", title: "Admission", desc: "Submit documentation & fees" },
+                { step: "04", title: "Batch Start", desc: "Begin your success journey" }
               ].map((s, idx) => (
-                <div key={idx} className="relative text-center">
-                  <div className="text-6xl font-black text-gray-50 mb-[-1.5rem] select-none">{s.step}</div>
-                  <h4 className="text-xl font-bold text-gray-900 mb-2 relative z-10">{s.title}</h4>
-                  <p className="text-gray-600 text-sm">{s.desc}</p>
-                  {idx < 3 && <div className="hidden md:block absolute top-[20%] -right-4 text-indigo-200 text-2xl">→</div>}
+                <div key={idx} className="relative text-center group">
+                  <div className="w-16 h-16 bg-white border-2 border-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 text-xl font-bold text-orange-600 shadow-xl group-hover:bg-orange-600 group-hover:text-white transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 z-10 relative">
+                    {s.step}
+                  </div>
+                  <h4 className="text-xl font-bold text-gray-900 mb-3 tracking-tight uppercase tracking-widest text-[11px]">{s.title}</h4>
+                  <p className="text-gray-500 text-sm font-medium leading-relaxed px-4">{s.desc}</p>
                 </div>
               ))}
             </div>
@@ -227,23 +236,24 @@ const Courses = () => {
       {/* Enquiry Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
-          <div className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-white relative">
+          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md transition-opacity" onClick={() => setIsModalOpen(false)}></div>
+          <div className="relative bg-white rounded-[3rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-500 border border-orange-100">
+            <div className="bg-slate-900 p-10 text-white relative border-b border-white/5 overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/20 rounded-full blur-[40px]"></div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="absolute top-6 right-6 text-white/80 hover:text-white transition-colors"
+                className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-xl"
               >
-                <FaTimes size={24} />
+                <FaTimes size={20} />
               </button>
-              <h3 className="text-3xl font-bold mb-2">Admission Enquiry</h3>
-              <p className="text-indigo-100">Course: <span className="font-bold text-white">{selectedCourseName}</span></p>
+              <h3 className="text-4xl font-bold mb-2 tracking-tight">Admission Enquiry</h3>
+              <p className="text-gray-400 font-medium uppercase tracking-widest text-[10px]">Course: <span className="text-orange-500">{selectedCourseName}</span></p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-10 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Full Name</label>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Full Name</label>
                   <input
                     type="text"
                     name="name"
@@ -251,11 +261,11 @@ const Courses = () => {
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="Enter your name"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-bold placeholder:font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Phone Number</label>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Phone Number</label>
                   <input
                     type="tel"
                     name="phone"
@@ -264,13 +274,13 @@ const Courses = () => {
                     value={formData.phone}
                     onChange={handleInputChange}
                     placeholder="10-digit number"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-bold placeholder:font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Email Address</label>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Email Address</label>
                 <input
                   type="email"
                   name="email"
@@ -278,18 +288,18 @@ const Courses = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="your@email.com"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                  className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-bold placeholder:font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Course Selected</label>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Course Selected</label>
                   <select
                     name="course"
                     value={formData.course}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-bold appearance-none"
                   >
                     <option value="GROUND ZERO">GROUND ZERO (Class 7)</option>
                     <option value="NURTURE">NURTURE (Class 8)</option>
@@ -300,12 +310,12 @@ const Courses = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Preferred Batch</label>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Preferred Batch</label>
                   <select
                     name="batchTiming"
                     value={formData.batchTiming}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-bold appearance-none"
                   >
                     <option value="Morning">Morning</option>
                     <option value="Day">Day</option>
@@ -316,27 +326,27 @@ const Courses = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Message (Optional)</label>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Message (Optional)</label>
                 <textarea
                   name="message"
                   rows="2"
                   value={formData.message}
                   onChange={handleInputChange}
                   placeholder="Any questions?"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none"
+                  className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all resize-none font-bold placeholder:font-medium"
                 ></textarea>
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full py-4 rounded-xl font-bold text-white transition-all duration-300 shadow-lg ${isSubmitting ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'}`}
+                className={`w-full py-5 rounded-[1.5rem] font-bold uppercase tracking-widest text-[11px] text-white transition-all duration-500 shadow-2xl ${isSubmitting ? 'bg-gray-400' : 'bg-orange-600 hover:bg-orange-700 active:scale-95 shadow-orange-950/20'}`}
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Enquiry'}
               </button>
 
               {formStatus.message && (
-                <div className={`p-4 rounded-xl text-center text-sm font-bold ${formStatus.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <div className={`p-5 rounded-2xl text-center text-[10px] font-bold uppercase tracking-widest animate-in slide-in-from-top duration-300 ${formStatus.type === 'success' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
                   {formStatus.message}
                 </div>
               )}

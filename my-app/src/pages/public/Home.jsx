@@ -29,6 +29,54 @@ import praveenPhoto from '../../assets/praveen_sir.jpeg';
 import kalpanaPhoto from '../../assets/kalpana_rani.jpg';
 import raviPhoto from '../../assets/ravi_shekhar.jpg';
 
+// Promotion Videos
+import promoVideo from '../../assets/Physics Faculties in oasis jee classes.mp4';
+import rishavVideo from '../../assets/Rishav.mp4';
+import whatsappVideo from '../../assets/WhatsApp Video 2026-02-23 at 11.45.40 AM.mp4';
+
+
+const AutoPlayVideo = ({ src, className, fit, poster, title }) => {
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          videoRef.current?.play().catch(err => console.log("Autoplay blocked", err));
+        } else {
+          videoRef.current?.pause();
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (videoRef.current) {
+      observer.observe(videoRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="w-full h-full relative">
+      <video
+        ref={videoRef}
+        src={src}
+        className={`${className} ${fit}`}
+        muted
+        loop
+        playsInline
+        controls
+        poster={poster}
+      />
+      {title && (
+        <div className="absolute top-4 left-4 pointer-events-none">
+          <h4 className="text-white font-black text-xs italic bg-black/40 backdrop-blur-md px-3 py-1 rounded-full">{title}</h4>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Home = () => {
   const [faculty, setFaculty] = useState([]);
@@ -178,7 +226,7 @@ const Home = () => {
 
         {/* Premium Admissions Badge - Stuck to the absolute Top Edge */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 animate-slide-up">
-          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-orange-400 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse-soft shadow-2xl">
+          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-orange-400 text-[10px] font-bold uppercase tracking-widest animate-pulse-soft shadow-2xl">
             <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]"></span>
             Admissions Open 2026-27
           </div>
@@ -189,7 +237,7 @@ const Home = () => {
           <div className="flex flex-col md:flex-row items-center gap-12">
             {/* Hero Left Content - Reverted to Left Aligned */}
             <div className="flex-1 text-left animate-slide-left">
-              <h1 className="text-5xl md:text-8xl font-black text-white mb-6 leading-[0.9] tracking-tighter">
+              <h1 className="text-5xl md:text-8xl font-black text-white mb-6 leading-[0.9] tracking-tighter italic">
                 DREAM BIG.<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400">ACHIEVE BIG.</span>
               </h1>
@@ -198,10 +246,10 @@ const Home = () => {
                 Join the legacy of toppers today.
               </p>
               <div className="flex flex-wrap gap-4">
-                <a href="#demo-form" className="px-8 py-4 bg-orange-600 text-white font-black rounded-2xl hover:bg-orange-700 transition-all hover:scale-105 shadow-xl shadow-orange-900/40 uppercase tracking-widest text-sm">
+                <a href="#demo-form" className="px-8 py-4 bg-orange-600 text-white font-bold rounded-2xl hover:bg-orange-700 transition-all hover:scale-105 shadow-xl shadow-orange-900/40 uppercase tracking-widest text-sm">
                   Start Journey
                 </a>
-                <Link to="/courses" className="px-8 py-4 bg-white/10 backdrop-blur-md text-white font-black rounded-2xl hover:bg-white/20 transition-all border border-white/20 uppercase tracking-widest text-sm">
+                <Link to="/courses" className="px-8 py-4 bg-white/10 backdrop-blur-md text-white font-bold rounded-2xl hover:bg-white/20 transition-all border border-white/20 uppercase tracking-widest text-sm">
                   Explore Courses
                 </Link>
               </div>
@@ -214,7 +262,7 @@ const Home = () => {
       <section id="portal-login" className="py-16 bg-[#fffaf5] border-b border-orange-100 w-full reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4">
           <div className="max-w-5xl mx-auto">
-            <h3 className="text-center text-orange-600 font-black uppercase tracking-[0.3em] text-[10px] mb-10 block italic">🚀 Student & Parent Portals</h3>
+            <h3 className="text-center text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-10 block">Student & Parent Portals</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
                 { role: 'student', label: 'Student Portal', icon: '👨‍🎓', color: 'from-orange-50 to-orange-100' },
@@ -224,7 +272,7 @@ const Home = () => {
               ].map((portal, idx) => (
                 <Link key={idx} to={`/login?role=${portal.role}`} className={`bg-white border border-orange-100/50 text-gray-900 p-6 rounded-[2rem] text-center hover:bg-orange-600 hover:text-white transition-all shadow-xl shadow-orange-900/5 group transform hover:-translate-y-2 duration-500`}>
                   <div className="text-3xl mb-4 group-hover:scale-110 transition-transform">{portal.icon}</div>
-                  <div className="font-black text-xs uppercase tracking-widest">{portal.label}</div>
+                  <div className="font-bold text-[11px] uppercase tracking-widest">{portal.label}</div>
                 </Link>
               ))}
             </div>
@@ -236,8 +284,8 @@ const Home = () => {
       <section id="courses" className="py-24 bg-white w-full reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <span className="text-orange-600 font-black uppercase tracking-[0.3em] text-[10px] mb-3 block">Our Programs</span>
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight italic">Our Courses & <span className="text-orange-600">Batches</span></h2>
+            <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Our Programs</span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">Our Courses & <span className="text-orange-600">Batches</span></h2>
             <p className="text-gray-600 text-lg font-medium">Comprehensive programs designed for JEE success</p>
           </div>
 
@@ -245,13 +293,13 @@ const Home = () => {
             {courses.map(course => (
               <div key={course.id} className="bg-[#fffaf5] rounded-[2.5rem] shadow-xl hover:shadow-orange-200/50 transition-all duration-500 overflow-hidden group border border-orange-100 flex flex-col">
                 <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-8">
-                  <h3 className="text-2xl font-black mb-2 uppercase tracking-tighter">{course.name}</h3>
-                  <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-xs font-bold uppercase tracking-widest border border-white/10">
+                  <h3 className="text-2xl font-bold mb-2 uppercase tracking-tight">{course.name}</h3>
+                  <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10">
                     Duration: {course.duration}
                   </div>
                 </div>
                 <div className="p-8 flex-grow">
-                  <p className="text-gray-700 mb-6 font-medium italic">"{course.description}"</p>
+                  <p className="text-gray-700 mb-6 font-medium">"{course.description}"</p>
                   <div className="mb-8">
                     <h4 className="font-black text-gray-900 mb-4 flex items-center gap-2 text-xs uppercase tracking-widest">
                       <span className="w-1.5 h-1.5 rounded-full bg-orange-600"></span>
@@ -292,7 +340,66 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Featured Video Highlights - Instagram Style */}
+      <section className="py-24 bg-white w-full reveal-on-scroll overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-end justify-between mb-12 gap-6">
+            <div className="max-w-2xl">
+              <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Oasis in Action</span>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">Watch our <span className="text-orange-600">Growth Stories</span></h2>
+              <p className="text-gray-600 text-lg font-medium">Get a glimpse of our teaching methodology and student life through our latest highlights.</p>
+            </div>
+            <a href="https://www.instagram.com/oasispatna" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-black rounded-2xl hover:scale-105 transition-all shadow-xl shadow-pink-500/20 text-xs uppercase tracking-widest">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.162 6.162 6.162 6.162-2.759 6.162-6.162-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.209-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
+              Follow on Instagram
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Main Featured Video */}
+            <div className="lg:col-span-2 relative aspect-video rounded-[2.5rem] overflow-hidden shadow-2xl group flex items-center justify-center">
+              <AutoPlayVideo
+                src={promoVideo}
+                className="w-full h-full"
+                fit="object-cover"
+              />
+            </div>
+
+            {/* Reel Style Side Videos */}
+            <div className="space-y-6">
+              {[
+                {
+                  title: "Student Success Story",
+                  src: rishavVideo,
+                  fit: "object-cover"
+                },
+                {
+                  title: "Oasis Highlights 2025",
+                  src: whatsappVideo,
+                  fit: "object-contain"
+                }
+              ].map((video, i) => (
+                <div key={i} className="group relative aspect-[4/3] rounded-[2rem] overflow-hidden shadow-lg border border-orange-100 bg-black">
+                  <AutoPlayVideo
+                    src={video.src}
+                    className="w-full h-full opacity-80 group-hover:opacity-100 transition-opacity"
+                    fit={video.fit}
+                    title={video.title}
+                  />
+                </div>
+              ))}
+              <div className="bg-[#fffaf5] p-6 rounded-[2rem] border border-orange-100 flex flex-col items-center justify-center text-center gap-3">
+                <div className="text-2xl text-orange-600">✨</div>
+                <p className="text-xs font-black text-gray-600 uppercase tracking-widest">More videos of Patna's best coaching</p>
+                <Link to="/gallery" className="text-[10px] font-black text-orange-600 border-b-2 border-orange-600 pb-0.5 hover:scale-105 transition-transform uppercase tracking-widest">Explore Gallery</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Smart ERP Features Section - Premium Cream Theme */}
+
       <section className="py-24 bg-[#fffaf5] w-full relative overflow-hidden reveal-on-scroll">
         <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
           <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-orange-400 rounded-full blur-[100px]"></div>
@@ -301,8 +408,8 @@ const Home = () => {
 
         <div className="max-w-7xl mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
-            <span className="text-orange-600 font-black uppercase tracking-[0.3em] text-[10px] mb-3 block italic">Why Oasis?</span>
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight italic">Everything you need to <span className="text-orange-600 underline decoration-orange-200 underline-offset-8">Succeed</span></h2>
+            <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Why Oasis?</span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">Everything you need to <span className="text-orange-600 underline decoration-orange-200 underline-offset-8">Succeed</span></h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -382,7 +489,7 @@ const Home = () => {
 
         <div className="max-w-7xl mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight italic uppercase">Smart <span className="text-orange-600 ">ERP System</span></h2>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight uppercase">Smart <span className="text-orange-600 ">ERP System</span></h2>
             <p className="text-gray-600 text-lg font-medium">Technology-driven coaching for modern learning</p>
           </div>
 
@@ -505,9 +612,9 @@ const Home = () => {
                   </div>
 
                   <div className="p-6 text-center w-full">
-                    <h3 className="text-xl font-black text-gray-900 mb-1">{member.name}</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">{member.name}</h3>
                     <p className="text-orange-600 font-bold mb-3 uppercase tracking-wider text-[11px]">{member.subjects}</p>
-                    <div className="inline-block px-4 py-1 rounded-xl bg-orange-50 text-orange-700 text-[10px] font-black uppercase tracking-widest border border-orange-100 shadow-sm">
+                    <div className="inline-block px-4 py-1 rounded-xl bg-orange-50 text-orange-700 text-[10px] font-bold uppercase tracking-widest border border-orange-100 shadow-sm">
                       {member.classes}
                     </div>
                   </div>
@@ -807,52 +914,52 @@ const Home = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            <div className="bg-white rounded-3xl shadow-xl p-8 md:p-10 border border-indigo-50/50">
-              <h3 className="text-3xl font-extrabold text-gray-900 mb-10 text-center md:text-left relative">
+            <div className="bg-white rounded-3xl shadow-xl p-8 md:p-10 border border-orange-100">
+              <h3 className="text-3xl font-bold text-gray-900 mb-10 text-center md:text-left relative tracking-tight">
                 Contact Information
-                <span className="absolute bottom-[-12px] left-1/2 md:left-0 transform md:transform-none -translate-x-1/2 md:translate-x-0 w-20 h-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"></span>
+                <span className="absolute bottom-[-12px] left-1/2 md:left-0 transform md:transform-none -translate-x-1/2 md:translate-x-0 w-20 h-1.5 bg-orange-600 rounded-full"></span>
               </h3>
 
               <div className="space-y-6">
-                <div className="group flex items-center p-4 rounded-2xl bg-indigo-50/30 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-indigo-100">
-                  <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
+                <div className="group flex items-center p-4 rounded-2xl bg-orange-50/50 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-orange-100">
+                  <div className="w-14 h-14 bg-orange-600 rounded-2xl flex items-center justify-center text-2xl shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
                     📍
                   </div>
                   <div className="ml-6">
-                    <p className="text-xs font-bold text-indigo-600 uppercase tracking-[0.2em] mb-1">Address</p>
-                    <p className="text-gray-800 font-bold leading-relaxed">
+                    <p className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-1">Address</p>
+                    <p className="text-gray-800 font-bold leading-relaxed text-sm">
                       Union Bank building near saguna more<br />
                       Danapur patna -801503
                     </p>
                   </div>
                 </div>
 
-                <div className="group flex items-center p-4 rounded-2xl bg-purple-50/30 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-purple-100">
-                  <div className="w-14 h-14 bg-purple-600 rounded-2xl flex items-center justify-center text-2xl shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
+                <div className="group flex items-center p-4 rounded-2xl bg-orange-50/50 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-orange-100">
+                  <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-2xl shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
                     📞
                   </div>
                   <div className="ml-6">
-                    <p className="text-xs font-bold text-purple-600 uppercase tracking-[0.2em] mb-1">Phone</p>
+                    <p className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-1">Phone</p>
                     <p className="text-gray-800 font-bold text-lg">9905424369, 8825198919</p>
                   </div>
                 </div>
 
-                <div className="group flex items-center p-4 rounded-2xl bg-pink-50/30 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-pink-100">
-                  <div className="w-14 h-14 bg-pink-600 rounded-2xl flex items-center justify-center text-2xl shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
+                <div className="group flex items-center p-4 rounded-2xl bg-orange-50/50 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-orange-100">
+                  <div className="w-14 h-14 bg-orange-700 rounded-2xl flex items-center justify-center text-2xl shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
                     ✉️
                   </div>
                   <div className="ml-6">
-                    <p className="text-xs font-bold text-pink-600 uppercase tracking-[0.2em] mb-1">Website</p>
+                    <p className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-1">Website</p>
                     <p className="text-gray-800 font-bold text-lg">www.oasisjeeclasses.com</p>
                   </div>
                 </div>
 
-                <div className="group flex items-center p-4 rounded-2xl bg-blue-50/30 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-blue-100">
-                  <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-2xl shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
+                <div className="group flex items-center p-4 rounded-2xl bg-orange-50/50 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-orange-100">
+                  <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-2xl shadow-md group-hover:scale-110 transition-transform flex-shrink-0">
                     🕒
                   </div>
                   <div className="ml-6">
-                    <p className="text-xs font-bold text-blue-600 uppercase tracking-[0.2em] mb-1">Office Hours</p>
+                    <p className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-1">Office Hours</p>
                     <p className="text-gray-800 font-bold">
                       Mon - Sat: 9:00 AM - 6:00 PM<br />
                       <span className="text-gray-500 font-semibold text-sm">Sunday: By Appointment</span>
@@ -877,12 +984,12 @@ const Home = () => {
           </div>
 
           <div className="max-w-6xl mx-auto mt-12 px-4">
-            <a href="#demo-form" className="p-8 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2rem] text-white shadow-2xl flex flex-col md:flex-row items-center justify-between group hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1">
+            <a href="#demo-form" className="p-8 bg-gradient-to-r from-orange-600 to-orange-700 rounded-[2.5rem] text-white shadow-2xl flex flex-col md:flex-row items-center justify-between group hover:shadow-orange-500/30 transition-all duration-500 transform hover:-translate-y-2 border border-white/10">
               <div className="text-center md:text-left mb-6 md:mb-0">
-                <h4 className="font-black text-2xl mb-1">Still confused about your journey?</h4>
-                <p className="text-blue-100 font-medium opacity-90">Book a 1-on-1 counseling session or a free demo class today.</p>
+                <h4 className="font-bold text-2xl mb-1 tracking-tight">Still confused about your journey?</h4>
+                <p className="text-orange-50 font-medium opacity-90">Book a 1-on-1 counseling session or a free demo class today.</p>
               </div>
-              <div className="flex items-center gap-4 bg-white/20 px-8 py-4 rounded-2xl backdrop-blur-sm group-hover:bg-white group-hover:text-blue-600 transition-all duration-300 font-bold whitespace-nowrap">
+              <div className="flex items-center gap-4 bg-white/20 px-8 py-4 rounded-2xl backdrop-blur-sm group-hover:bg-white group-hover:text-orange-600 transition-all duration-300 font-bold whitespace-nowrap uppercase tracking-widest text-sm shadow-xl">
                 Get Started Now
                 <span className="text-2xl transition-transform duration-300 group-hover:translate-x-2">→</span>
               </div>
