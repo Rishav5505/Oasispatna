@@ -127,7 +127,7 @@ const Courses = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative py-32 bg-slate-900 overflow-hidden">
+      <section className="relative py-20 bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
@@ -136,34 +136,34 @@ const Courses = () => {
           <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-6 block bg-orange-600/10 w-fit mx-auto px-4 py-1.5 rounded-full border border-orange-600/20">
             Explore Our Programs
           </span>
-          <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 leading-tight tracking-tight">
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
             Transform Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400">IIT Journey</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium">
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium">
             Industry-leading mentorship combined with technology-driven learning to ensure your success in JEE.
           </p>
         </div>
       </section>
 
       {/* Courses Grid */}
-      <section className="py-24 relative -mt-20 z-20">
+      <section className="py-16 relative -mt-12 z-20">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
             {courses.map((course, index) => (
-              <div key={index} className={`relative group bg-white rounded-[3rem] p-10 shadow-2xl hover:shadow-orange-200/50 transition-all duration-500 border border-orange-100 flex flex-col h-full ${course.popular ? 'ring-4 ring-orange-500 ring-offset-8 ring-offset-[#fffaf5]' : ''}`}>
+              <div key={index} className={`relative group bg-white rounded-[2rem] p-8 shadow-2xl hover:shadow-orange-200/50 transition-all duration-500 border border-orange-100 flex flex-col h-full ${course.popular ? 'ring-4 ring-orange-500 ring-offset-8 ring-offset-[#fffaf5]' : ''}`}>
                 {course.popular && (
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-xl border border-white/10">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-xl border border-white/10">
                     ⭐ Most Popular
                   </div>
                 )}
 
-                <div className={`w-20 h-20 rounded-[1.5rem] bg-gradient-to-br ${course.gradient} flex items-center justify-center text-4xl text-white mb-10 shadow-xl shadow-orange-900/10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${course.gradient} flex items-center justify-center text-2xl text-white mb-8 shadow-xl shadow-orange-900/10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
                   {course.icon}
                 </div>
 
-                <h3 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight uppercase">{course.title}</h3>
-                <div className="flex items-center gap-2 text-orange-600 font-bold mb-8 text-[11px] uppercase tracking-widest">
-                  <FaClock className="text-sm" />
+                <h3 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight uppercase">{course.title}</h3>
+                <div className="flex items-center gap-2 text-orange-600 font-bold mb-6 text-[10px] uppercase tracking-widest">
+                  <FaClock className="text-xs" />
                   <span>{course.duration}</span>
                 </div>
 
@@ -171,27 +171,27 @@ const Courses = () => {
                   {course.description}
                 </p>
 
-                <div className="space-y-4 mb-12 flex-grow">
+                <div className="space-y-3 mb-8 flex-grow">
                   {course.features.map((feature, fIndex) => (
-                    <div key={fIndex} className="flex items-center gap-4 group/item">
-                      <div className="w-6 h-6 rounded-lg bg-orange-50 flex items-center justify-center group-hover/item:bg-orange-500 transition-colors">
-                        <FaCheckCircle className="text-orange-500 group-hover/item:text-white transition-colors text-xs" />
+                    <div key={fIndex} className="flex items-center gap-3 group/item">
+                      <div className="w-5 h-5 rounded-lg bg-orange-50 flex items-center justify-center group-hover/item:bg-orange-500 transition-colors">
+                        <FaCheckCircle className="text-orange-500 group-hover/item:text-white transition-colors text-[10px]" />
                       </div>
-                      <span className="text-gray-700 font-bold text-sm tracking-tight">{feature}</span>
+                      <span className="text-gray-700 font-bold text-xs tracking-tight">{feature}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-auto border-t border-orange-50 pt-10">
-                  <div className="mb-8 flex items-baseline justify-between">
+                <div className="mt-auto border-t border-orange-50 pt-8">
+                  <div className="mb-6 flex items-baseline justify-between">
                     <div>
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-1">Fee Structure</span>
-                      <span className="text-2xl font-bold text-gray-900 tracking-tight">{course.price}</span>
+                      <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest block mb-1">Fee Structure</span>
+                      <span className="text-xl font-bold text-gray-900 tracking-tight">{course.price}</span>
                     </div>
                   </div>
                   <button
                     onClick={() => handleEnrollClick(course.title)}
-                    className={`w-full py-5 rounded-[1.5rem] font-bold uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 transition-all duration-500 ${course.popular ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-2xl shadow-orange-900/20' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl'}`}
+                    className={`w-full py-4 rounded-2xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all duration-500 ${course.popular ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-2xl shadow-orange-900/20' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl'}`}
                   >
                     Enroll Now <FaAngleRight className="group-hover:translate-x-2 transition-transform" />
                   </button>

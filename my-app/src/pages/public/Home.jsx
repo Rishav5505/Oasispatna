@@ -27,7 +27,7 @@ import coaching12 from '../../assets/550492546_1326566672187200_6186828262730265
 // Faculty Photos
 import praveenPhoto from '../../assets/praveen_sir.jpeg';
 import kalpanaPhoto from '../../assets/kalpana_rani.jpg';
-import raviPhoto from '../../assets/ravi_shekhar.jpg';
+import raviPhoto from '../../assets/Ravi SIR.jpeg';
 
 // Promotion Videos
 import promoVideo from '../../assets/Physics Faculties in oasis jee classes.mp4';
@@ -281,39 +281,39 @@ const Home = () => {
       </section>
 
       {/* Courses & Batches Section - Premium Cream Theme */}
-      <section id="courses" className="py-24 bg-white w-full reveal-on-scroll">
+      <section id="courses" className="py-16 bg-white w-full reveal-on-scroll">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Our Programs</span>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">Our Courses & <span className="text-orange-600">Batches</span></h2>
-            <p className="text-gray-600 text-lg font-medium">Comprehensive programs designed for JEE success</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">Our Courses & <span className="text-orange-600">Batches</span></h2>
+            <p className="text-gray-600 text-base font-medium">Comprehensive programs designed for JEE success</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {courses.map(course => (
-              <div key={course.id} className="bg-[#fffaf5] rounded-[2.5rem] shadow-xl hover:shadow-orange-200/50 transition-all duration-500 overflow-hidden group border border-orange-100 flex flex-col">
-                <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-8">
-                  <h3 className="text-2xl font-bold mb-2 uppercase tracking-tight">{course.name}</h3>
+              <div key={course.id} className="bg-[#fffaf5] rounded-[2rem] shadow-xl hover:shadow-orange-200/50 transition-all duration-500 overflow-hidden group border border-orange-100 flex flex-col">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6">
+                  <h3 className="text-xl font-bold mb-1 uppercase tracking-tight">{course.name}</h3>
                   <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10">
                     Duration: {course.duration}
                   </div>
                 </div>
-                <div className="p-8 flex-grow">
-                  <p className="text-gray-700 mb-6 font-medium">"{course.description}"</p>
-                  <div className="mb-8">
-                    <h4 className="font-black text-gray-900 mb-4 flex items-center gap-2 text-xs uppercase tracking-widest">
+                <div className="p-6 flex-grow">
+                  <p className="text-gray-700 mb-4 text-sm font-medium">"{course.description}"</p>
+                  <div className="mb-6">
+                    <h4 className="font-black text-gray-900 mb-3 flex items-center gap-2 text-[10px] uppercase tracking-widest">
                       <span className="w-1.5 h-1.5 rounded-full bg-orange-600"></span>
                       Key Highlights:
                     </h4>
-                    <ul className="space-y-3">
+                    <ul className="space-y-2">
                       {course.features.map((feature, idx) => (
-                        <li key={idx} className="text-sm text-gray-600 flex items-center">
+                        <li key={idx} className="text-xs text-gray-600 flex items-center">
                           <span className="text-orange-600 mr-2 font-black">✓</span> {feature}
                         </li>
                       ))}
                     </ul>
                   </div>
-                  <a href="#demo-form" className="block text-center bg-orange-600 text-white px-6 py-4 rounded-2xl font-black hover:bg-gray-900 transition-all transform group-hover:scale-[1.02] shadow-lg shadow-orange-900/20 uppercase tracking-widest text-[10px]">
+                  <a href="#demo-form" className="block text-center bg-orange-600 text-white px-6 py-3.5 rounded-xl font-black hover:bg-gray-900 transition-all transform group-hover:scale-[1.02] shadow-lg shadow-orange-900/20 uppercase tracking-widest text-[9px]">
                     Enroll Now
                   </a>
                 </div>
@@ -585,7 +585,7 @@ const Home = () => {
                 {
                   id: 'ravi',
                   name: 'Ravi Shekhar',
-                  subjects: 'Physics, Chemistry',
+                  subjects: 'Physics',
                   classes: 'Senior Mentor',
                   icon: '👨‍🔬',
                   photo: raviPhoto,

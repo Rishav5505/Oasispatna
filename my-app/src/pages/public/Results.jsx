@@ -1,7 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { FaTrophy, FaMedal, FaStar, FaQuoteLeft, FaFire, FaChartBar, FaArrowRight } from 'react-icons/fa';
+
+const Counter = ({ end, duration = 2000, suffix = "" }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTime = null;
+    let animationFrame;
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percentage = Math.min(progress / duration, 1);
+
+      const easedPower = 1 - Math.pow(1 - percentage, 4);
+
+      setCount(Math.floor(easedPower * end));
+
+      if (percentage < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [end, duration]);
+
+  return <span>{count}{suffix}</span>;
+};
 
 const Results = () => {
   const toppers = [
@@ -44,10 +72,10 @@ const Results = () => {
   ];
 
   const stats = [
-    { label: 'Successful Students', value: '1000+', icon: <FaTrophy />, color: 'text-orange-600' },
-    { label: 'Success Rate', value: '95%', icon: <FaFire />, color: 'text-orange-500' },
-    { label: 'Years of Trust', value: '15+', icon: <FaStar />, color: 'text-orange-400' },
-    { label: 'Expert Faculty', value: '10+', icon: <FaChartBar />, color: 'text-slate-900' }
+    { label: 'Successful Students', value: 1000, suffix: '+', icon: <FaTrophy />, color: 'text-orange-600' },
+    { label: 'Success Rate', value: 95, suffix: '%', icon: <FaFire />, color: 'text-orange-500' },
+    { label: 'Years of Trust', value: 15, suffix: '+', icon: <FaStar />, color: 'text-orange-400' },
+    { label: 'Expert Faculty', value: 10, suffix: '+', icon: <FaChartBar />, color: 'text-slate-900' }
   ];
 
   return (
@@ -55,7 +83,7 @@ const Results = () => {
       <Navbar />
 
       {/* Hall of Fame Hero */}
-      <section className="relative py-32 bg-slate-900 overflow-hidden">
+      <section className="relative py-20 bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[150px] translate-y-1/2 -translate-x-1/2"></div>
@@ -64,10 +92,10 @@ const Results = () => {
           <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-6 block bg-orange-600/10 w-fit mx-auto px-4 py-1.5 rounded-full border border-orange-600/20">
             Legacy of Excellence
           </span>
-          <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 leading-tight tracking-tight">
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
             Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-500 to-yellow-500">Hall of Fame</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed font-medium">
+          <p className="text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed font-medium">
             Every year, our students break records and redefine success. Meet the warriors who conquered the toughest exams with precision.
           </p>
         </div>
@@ -76,14 +104,16 @@ const Results = () => {
       {/* Impact Stats */}
       <section className="py-20 bg-white shadow-2xl relative z-20 -mt-16 overflow-hidden rounded-[4rem] max-w-7xl mx-auto mx-4 sm:mx-6 md:mx-auto border border-orange-100">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, idx) => (
-              <div key={idx} className="text-center group p-4 border-r border-orange-50 last:border-0">
-                <div className={`text-4xl mb-4 flex justify-center ${stat.color} group-hover:scale-110 group-hover:rotate-12 transition-all duration-300`}>
+              <div key={idx} className="text-center group p-3 border-r border-orange-50 last:border-0">
+                <div className={`text-3xl mb-3 flex justify-center ${stat.color} group-hover:scale-110 group-hover:rotate-12 transition-all duration-300`}>
                   {stat.icon}
                 </div>
-                <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-2 tracking-tight">{stat.value}</div>
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{stat.label}</div>
+                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1 tracking-tight">
+                  <Counter end={stat.value} suffix={stat.suffix} />
+                </div>
+                <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -91,37 +121,37 @@ const Results = () => {
       </section>
 
       {/* Toppers Spotlight */}
-      <section className="py-24">
+      <section className="py-16">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Champions League</span>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight uppercase tracking-tight">Elite Performers <span className="text-orange-600">2024</span></h2>
-            <p className="text-gray-500 text-lg font-medium">Leading the way to premier institutions across India</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight uppercase tracking-tight">Elite Performers <span className="text-orange-600">2024</span></h2>
+            <p className="text-gray-500 text-base font-medium">Leading the way to premier institutions across India</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {toppers.map((topper, index) => (
               <div key={index} className="group relative">
-                <div className={`bg-gradient-to-br ${topper.gradient} rounded-[3rem] p-8 text-white h-full relative overflow-hidden transition-all duration-500 transform group-hover:-translate-y-4 shadow-2xl shadow-orange-950/20`}>
+                <div className={`bg-gradient-to-br ${topper.gradient} rounded-[2rem] p-6 text-white h-full relative overflow-hidden transition-all duration-500 transform group-hover:-translate-y-4 shadow-2xl shadow-orange-950/20`}>
                   {/* Decorative Overlay */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-[20px]"></div>
-                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-8 -mb-8 blur-[20px]"></div>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-[15px]"></div>
+                  <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full -ml-8 -mb-8 blur-[15px]"></div>
 
-                  <div className="text-7xl mb-8 flex justify-center transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 drop-shadow-2xl">
+                  <div className="text-5xl mb-6 flex justify-center transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 drop-shadow-2xl">
                     {topper.icon}
                   </div>
                   <div className="text-center relative z-10">
-                    <span className="inline-block px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold tracking-widest uppercase mb-6 text-white border border-white/20">
+                    <span className="inline-block px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[9px] font-bold tracking-widest uppercase mb-4 text-white border border-white/20">
                       {topper.badge}
                     </span>
-                    <h3 className="text-3xl font-bold mb-1 tracking-tight uppercase">{topper.name}</h3>
-                    <p className="text-orange-100 text-xs font-bold uppercase tracking-widest mb-8">{topper.exam}</p>
+                    <h3 className="text-2xl font-bold mb-1 tracking-tight uppercase">{topper.name}</h3>
+                    <p className="text-orange-100 text-[10px] font-bold uppercase tracking-widest mb-6">{topper.exam}</p>
 
-                    <div className="bg-black/20 backdrop-blur-xl rounded-[2rem] p-6 border border-white/10">
-                      <div className="text-[10px] text-white/60 font-bold uppercase tracking-widest mb-2">Academic Record</div>
-                      <div className="text-2xl font-bold tracking-tight">{topper.rank}</div>
-                      <div className="h-0.5 bg-gradient-to-r from-transparent via-white/20 to-transparent my-4"></div>
-                      <div className="text-[10px] text-orange-400 font-bold uppercase tracking-widest">{topper.score}</div>
+                    <div className="bg-black/20 backdrop-blur-xl rounded-2xl p-4 border border-white/10">
+                      <div className="text-[9px] text-white/60 font-bold uppercase tracking-widest mb-1">Academic Record</div>
+                      <div className="text-xl font-bold tracking-tight">{topper.rank}</div>
+                      <div className="h-0.5 bg-gradient-to-r from-transparent via-white/20 to-transparent my-3"></div>
+                      <div className="text-[9px] text-orange-400 font-bold uppercase tracking-widest">{topper.score}</div>
                     </div>
                   </div>
                 </div>
@@ -132,16 +162,16 @@ const Results = () => {
       </section>
 
       {/* Stories of Triumph */}
-      <section className="py-32 bg-slate-900 relative overflow-hidden">
+      <section className="py-20 bg-slate-900 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#fffaf5] to-transparent z-0"></div>
         <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-20 mt-10">
+          <div className="text-center mb-12 mt-6">
             <span className="text-orange-500 font-bold uppercase tracking-widest text-[11px] mb-3 block">Testimonials</span>
-            <h2 className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight leading-tight">From Aspirants to <span className="text-orange-500">Achievers</span></h2>
-            <p className="text-gray-400 text-xl font-medium">Real stories from the classrooms of Oasis</p>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight leading-tight">From Aspirants to <span className="text-orange-500">Achievers</span></h2>
+            <p className="text-gray-400 text-lg font-medium">Real stories from the classrooms of Oasis</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
             {[
               {
                 name: "Vikram Kumar",
@@ -156,17 +186,17 @@ const Results = () => {
                 col: "from-slate-700 to-slate-900"
               }
             ].map((t, idx) => (
-              <div key={idx} className="bg-white/5 border border-white/5 p-12 rounded-[3.5rem] backdrop-blur-md relative group hover:bg-white/10 transition-all duration-500 transform hover:scale-[1.02]">
-                <FaQuoteLeft className="text-6xl text-orange-500/20 absolute top-10 left-10" />
+              <div key={idx} className="bg-white/5 border border-white/5 p-8 rounded-[2.5rem] backdrop-blur-md relative group hover:bg-white/10 transition-all duration-500 transform hover:scale-[1.02]">
+                <FaQuoteLeft className="text-4xl text-orange-500/20 absolute top-8 left-8" />
                 <div className="relative z-10">
-                  <p className="text-2xl text-gray-300 mb-10 leading-relaxed font-medium">"{t.msg}"</p>
-                  <div className="flex items-center gap-6">
-                    <div className={`w-16 h-16 rounded-[1.5rem] bg-gradient-to-br ${t.col} flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-orange-950/50`}>
+                  <p className="text-lg text-gray-300 mb-8 leading-relaxed font-medium">"{t.msg}"</p>
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${t.col} flex items-center justify-center text-white font-bold text-xl shadow-xl shadow-orange-950/50`}>
                       {t.name[0]}
                     </div>
                     <div>
-                      <h4 className="text-white font-bold text-xl tracking-tight uppercase">{t.name}</h4>
-                      <p className="text-orange-500 font-bold uppercase tracking-widest text-[10px]">{t.rank}</p>
+                      <h4 className="text-white font-bold text-lg tracking-tight uppercase">{t.name}</h4>
+                      <p className="text-orange-500 font-bold uppercase tracking-widest text-[9px]">{t.rank}</p>
                     </div>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import {
@@ -10,13 +10,42 @@ import {
 import { BiWorld } from 'react-icons/bi';
 import oasisLogo from '../../assets/oasis_logo.png';
 
+const Counter = ({ end, duration = 2000, suffix = "" }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTime = null;
+    let animationFrame;
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percentage = Math.min(progress / duration, 1);
+
+      // Easing function: easeOutQuart
+      const easedPower = 1 - Math.pow(1 - percentage, 4);
+
+      setCount(Math.floor(easedPower * end));
+
+      if (percentage < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [end, duration]);
+
+  return <span>{count}{suffix}</span>;
+};
+
 const About = () => {
   return (
     <div className="min-h-screen bg-[#fffaf5] selection:bg-orange-500 selection:text-white">
       <Navbar />
 
       {/* Hero Section with Brand Story */}
-      <section className="relative h-screen flex items-center justify-center bg-slate-900 overflow-hidden">
+      <section className="relative py-20 flex items-center justify-center bg-slate-900 overflow-hidden">
         {/* Abstract Background Elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-orange-600/20 rounded-full blur-[100px] animate-pulse"></div>
@@ -29,8 +58,8 @@ const About = () => {
             ✨ 10+ Years of Excellence in JEE Coaching
           </div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-8xl font-bold text-white mb-6 tracking-tight leading-tight animate-fade-in-up flex flex-col items-center justify-center gap-4" style={{ animationDelay: '0.1s' }}>
-            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden p-2 mb-4 rotate-3 group hover:rotate-0 transition-transform duration-500">
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight leading-tight animate-fade-in-up flex flex-col items-center justify-center gap-4" style={{ animationDelay: '0.1s' }}>
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-xl overflow-hidden p-2 mb-2 rotate-3 group hover:rotate-0 transition-transform duration-500">
               <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
             </div>
             <span>About <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-orange-400 to-yellow-400">Oasis JEE Classes</span></span>
@@ -40,19 +69,21 @@ const About = () => {
             Founded in 2014, we've been transforming dreams into reality. Providing world-class education that makes IIT dreams achievable for every aspiring student in Bihar.
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
             {[
-              { icon: FaUserGraduate, count: "5000+", label: "Students", color: "from-orange-500 to-orange-400" },
-              { icon: FaTrophy, count: "95%", label: "Success Rate", color: "from-orange-600 to-orange-500" },
-              { icon: FaChalkboardTeacher, count: "50+", label: "Faculty", color: "from-orange-500 to-yellow-500" },
-              { icon: BiWorld, count: "1500+", label: "IIT Selections", color: "from-orange-600 to-yellow-600" },
+              { icon: FaUserGraduate, count: 5000, suffix: "+", label: "Students", color: "from-orange-500 to-orange-400" },
+              { icon: FaTrophy, count: 95, suffix: "%", label: "Success Rate", color: "from-orange-600 to-orange-500" },
+              { icon: FaChalkboardTeacher, count: 50, suffix: "+", label: "Faculty", color: "from-orange-500 to-yellow-500" },
+              { icon: BiWorld, count: 1500, suffix: "+", label: "IIT Selections", color: "from-orange-600 to-yellow-600" },
             ].map((stat, idx) => (
-              <div key={idx} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-6 hover:bg-white/10 transition-all duration-300 transform hover:scale-105 group shadow-2xl shadow-orange-950/20">
-                <div className={`text-4xl mb-3 bg-gradient-to-r ${stat.color} text-transparent bg-clip-text`}>
+              <div key={idx} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition-all duration-300 transform hover:scale-105 group shadow-2xl shadow-orange-950/20">
+                <div className={`text-3xl mb-2 bg-gradient-to-r ${stat.color} text-transparent bg-clip-text`}>
                   <stat.icon className="mx-auto group-hover:scale-110 transition-transform" style={{ filter: 'drop-shadow(0 0 8px rgba(249,115,22,0.3))' }} />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-1 tracking-tight">{stat.count}</h3>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{stat.label}</p>
+                <h3 className="text-2xl font-bold text-white mb-1 tracking-tight">
+                  <Counter end={stat.count} suffix={stat.suffix} />
+                </h3>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -60,7 +91,7 @@ const About = () => {
       </section>
 
       {/* Our Journey - Timeline Section */}
-      <section className="py-24 bg-[#fffaf5] relative">
+      <section className="py-16 bg-[#fffaf5] relative">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Our Journey</span>
@@ -77,15 +108,15 @@ const About = () => {
                 { year: "2024", title: "Excellence Milestone", description: "Celebrating 5000+ successful students, 95% selection rate, and 1500+ IIT admissions.", color: "from-orange-600 to-orange-800", icon: FaTrophy },
               ].map((milestone, idx) => (
                 <div key={idx} className="relative group">
-                  <div className="bg-white rounded-[2.5rem] p-10 shadow-xl hover:shadow-orange-200/50 transition-all duration-500 transform hover:-translate-y-2 border border-orange-100 flex flex-col justify-between h-full">
+                  <div className="bg-white rounded-[2rem] p-8 shadow-xl hover:shadow-orange-200/50 transition-all duration-500 transform hover:-translate-y-2 border border-orange-100 flex flex-col justify-between h-full">
                     <div className={`absolute top-0 left-0 w-2 h-full bg-gradient-to-b ${milestone.color} rounded-l-2xl`}></div>
                     <div>
-                      <div className={`inline-flex items-center justify-center w-16 h-16 rounded-[1.5rem] bg-gradient-to-br ${milestone.color} text-white text-3xl mb-6 shadow-xl shadow-orange-900/20`}>
+                      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${milestone.color} text-white text-2xl mb-4 shadow-xl shadow-orange-900/20`}>
                         <milestone.icon />
                       </div>
-                      <h3 className="text-3xl font-black text-gray-900 mb-2 italic tracking-tighter">{milestone.year}</h3>
-                      <h4 className="text-xl font-black text-orange-600 mb-4 italic tracking-tight">{milestone.title}</h4>
-                      <p className="text-gray-600 leading-relaxed font-medium">"{milestone.description}"</p>
+                      <h3 className="text-2xl font-black text-gray-900 mb-1 italic tracking-tighter">{milestone.year}</h3>
+                      <h4 className="text-lg font-black text-orange-600 mb-3 italic tracking-tight">{milestone.title}</h4>
+                      <p className="text-gray-600 leading-relaxed font-medium text-sm">"{milestone.description}"</p>
                     </div>
                   </div>
                 </div>
@@ -96,43 +127,43 @@ const About = () => {
       </section>
 
       {/* Mission & Vision Cards */}
-      <section className="py-24 bg-white">
+      <section className="py-16 bg-white">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Our Purpose</span>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">Mission & <span className="text-orange-600">Vision</span></h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">Mission & <span className="text-orange-600">Vision</span></h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            <div className="group relative bg-slate-900 text-white rounded-[3rem] p-12 shadow-2xl hover:shadow-orange-900/20 transition-all duration-500 transform hover:scale-[1.02] overflow-hidden border border-white/5">
+            <div className="group relative bg-slate-900 text-white rounded-[2.5rem] p-10 shadow-2xl hover:shadow-orange-900/20 transition-all duration-500 transform hover:scale-[1.02] overflow-hidden border border-white/5">
               <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full -mr-32 -mt-32 blur-[80px]"></div>
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/10 rounded-full -ml-32 -mb-32 blur-[80px]"></div>
               <div className="relative z-10">
-                <div className="w-24 h-24 bg-orange-600/20 backdrop-blur-md rounded-[2rem] flex items-center justify-center mb-8 text-6xl shadow-inner border border-white/10 group-hover:scale-110 transition-transform">
+                <div className="w-20 h-20 bg-orange-600/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 text-5xl shadow-inner border border-white/10 group-hover:scale-110 transition-transform">
                   🎯
                 </div>
-                <h3 className="text-4xl md:text-5xl font-bold mb-8 leading-tight">
+                <h3 className="text-3xl md:text-4xl font-bold mb-6 leading-tight">
                   <span className="text-white">Our </span><br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-300">Mission</span>
                 </h3>
-                <p className="text-gray-400 leading-relaxed text-lg font-medium">
+                <p className="text-gray-400 leading-relaxed text-base font-medium">
                   To transform aspiring students into confident achievers by providing holistic, technology-enabled JEE coaching that goes beyond traditional teaching. We are committed to nurturing not just academic excellence, but critical thinking, problem-solving abilities, and the resilience needed to crack JEE. Through personalized mentorship and unwavering support, we bridge the gap between dreams and IITs.
                 </p>
               </div>
             </div>
 
-            <div className="group relative bg-orange-600 text-white rounded-[3rem] p-12 shadow-2xl hover:shadow-orange-400/30 transition-all duration-500 transform hover:scale-[1.02] overflow-hidden">
+            <div className="group relative bg-orange-600 text-white rounded-[2.5rem] p-10 shadow-2xl hover:shadow-orange-400/30 transition-all duration-500 transform hover:scale-[1.02] overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-[60px]"></div>
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full -ml-32 -mb-32 blur-[60px]"></div>
               <div className="relative z-10">
-                <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-[2rem] flex items-center justify-center mb-8 text-6xl shadow-inner border border-white/10 group-hover:scale-110 transition-transform">
+                <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-6 text-5xl shadow-inner border border-white/10 group-hover:scale-110 transition-transform">
                   🚀
                 </div>
-                <h3 className="text-4xl md:text-5xl font-bold mb-8 leading-tight">
+                <h3 className="text-3xl md:text-4xl font-bold mb-6 leading-tight">
                   <span className="text-white">Our </span><br />
-                  <span className="text-slate-900 border-b-8 border-slate-900">Vision</span>
+                  <span className="text-slate-900 border-b-4 border-slate-900">Vision</span>
                 </h3>
-                <p className="text-orange-50 leading-relaxed text-lg font-bold">
+                <p className="text-orange-50 leading-relaxed text-base font-bold">
                   "To be the leading JEE coaching institute in Bihar, recognized nationally for innovation in teaching methodology, student success rates, and consistently producing top rankers who shape the future of engineering."
                 </p>
               </div>
@@ -142,7 +173,7 @@ const About = () => {
       </section>
 
       {/* Smart Coaching Features (ERP-Based) */}
-      <section className="py-24 bg-[#fffaf5]">
+      <section className="py-16 bg-[#fffaf5]">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Smart Coaching</span>

@@ -43,7 +43,7 @@ const Gallery = () => {
             <Navbar />
 
             {/* Hero Section */}
-            <section className="relative py-32 bg-slate-900 overflow-hidden">
+            <section className="relative py-20 bg-slate-900 overflow-hidden">
                 <div className="absolute inset-0">
                     <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
                     <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
@@ -52,32 +52,32 @@ const Gallery = () => {
                     <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-6 block bg-orange-600/10 w-fit mx-auto px-4 py-1.5 rounded-full border border-orange-600/20 animate-fade-in-up">
                         Visualizing Excellence
                     </span>
-                    <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 leading-tight tracking-tight animate-fade-in-up">
+                    <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight tracking-tight animate-fade-in-up">
                         Experience <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400">Oasis</span>
                     </h1>
-                    <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed animate-fade-in-up font-medium">
+                    <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed animate-fade-in-up font-medium">
                         Capturing the journey of excellence, hard work, and celebration at Oasis JEE Classes.
                     </p>
                 </div>
             </section>
 
             {/* Gallery Grid */}
-            <section className="py-24 relative -mt-16 z-20">
+            <section className="py-16 relative -mt-12 z-20">
                 <div className="container mx-auto px-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
                         {images.map((item, index) => (
-                            <div key={index} className="group relative overflow-hidden rounded-[2.5rem] shadow-2xl aspect-[4/3] cursor-pointer border border-orange-100 bg-white hover:shadow-orange-200/50 transition-all duration-500">
+                            <div key={index} className="group relative overflow-hidden rounded-[2rem] shadow-2xl aspect-[4/3] cursor-pointer border border-orange-100 bg-white hover:shadow-orange-200/50 transition-all duration-500">
                                 <img
                                     src={item.img}
                                     alt={item.title}
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-8">
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6">
                                     <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                                        <span className="inline-block bg-orange-600/30 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-3">
+                                        <span className="inline-block bg-orange-600/30 backdrop-blur-md border border-white/20 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-2">
                                             {item.category}
                                         </span>
-                                        <h3 className="text-white text-xl md:text-2xl font-bold leading-tight tracking-tight">
+                                        <h3 className="text-white text-lg md:text-xl font-bold leading-tight tracking-tight">
                                             {item.title}
                                         </h3>
                                     </div>

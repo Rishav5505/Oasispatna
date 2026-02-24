@@ -67,7 +67,7 @@ const Contact = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-24 bg-slate-900 overflow-hidden text-center">
+      <section className="relative py-20 bg-slate-900 overflow-hidden text-center">
         <div className="absolute inset-0">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
@@ -77,32 +77,32 @@ const Contact = () => {
           <span className="inline-block px-4 py-1.5 rounded-full bg-orange-600/10 border border-orange-600/20 text-orange-400 text-xs font-bold tracking-widest uppercase mb-6">
             Get In Touch
           </span>
-          <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 leading-tight tracking-tight">
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
             How Can We <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-400">Help You?</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium">
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium">
             Have questions about admissions, batches, or scholarships? Our expert counselors are ready to help you navigate your IIT journey.
           </p>
         </div>
       </section>
 
       {/* Quick Contact Bar */}
-      <section className="relative z-20 -mt-20 mb-16">
+      <section className="relative z-20 -mt-12 mb-12">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {contactMethods.map((method, idx) => (
-              <div key={idx} className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-orange-100 hover:-translate-y-2 transition-all duration-500 group">
-                <div className={`w-14 h-14 ${method.color} text-white rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-xl ${method.shadow} group-hover:scale-110 transition-transform`}>
+              <div key={idx} className="bg-white p-6 rounded-[2rem] shadow-2xl border border-orange-100 hover:-translate-y-2 transition-all duration-500 group">
+                <div className={`w-12 h-12 ${method.color} text-white rounded-xl flex items-center justify-center text-xl mb-4 shadow-xl ${method.shadow} group-hover:scale-110 transition-transform`}>
                   {method.icon}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">{method.title}</h3>
-                <div className="space-y-1 mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-1 truncate">{method.title}</h3>
+                <div className="space-y-1 mb-4">
                   {method.details.map((detail, dIdx) => (
-                    <p key={dIdx} className="text-sm text-gray-600 font-medium truncate">{detail}</p>
+                    <p key={dIdx} className="text-xs text-gray-600 font-medium truncate">{detail}</p>
                   ))}
                 </div>
-                <div className="pt-4 border-t border-orange-50">
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{method.sub}</span>
+                <div className="pt-3 border-t border-orange-50">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{method.sub}</span>
                 </div>
               </div>
             ))}
@@ -126,26 +126,26 @@ const Contact = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-6">
-                <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl overflow-hidden relative group border border-white/5">
+                <div className="bg-slate-900 p-6 rounded-[2rem] text-white shadow-2xl overflow-hidden relative group border border-white/5">
                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-                  <FaWhatsapp className="absolute bottom-[-10%] right-[-5%] text-[10rem] opacity-5 group-hover:scale-110 transition-transform duration-500" />
+                  <FaWhatsapp className="absolute bottom-[-10%] right-[-5%] text-[8rem] opacity-5 group-hover:scale-110 transition-transform duration-500" />
                   <div className="relative z-10">
-                    <h3 className="text-2xl font-bold mb-4 tracking-tight">Instant Support</h3>
-                    <p className="text-gray-400 mb-8 max-w-xs font-medium">Chat with our admission experts directly on WhatsApp for immediate queries.</p>
-                    <a href="https://wa.me/919905424369" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] px-8 py-4 rounded-2xl font-bold transition-all shadow-xl hover:-translate-y-1 active:scale-95 text-sm uppercase tracking-widest">
-                      <FaWhatsapp className="text-2xl" /> Message WhatsApp
+                    <h3 className="text-xl font-bold mb-3 tracking-tight">Instant Support</h3>
+                    <p className="text-gray-400 mb-6 max-w-xs font-medium text-sm">Chat with our admission experts directly on WhatsApp for immediate queries.</p>
+                    <a href="https://wa.me/919905424369" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] px-6 py-3.5 rounded-xl font-bold transition-all shadow-xl hover:-translate-y-1 active:scale-95 text-[11px] uppercase tracking-widest">
+                      <FaWhatsapp className="text-xl" /> Message WhatsApp
                     </a>
                   </div>
                 </div>
 
-                <div className="bg-white border border-orange-100 p-8 rounded-[2.5rem] shadow-xl flex items-center gap-6 group hover:bg-orange-600 hover:border-orange-600 transition-all duration-500">
-                  <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center text-3xl group-hover:bg-white group-hover:text-orange-600 transition-all shadow-lg shadow-orange-900/5">
+                <div className="bg-white border border-orange-100 p-6 rounded-[2rem] shadow-xl flex items-center gap-6 group hover:bg-orange-600 hover:border-orange-600 transition-all duration-500">
+                  <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center text-2xl group-hover:bg-white group-hover:text-orange-600 transition-all shadow-lg shadow-orange-900/5">
                     🕒
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold text-gray-900 group-hover:text-white transition-colors">Office Hours</h4>
-                    <p className="text-gray-500 group-hover:text-orange-50 transition-colors font-medium">Mon - Sat: 09:00 AM - 07:00 PM</p>
-                    <p className="text-gray-500 group-hover:text-orange-50 transition-colors font-medium">Sunday: Closed</p>
+                    <h4 className="text-lg font-bold text-gray-900 group-hover:text-white transition-colors">Office Hours</h4>
+                    <p className="text-gray-500 group-hover:text-orange-50 transition-colors font-medium text-sm">Mon - Sat: 09:00 AM - 07:00 PM</p>
+                    <p className="text-gray-500 group-hover:text-orange-50 transition-colors font-medium text-sm">Sunday: Closed</p>
                   </div>
                 </div>
               </div>
@@ -153,12 +153,12 @@ const Contact = () => {
 
             {/* Right: Premium Form Card */}
             <div className="lg:col-span-7">
-              <div className="bg-white rounded-[3rem] shadow-2xl p-10 md:p-14 border border-orange-100 relative overflow-hidden">
+              <div className="bg-white rounded-[2rem] shadow-2xl p-8 md:p-10 border border-orange-100 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50/50 rounded-bl-[100px] pointer-events-none"></div>
 
-                <div className="mb-12">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Enquiry Form</h2>
-                  <p className="text-gray-500 text-lg font-medium">Send us a message and we'll get back within 24 hours.</p>
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Enquiry Form</h2>
+                  <p className="text-gray-500 text-base font-medium">Send us a message and we'll get back within 24 hours.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -238,12 +238,12 @@ const Contact = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`w-full font-bold text-sm uppercase tracking-widest py-6 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95 group ${isSubmitting
+                    className={`w-full font-bold text-[11px] uppercase tracking-widest py-4 rounded-xl transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95 group ${isSubmitting
                       ? 'bg-gray-400 text-white cursor-not-allowed shadow-none'
                       : 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-900/40'
                       }`}
                   >
-                    {isSubmitting ? 'Sending Enquiry...' : 'Send Message'}
+                    {isSubmitting ? 'Sending...' : 'Send Message'}
                     {!isSubmitting && <FaPaperPlane className="group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-300" />}
                   </button>
                 </form>
