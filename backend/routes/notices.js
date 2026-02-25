@@ -7,9 +7,11 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const router = express.Router();
 
+const sendEmail = require('../utils/sendEmail');
+
 // Create notice (admin)
 router.post('/', auth, roleAuth('admin'), async (req, res) => {
-  const { title, content, targetRoles } = req.body;
+  const { title, content, targetRoles, sendEmail: broadcastEmail } = req.body;
   try {
     const notice = new Notice({
       title,
@@ -23,7 +25,6 @@ router.post('/', auth, roleAuth('admin'), async (req, res) => {
 
     // Broadcast notification to target users
     if (targetRoles && targetRoles.length > 0) {
-      // Create a case-insensitive query or just log the count
       const users = await User.find({ role: { $in: targetRoles } });
       console.log(`Found ${users.length} users for target roles: ${targetRoles}`);
 
@@ -38,6 +39,18 @@ router.post('/', auth, roleAuth('admin'), async (req, res) => {
       if (notifications.length > 0) {
         await Notification.insertMany(notifications);
         console.log(`Successfully sent ${notifications.length} notifications.`);
+      }
+
+      // Send Emails if requested
+      if (broadcastEmail) {
+        console.log('Initiating bulk email broadcast...');
+        const emailPromises = users
+          .filter(u => u.email)
+          .map(u => sendEmail(u.email, `Oasis: ${title}`, content).catch(e => console.error(`Failed to send email to ${u.email}:`, e.message)));
+
+        // We trigger it but don't strictly block the response on all emails finishing
+        // although for small groups it's fine.
+        Promise.all(emailPromises);
       }
     }
 

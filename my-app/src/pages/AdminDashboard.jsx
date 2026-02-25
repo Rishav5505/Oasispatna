@@ -108,7 +108,7 @@ const AdminDashboard = () => {
   const [filterClass, setFilterClass] = useState('all');
   const [activeTab, setActiveTab] = useState('overview');
   const [showNoticeModal, setShowNoticeModal] = useState(false);
-  const [newNotice, setNewNotice] = useState({ title: '', content: '', targetRoles: ['student', 'parent'] });
+  const [newNotice, setNewNotice] = useState({ title: '', content: '', targetRoles: ['student', 'parent'], sendEmail: false });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [leads, setLeads] = useState([]);
 
@@ -783,7 +783,7 @@ const AdminDashboard = () => {
 
       alert('Notice published successfully!');
       setShowNoticeModal(false);
-      setNewNotice({ title: '', content: '', targetRoles: ['student', 'parent'] });
+      setNewNotice({ title: '', content: '', targetRoles: ['student', 'parent'], sendEmail: false });
 
       // Optionally refresh to show new notice
       window.location.reload();
@@ -2443,6 +2443,26 @@ const AdminDashboard = () => {
                         required
                       />
                     </div>
+
+                    <label className="flex items-center gap-4 px-8 py-5 bg-orange-50 rounded-[2rem] border border-orange-100 cursor-pointer group hover:bg-orange-100/50 transition-all">
+                      <div className="relative inline-flex items-center">
+                        <input
+                          id="sendEmailToggle"
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={newNotice.sendEmail}
+                          onChange={(e) => {
+                            console.log('Toggle Changed:', e.target.checked);
+                            setNewNotice({ ...newNotice, sendEmail: e.target.checked });
+                          }}
+                        />
+                        <div className="w-12 h-6 bg-gray-300 rounded-full peer peer-checked:bg-orange-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-6"></div>
+                      </div>
+                      <span className="text-sm font-black text-orange-900 uppercase tracking-widest select-none">Send also via Email</span>
+                      <div className="ml-auto w-10 h-10 bg-white rounded-xl flex items-center justify-center text-orange-600 shadow-sm group-hover:scale-110 transition-transform">
+                        <FaEnvelope />
+                      </div>
+                    </label>
                   </div>
                   <button
                     type="submit"
