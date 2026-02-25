@@ -281,13 +281,17 @@ const Home = () => {
     <div className="min-h-screen bg-[#fffaf5] overflow-x-hidden relative pt-8">
       {/* Announcement Bar */}
       <div className="fixed top-0 left-0 w-full bg-slate-900 border-b border-white/10 z-[110] h-8 overflow-hidden flex items-center">
-        <div className="animate-marquee whitespace-nowrap text-white/90 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] flex items-center gap-12">
-          <span>✨ Admissions Open for Batch 2026-27</span>
-          <span>🚀 New JEE Main Crash Course starting from next Monday</span>
-          <span>🏆 Congratulating our JEE Toppers of 2025 session</span>
-          <span>✨ Admissions Open for Batch 2026-27</span>
-          <span>🚀 New JEE Main Crash Course starting from next Monday</span>
-          <span>🏆 Congratulating our JEE Toppers of 2025 session</span>
+        <div className="animate-marquee whitespace-nowrap text-white/90 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] flex flex-nowrap">
+          <div className="flex items-center gap-12 pr-12">
+            <span>✨ Admissions Open for Batch 2026-27</span>
+            <span>🚀 New JEE Main Crash Course starting from next Monday</span>
+            <span>🏆 Congratulating our JEE Toppers of 2025 session</span>
+          </div>
+          <div className="flex items-center gap-12 pr-12" aria-hidden="true">
+            <span>✨ Admissions Open for Batch 2026-27</span>
+            <span>🚀 New JEE Main Crash Course starting from next Monday</span>
+            <span>🏆 Congratulating our JEE Toppers of 2025 session</span>
+          </div>
         </div>
       </div>
 
