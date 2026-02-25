@@ -223,6 +223,39 @@
   transform: translateY(0);
 }
 
+@keyframes marquee {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #f97316 25%, #fbbf24 50%, #f97316 75%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
 .glass-card {
   @apply bg-white/70 backdrop-blur-lg border border-white/50;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
@@ -231,4 +264,41 @@
 
 .glass {
   @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+}
+
+@keyframes count {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-count {
+  animation: count 0.5s ease-out forwards;
+}
+
+.course-card-glow:hover {
+  box-shadow: 0 0 30px rgba(249, 115, 22, 0.2);
+  transform: translateY(-10px) scale(1.02);
+}
+
+.accordion-item {
+  @apply border-b border-orange-50 last:border-0;
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+}
+
+.accordion-open .accordion-content {
+  max-height: 500px;
+  @apply py-6 opacity-100;
 }

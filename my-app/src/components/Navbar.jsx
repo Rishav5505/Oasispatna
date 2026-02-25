@@ -27,7 +27,7 @@ const Navbar = () => {
   }, []);
 
   return (
-    <nav className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 ease-in-out ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-orange-50' : 'bg-white border-b border-gray-100'}`}>
+    <nav className={`fixed left-0 w-full z-[100] transition-all duration-500 ease-in-out ${scrolled ? 'top-0 bg-white/95 backdrop-blur-md shadow-lg border-b border-orange-50' : 'top-8 bg-white border-b border-gray-100'}`}>
       <div className="w-full px-6 md:px-12 lg:px-16 h-16 md:h-20 flex justify-between items-center">
         <Link to="/" className="group flex items-center">
           <div className="relative p-1.5 md:p-2 bg-white rounded-2xl shadow-lg border border-gray-100/50 group-hover:shadow-orange-500/10 transition-all duration-300 transform group-hover:-translate-y-0.5">

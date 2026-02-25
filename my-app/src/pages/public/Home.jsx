@@ -9,6 +9,12 @@ import bnner from '../../assets/Bnner.jpg';
 import heroUp1 from '../../assets/hero-up-1.jpg';
 import heroUp2 from '../../assets/hero-up-2.jpg';
 import config from '../../config';
+import {
+  FiAward, FiUsers, FiBookOpen, FiActivity,
+  FiCheckCircle, FiCast, FiShield, FiClock,
+  FiArrowRight, FiSmartphone, FiPieChart, FiBell,
+  FiDownload, FiCreditCard
+} from 'react-icons/fi';
 
 // Coaching Photos for Gallery
 import coaching1 from '../../assets/474589765_1276841513370808_7764133733018340516_n.jpg';
@@ -34,6 +40,81 @@ import promoVideo from '../../assets/Physics Faculties in oasis jee classes.mp4'
 import rishavVideo from '../../assets/Rishav.mp4';
 import whatsappVideo from '../../assets/WhatsApp Video 2026-02-23 at 11.45.40 AM.mp4';
 
+
+const CountUp = ({ end, duration = 2000, suffix = "" }) => {
+  const [count, setCount] = useState(0);
+  const countRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (countRef.current) {
+      observer.observe(countRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
+    let start = 0;
+    const endValue = parseInt(end);
+    if (isNaN(endValue)) return;
+
+    const increment = endValue / (duration / 16); // 60fps
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= endValue) {
+        setCount(endValue);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+
+    return () => clearInterval(timer);
+  }, [isVisible, end, duration]);
+
+  return <span ref={countRef}>{count}{suffix}</span>;
+};
+
+const TypingText = ({ phrases, speed = 100, wait = 2000 }) => {
+  const [index, setIndex] = useState(0);
+  const [text, setText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const currentPhrase = phrases[index % phrases.length];
+
+    const timeout = setTimeout(() => {
+      if (!isDeleting) {
+        setText(currentPhrase.substring(0, text.length + 1));
+        if (text.length + 1 === currentPhrase.length) {
+          setTimeout(() => setIsDeleting(true), wait);
+        }
+      } else {
+        setText(currentPhrase.substring(0, text.length - 1));
+        if (text.length === 0) {
+          setIsDeleting(false);
+          setIndex(index + 1);
+        }
+      }
+    }, isDeleting ? speed / 2 : speed);
+
+    return () => clearTimeout(timeout);
+  }, [text, isDeleting, index, phrases, speed, wait]);
+
+  return <span className="pr-1">{text}</span>;
+};
 
 const AutoPlayVideo = ({ src, className, fit, poster, title }) => {
   const videoRef = useRef(null);
@@ -197,7 +278,19 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fffaf5] overflow-x-hidden">
+    <div className="min-h-screen bg-[#fffaf5] overflow-x-hidden relative pt-8">
+      {/* Announcement Bar */}
+      <div className="fixed top-0 left-0 w-full bg-slate-900 border-b border-white/10 z-[110] h-8 overflow-hidden flex items-center">
+        <div className="animate-marquee whitespace-nowrap text-white/90 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] flex items-center gap-12">
+          <span>✨ Admissions Open for Batch 2026-27</span>
+          <span>🚀 New JEE Main Crash Course starting from next Monday</span>
+          <span>🏆 Congratulating our JEE Toppers of 2025 session</span>
+          <span>✨ Admissions Open for Batch 2026-27</span>
+          <span>🚀 New JEE Main Crash Course starting from next Monday</span>
+          <span>🏆 Congratulating our JEE Toppers of 2025 session</span>
+        </div>
+      </div>
+
       <Navbar />
 
       <section className="relative h-[calc(100vh-80px)] mt-[80px] w-screen flex items-center justify-center overflow-hidden bg-slate-900">
@@ -239,7 +332,9 @@ const Home = () => {
             <div className="flex-1 text-left animate-slide-left">
               <h1 className="text-5xl md:text-8xl font-black text-white mb-6 leading-[0.9] tracking-tighter italic">
                 DREAM BIG.<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400">ACHIEVE BIG.</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-yellow-400">
+                  <TypingText phrases={["ACHIEVE BIG.", "CRACK JEE.", "CRACK NEET.", "SECURE FUTURE."]} />
+                </span>
               </h1>
               <p className="text-gray-300 text-lg md:text-xl font-medium max-w-xl mb-10 leading-relaxed">
                 Patna's most trusted institute for <span className="text-white font-black">JEE & NEET</span> preparation.
@@ -254,6 +349,30 @@ const Home = () => {
                 </Link>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Impact Stats Section - New Attractive Addition */}
+      <section className="py-20 bg-white w-full reveal-on-scroll border-y border-orange-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+            {[
+              { number: 15, suffix: "+", label: "Years Experience", icon: <FiAward />, color: "text-blue-500", bg: "bg-blue-50" },
+              { number: 500, suffix: "+", label: "JEE Selections", icon: <FiUsers />, color: "text-orange-500", bg: "bg-orange-50" },
+              { number: 1000, suffix: "+", label: "Student Success", icon: <FiCheckCircle />, color: "text-green-500", bg: "bg-green-50" },
+              { number: 100, suffix: "%", label: "Doubt Clearing", icon: <FiActivity />, color: "text-purple-500", bg: "bg-purple-50" }
+            ].map((stat, i) => (
+              <div key={i} className="text-center group p-6 rounded-[2.5rem] hover:bg-[#fffaf5] transition-all duration-500 border border-transparent hover:border-orange-100">
+                <div className={`w-16 h-16 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center text-3xl mb-6 mx-auto group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}>
+                  {stat.icon}
+                </div>
+                <div className={`text-4xl md:text-5xl font-extrabold ${stat.color} mb-2 tracking-tight`}>
+                  <CountUp end={stat.number} suffix={stat.suffix} />
+                </div>
+                <div className="text-[10px] md:text-xs font-black text-gray-500 uppercase tracking-widest leading-loose">{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -291,10 +410,11 @@ const Home = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {courses.map(course => (
-              <div key={course.id} className="bg-[#fffaf5] rounded-[2rem] shadow-xl hover:shadow-orange-200/50 transition-all duration-500 overflow-hidden group border border-orange-100 flex flex-col">
-                <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6">
-                  <h3 className="text-xl font-bold mb-1 uppercase tracking-tight">{course.name}</h3>
-                  <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10">
+              <div key={course.id} className="bg-[#fffaf5] rounded-[2rem] shadow-xl hover:shadow-orange-200/50 transition-all duration-500 overflow-hidden group border border-orange-100 flex flex-col course-card-glow">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 relative overflow-hidden">
+                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+                  <h3 className="text-xl font-bold mb-1 uppercase tracking-tight relative z-10">{course.name}</h3>
+                  <div className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/10 relative z-10">
                     Duration: {course.duration}
                   </div>
                 </div>
@@ -413,69 +533,24 @@ const Home = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                📑
+            {[
+              { title: "Study Material", desc: "Comprehensive and well-researched study material designed by subject experts", icon: <FiBookOpen />, color: "bg-blue-500" },
+              { title: "Top Faculty", desc: "Learning from highly qualified faculty with years of experience in JEE/NEET", icon: <FiAward />, color: "bg-purple-500" },
+              { title: "Topic Tests", desc: "Regular assessment with topic-wise tests to ensure conceptual clarity", icon: <FiCheckCircle />, color: "bg-green-500" },
+              { title: "Smart Class", desc: "Comfortable learning environment with fully air-conditioned smart classrooms", icon: <FiCast />, color: "bg-orange-500" },
+              { title: "CCTV Safety", desc: "24/7 security and monitoring to ensure a safe learning environment", icon: <FiShield />, color: "bg-indigo-500" },
+              { title: "Bio-metric", desc: "Precise attendance tracking with instant notification to parents", icon: <FiSmartphone />, color: "bg-pink-500" },
+              { title: "Doubt Clearing", desc: "Dedicated sessions for one-on-one doubt resolution with faculty", icon: <FiClock />, color: "bg-blue-600" },
+              { title: "Performance Tracking", desc: "Regular performance analysis and personalized feedback for improvement", icon: <FiPieChart />, color: "bg-green-600" }
+            ].map((item, idx) => (
+              <div key={idx} className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group border border-orange-50">
+                <div className={`w-16 h-16 ${item.color} rounded-full flex items-center justify-center text-white text-3xl mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all`}>
+                  {item.icon}
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-3">{item.title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Study Material</h3>
-              <p className="text-gray-600">Comprehensive and well-researched study material designed by subject experts</p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-              <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                👨‍🏫
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Top Faculty</h3>
-              <p className="text-gray-600">Learning from highly qualified faculty with years of experience in JEE/NEET</p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                📝
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Topic Tests</h3>
-              <p className="text-gray-600">Regular assessment with topic-wise tests to ensure conceptual clarity</p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-              <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                ❄️
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Smart Class</h3>
-              <p className="text-gray-600">Comfortable learning environment with fully air-conditioned smart classrooms</p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-              <div className="w-16 h-16 bg-indigo-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                📷
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">CCTV Safety</h3>
-              <p className="text-gray-600">24/7 security and monitoring to ensure a safe learning environment</p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-              <div className="w-16 h-16 bg-pink-500 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                ☝️
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Bio-metric</h3>
-              <p className="text-gray-600">Precise attendance tracking with instant notification to parents</p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                📚
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Doubt Clearing</h3>
-              <p className="text-gray-600">Dedicated sessions for one-on-one doubt resolution with faculty</p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-white shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center text-white text-3xl mb-4">
-                📈
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Performance Tracking</h3>
-              <p className="text-gray-600">Regular performance analysis and personalized feedback for improvement</p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -498,48 +573,49 @@ const Home = () => {
               {
                 title: "Real-Time Attendance",
                 desc: "Track student attendance instantly with automated SMS alerts to parents",
-                icon: "📊",
+                icon: <FiCheckCircle />,
+                color: "text-orange-600",
                 bg: "bg-blue-50"
               },
               {
                 title: "Parent Dashboard",
                 desc: "Complete visibility into performance, attendance, fees, and progress reports",
-                icon: "👨‍👩-👦",
+                icon: <FiUsers />,
+                color: "text-purple-600",
                 bg: "bg-purple-50"
               },
               {
                 title: "Live Notifications",
                 desc: "Instant updates on exams, results, notices, and important announcements",
-                icon: "🔔",
+                icon: <FiBell />,
+                color: "text-green-600",
                 bg: "bg-green-50"
               },
               {
                 title: "Performance Analytics",
                 desc: "Detailed insights and visualizations to track academic progress over time",
-                icon: "📈",
+                icon: <FiPieChart />,
+                color: "text-orange-600",
                 bg: "bg-orange-50"
               },
               {
                 title: "Online Study Material",
                 desc: "Access notes, practice papers, and resources anytime from student portal",
-                icon: "📚",
+                icon: <FiDownload />,
+                color: "text-orange-600",
                 bg: "bg-indigo-50"
               },
               {
                 title: "Fee Management",
                 desc: "Transparent fee tracking with online payment options and instant receipts",
-                icon: "💰",
+                icon: <FiCreditCard />,
+                color: "text-pink-600",
                 bg: "bg-pink-50"
               }
             ].map((feature, idx) => (
               <div key={idx} className="bg-white p-8 rounded-[2rem] shadow-xl hover:-translate-y-2 transition-all duration-500 group">
-                <div className={`w-16 h-16 ${feature.bg} rounded-3xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform`}>
-                  {feature.title === "Real-Time Attendance" && <span className="text-orange-600">📊</span>}
-                  {feature.title === "Parent Dashboard" && <span className="text-purple-600">👥</span>}
-                  {feature.title === "Live Notifications" && <span className="text-green-600">🔔</span>}
-                  {feature.title === "Performance Analytics" && <span className="text-orange-600">📉</span>}
-                  {feature.title === "Online Study Material" && <span className="text-orange-600">📖</span>}
-                  {feature.title === "Fee Management" && <span className="text-pink-600">💸</span>}
+                <div className={`w-16 h-16 ${feature.bg} rounded-3xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all`}>
+                  <span className={feature.color}>{feature.icon}</span>
                 </div>
                 <h3 className="text-xl font-black text-gray-900 mb-3">{feature.title}</h3>
                 <p className="text-gray-600 text-sm leading-relaxed font-medium">{feature.desc}</p>
@@ -905,6 +981,28 @@ const Home = () => {
         </div>
       </section>
 
+      {/* FAQ Section - Premium Accordion */}
+      <section className="py-24 bg-white w-full reveal-on-scroll">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <span className="text-orange-600 font-bold uppercase tracking-widest text-[11px] mb-3 block">Got Questions?</span>
+            <h2 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">Sawal aapke, <span className="text-orange-600 underline">Jawab hamare</span></h2>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              { q: "Is scholarship available for meritorious students?", a: "Yes, we offer up to 100% scholarship based on our entrance test results and academic performance in school/board exams." },
+              { q: "What is the average batch size at Oasis?", a: "We maintain a small batch size of 25-30 students to ensure personalized attention and better doubt clearing for every individual." },
+              { q: "Are there separate batches for JEE and NEET?", a: "Yes, we have completely dedicated batches for JEE (Engineering) and NEET (Medical) with specialized faculty for each stream." },
+              { q: "Do you provide study material and test series?", a: "Absolutely. We provide comprehensive study modules, daily practice papers (DPP), and a structured All India Test Series." },
+              { q: "Can parents track their child's progress?", a: "Yes, through our Smart ERP Parent Portal, you can track real-time attendance, test scores, and performance analytics." }
+            ].map((faq, idx) => (
+              <FaqItem key={idx} q={faq.q} a={faq.a} />
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Contact & Location Section - Premium Cream Theme */}
       <section className="py-24 bg-[#fffaf5] transition-colors duration-300 w-full reveal-on-scroll border-t border-orange-100">
         <div className="max-w-7xl mx-auto px-4">
@@ -971,7 +1069,7 @@ const Home = () => {
 
             <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 h-[500px]">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3598.0743445!2d85.1376!3d25.5941!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjXCsDM1JzM4LjgiTiA4NcKwMDgnMTUuNCJF!5e0!3m2!1sen!2sin!4v1234567890"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d115132.8610724376!2d85.07414841793748!3d25.608175608759363!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f32168923a1005%3A0xf69c5e3943a4e9b9!2sPatna%2C%20Bihar!5e0!3m2!1sen!2sin!4v1740465800000!5m2!1sen!2sin"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
@@ -998,10 +1096,50 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-8 right-8 z-[100] flex flex-col gap-4">
+        <a
+          href="https://wa.me/919905424369"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white text-3xl shadow-2xl hover:scale-110 transition-transform animate-float"
+          aria-label="WhatsApp Us"
+        >
+          <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+        </a>
+        <a
+          href="tel:+918825198919"
+          className="w-14 h-14 bg-orange-600 rounded-full flex items-center justify-center text-white text-3xl shadow-2xl hover:scale-110 transition-transform"
+          aria-label="Call Us"
+        >
+          <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M20 22.621l-3.521-6.795c-.008.004-1.974.97-2.064 1.011-2.24 1.086-6.739-7.844-4.498-8.93.09-.041 2.056-1.007 2.064-1.011l-3.522-6.796c-.011.005-1.962.963-2.056 1.009-3.153 1.555 1.135 10.739 5.105 18.003 3.97 7.264 13.633 3.12 10.548 1.518-.095-.048-1.944-.96-2.056-1.009z" /></svg>
+        </a>
+      </div>
+
       <Footer />
     </div>
   );
 };
 
-export default Home;
+// Sub-component for FAQ to avoid state hook issues in map
+const FaqItem = ({ q, a }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className={`accordion-item group ${isOpen ? 'accordion-open' : ''}`}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full py-6 flex items-center justify-between text-left focus:outline-none"
+      >
+        <span className="text-lg font-bold text-gray-800 group-hover:text-orange-600 transition-colors uppercase tracking-tight">{q}</span>
+        <span className="text-orange-600 accordion-icon text-2xl">
+          {isOpen ? '−' : '+'}
+        </span>
+      </button>
+      <div className="accordion-content">
+        <p className="text-gray-600 text-lg leading-relaxed font-medium pb-4">{a}</p>
+      </div>
+    </div>
+  );
+};
 
+export default Home;
