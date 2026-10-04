@@ -1,16 +1,35 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import config from '../../config';
 import {
     FiClipboard, FiPlus, FiX, FiTrash2, FiBarChart2, FiFileText, FiEdit2, FiZap, FiAward,
-    FiUsers, FiMinusCircle, FiExternalLink, FiUploadCloud, FiCheck, FiCheckCircle
+    FiUsers, FiMinusCircle, FiExternalLink, FiUploadCloud, FiCheck, FiCheckCircle, FiDatabase, FiLayers, FiTarget
 } from 'react-icons/fi';
-import { notify } from '../../utils/notify';
+import { notify, toast } from '../../utils/notify';
+import { useI18n } from '../../i18n/useI18n';
 import { authHeaders, errMsg, fileHref, getTeacherId, idOf } from '../teacher/teacherApi';
 import { Avatar, Badge, ConfirmButton, EmptyState, Field, Modal, PageHeader, Segmented, Spinner } from '../teacher/TeacherUI';
 
-const blankQuestion = () => ({ type: 'mcq', questionText: '', options: ['', '', '', ''], correctOption: 0, correctAnswer: '', marks: 4 });
+const blankQuestion = () => ({ type: 'mcq', questionText: '', options: ['', '', '', ''], correctOption: 0, correctAnswer: '', marks: 4, negativeMarks: '', section: '' });
+
+// JEE Main: 3 sections x (20 MCQ +4/-1 + 5 numerical +4/0), 180 min
+const JEE_SECTIONS = ['Physics', 'Chemistry', 'Mathematics'];
+const SECTION_TONE = { Physics: 'brand', Chemistry: 'dark', Mathematics: 'amber' };
+const jeeNegative = (type) => (type === 'numerical' ? 0 : 1);
+const jeeTemplate = (placeholders) => JEE_SECTIONS.flatMap(section => Array.from({ length: 25 }, (_, i) => {
+    const type = i < 20 ? 'mcq' : 'numerical';
+    return {
+        ...blankQuestion(), type, section, marks: 4, negativeMarks: jeeNegative(type),
+        questionText: placeholders ? `${section} Q${i + 1}` : '',
+        options: placeholders && type === 'mcq' ? ['A', 'B', 'C', 'D'] : ['', '', '', ''],
+    };
+}));
+// Consecutive thirds -> Physics / Chemistry / Mathematics
+const autoSections = (qs) => {
+    const per = Math.ceil(qs.length / 3) || 1;
+    return qs.map((q, i) => ({ ...q, section: JEE_SECTIONS[Math.min(2, Math.floor(i / per))] }));
+};
 
 const emptyTest = () => ({
     title: '',
@@ -22,6 +41,8 @@ const emptyTest = () => ({
     negativeMarks: 0,
     status: 'active',
     questionPaperUrl: null,
+    pattern: 'custom',
+    isMock: false,
     questions: [blankQuestion()]
 });
 
@@ -47,8 +68,15 @@ const StepTitle = ({ n, title, hint, compact = false }) => (
     </div>
 );
 
-const TeacherTest = ({ teacherData }) => {
+const TeacherTest = ({ teacherData, focusTestId, onFocusHandled }) => {
+    const { t } = useI18n();
     const [tests, setTests] = useState([]);
+    const [highlightId, setHighlightId] = useState(null);
+    // "Build test from bank" hands us a new draft test id to open once the list loads
+    const focusRef = useRef(focusTestId);
+    const openEditRef = useRef(null);
+    const onFocusHandledRef = useRef(onFocusHandled);
+    useEffect(() => { onFocusHandledRef.current = onFocusHandled; }, [onFocusHandled]);
     const [loadingTests, setLoadingTests] = useState(true);
     const [statusFilter, setStatusFilter] = useState('all');
     const [statusBusy, setStatusBusy] = useState(null);
@@ -70,6 +98,7 @@ const TeacherTest = ({ teacherData }) => {
     const [aiOpen, setAiOpen] = useState(false);
     const [ai, setAi] = useState({ topic: '', count: 5, difficulty: 'medium' });
     const [aiLoading, setAiLoading] = useState(false);
+    const [bankSaving, setBankSaving] = useState(false);
 
     // Results drawer
     const [viewing, setViewing] = useState(null); // test object
@@ -83,7 +112,19 @@ const TeacherTest = ({ teacherData }) => {
         if (!teacherId) { setLoadingTests(false); return; }
         try {
             const res = await axios.get(`${config.API_URL}/tests/teacher/${teacherId}`, { headers: authHeaders() });
-            setTests(Array.isArray(res.data) ? res.data : []);
+            const list = Array.isArray(res.data) ? res.data : [];
+            setTests(list);
+            const fid = focusRef.current;
+            if (fid) {
+                focusRef.current = null;
+                const found = list.find(x => x._id === fid);
+                if (found) {
+                    setStatusFilter('all');
+                    setHighlightId(fid);
+                    openEditRef.current?.(found);
+                }
+                onFocusHandledRef.current?.();
+            }
         } catch (err) {
             console.error('Error fetching tests:', err);
             notify(errMsg(err, 'Failed to load tests'));
@@ -123,6 +164,8 @@ const TeacherTest = ({ teacherData }) => {
     };
 
     const openEdit = (test) => {
+        const sectionOf = {};
+        (test.sections || []).forEach(sec => (sec.questionIndexes || []).forEach(i => { sectionOf[i] = sec.name; }));
         setEditingId(test._id);
         setNewTest({
             title: test.title || '',
@@ -134,7 +177,9 @@ const TeacherTest = ({ teacherData }) => {
             negativeMarks: test.negativeMarks ?? 0,
             status: test.status || 'active',
             questionPaperUrl: test.questionPaperUrl || null,
-            questions: (test.questions?.length ? test.questions : [blankQuestion()]).map(q => {
+            pattern: test.pattern || 'custom',
+            isMock: !!test.isMock,
+            questions: (test.questions?.length ? test.questions : [blankQuestion()]).map((q, qi) => {
                 const opts = [...(q.options || [])];
                 while (opts.length < 4) opts.push('');
                 return {
@@ -144,6 +189,12 @@ const TeacherTest = ({ teacherData }) => {
                     correctOption: q.correctOption ?? 0,
                     correctAnswer: q.correctAnswer ?? '',
                     marks: q.marks ?? 4,
+                    negativeMarks: q.negativeMarks ?? '',
+                    section: sectionOf[qi] || '',
+                    solution: q.solution || '',
+                    chapter: q.chapter || '',
+                    bankItemId: q.bankItemId || undefined,
+                    _id: q._id,
                 };
             })
         });
@@ -151,6 +202,55 @@ const TeacherTest = ({ teacherData }) => {
         setQuestionFile(null);
         setAiOpen(false);
         setIsModalOpen(true);
+    };
+
+    useEffect(() => { openEditRef.current = openEdit; });
+
+    // ---------- pattern ----------
+    const setPattern = (pattern) => {
+        if (pattern === newTest.pattern) return;
+        if (pattern === 'jee_main') {
+            setNewTest(tst => ({
+                ...tst, pattern, isMock: true, duration: 180, negativeMarks: 0,
+                questions: autoSections(tst.questions).map(q => ({ ...q, negativeMarks: q.negativeMarks === '' ? jeeNegative(q.type) : q.negativeMarks })),
+            }));
+            notify('JEE Main pattern: 180 min, +4/−1 MCQ, +4/0 numerical. Load the 75-question template or assign sections.');
+        } else {
+            setNewTest(tst => ({ ...tst, pattern, isMock: false, questions: tst.questions.map(q => ({ ...q, section: '' })) }));
+        }
+    };
+    const loadJeeTemplate = () => {
+        setQuestions(() => jeeTemplate(testMode === 'upload'));
+        notify('JEE Main template added: 75 questions in 3 sections');
+    };
+    const changeType = (qIndex, type) => updateQuestion(qIndex, newTest.pattern === 'jee_main'
+        ? { type, negativeMarks: jeeNegative(type) }
+        : { type });
+
+    // ---------- save AI questions to the bank ----------
+    const saveToBank = async (indexes) => {
+        if (!newTest.subjectId) { toast.error('Select a subject first'); return; }
+        const picked = indexes.map(i => newTest.questions[i]).filter(Boolean);
+        const bad = picked.find(q => !q.questionText.trim() || (q.type === 'mcq' && q.options.some(o => !String(o).trim())));
+        if (bad) { toast.error('Complete the question text and all options before saving'); return; }
+        setBankSaving(true);
+        try {
+            const items = picked.map(q => ({
+                type: q.type, questionText: q.questionText, solution: q.solution || '',
+                ...(q.type === 'mcq' ? { options: q.options, correctOption: Number(q.correctOption) } : { correctAnswer: Number(q.correctAnswer) }),
+                marks: Number(q.marks) || 4,
+                negativeMarks: q.negativeMarks !== '' && q.negativeMarks != null ? Number(q.negativeMarks) : (q.type === 'mcq' ? 1 : 0),
+            }));
+            const body = { items, subjectId: newTest.subjectId, source: 'ai', difficulty: ai.difficulty, chapter: ai.topic.trim() };
+            if (newTest.classId) body.classId = newTest.classId;
+            const res = await axios.post(`${config.API_URL}/question-bank/bulk`, body, { headers: authHeaders() });
+            setQuestions(qs => qs.map((q, i) => (indexes.includes(i) ? { ...q, bankSaved: true } : q)));
+            toast.success(`${res.data?.saved ?? items.length} question${items.length === 1 ? '' : 's'} saved to the bank`);
+        } catch (err) {
+            toast.error(errMsg(err, 'Could not save to the question bank'));
+        } finally {
+            setBankSaving(false);
+        }
     };
 
     const closeModal = () => {
@@ -181,10 +281,16 @@ const TeacherTest = ({ teacherData }) => {
                     options: opts.slice(0, 4),
                     correctOption: Number.isInteger(q.correctOption) ? q.correctOption : 0,
                     marks: q.marks ?? 4,
+                    solution: q.solution || q.explanation || '',
+                    fromAI: true,
+                    ...(newTest.pattern === 'jee_main' ? { negativeMarks: 1 } : {}),
                 };
             });
             if (!generated.length) { notify('AI returned no questions. Please try a different topic'); return; }
-            setQuestions(qs => [...qs.filter(q => !isBlankQuestion(q)), ...generated]);
+            setQuestions(qs => {
+                const merged = [...qs.filter(q => !isBlankQuestion(q)), ...generated];
+                return newTest.pattern === 'jee_main' ? autoSections(merged) : merged;
+            });
             setTestMode('manual');
             notify(`${generated.length} AI questions added — please review them before publishing`);
         } catch (err) {
@@ -227,9 +333,26 @@ const TeacherTest = ({ teacherData }) => {
                 paperUrl = uploadRes.data.url;
             }
 
-            const questions = newTest.questions.map(q => (q.type === 'numerical'
-                ? { type: 'numerical', questionText: q.questionText, options: [], correctOption: 0, correctAnswer: Number(q.correctAnswer), marks: Number(q.marks) || 0 }
-                : { type: 'mcq', questionText: q.questionText, options: q.options, correctOption: Number(q.correctOption), marks: Number(q.marks) || 0 }));
+            const isJee = newTest.pattern === 'jee_main';
+            if (isJee) {
+                const unassigned = newTest.questions.findIndex(q => !q.section);
+                if (unassigned >= 0) { notify(`Please assign a section to Q${unassigned + 1}`); setSaving(false); return; }
+            }
+            const questions = newTest.questions.map(q => {
+                const base = q.type === 'numerical'
+                    ? { type: 'numerical', questionText: q.questionText, options: [], correctOption: 0, correctAnswer: Number(q.correctAnswer), marks: Number(q.marks) || 0 }
+                    : { type: 'mcq', questionText: q.questionText, options: q.options, correctOption: Number(q.correctOption), marks: Number(q.marks) || 0 };
+                if (q.negativeMarks !== '' && q.negativeMarks != null && Number.isFinite(Number(q.negativeMarks))) base.negativeMarks = Math.abs(Number(q.negativeMarks));
+                if (q.solution) base.solution = q.solution;
+                if (q.chapter) base.chapter = q.chapter;
+                if (q.bankItemId) base.bankItemId = q.bankItemId;
+                if (q._id) base._id = q._id;
+                return base;
+            });
+            const sectionNames = [...new Set([...JEE_SECTIONS, ...newTest.questions.map(q => q.section).filter(Boolean)])];
+            const sections = isJee
+                ? sectionNames.map(name => ({ name, questionIndexes: newTest.questions.map((q, i) => (q.section === name ? i : -1)).filter(i => i >= 0) })).filter(sec => sec.questionIndexes.length)
+                : [];
 
             const testPayload = {
                 title: newTest.title,
@@ -241,7 +364,10 @@ const TeacherTest = ({ teacherData }) => {
                 status: newTest.status,
                 totalMarks: questions.reduce((sum, q) => sum + q.marks, 0),
                 questionPaperUrl: paperUrl,
-                questions
+                questions,
+                pattern: newTest.pattern || 'custom',
+                isMock: isJee || !!newTest.isMock,
+                sections,
             };
             if (newTest.batchId) testPayload.batchId = newTest.batchId;
 
@@ -311,11 +437,26 @@ const TeacherTest = ({ teacherData }) => {
     const visibleTests = statusFilter === 'all' ? tests : tests.filter(t => (t.status || 'draft') === statusFilter);
     const totalMarks = newTest.questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
 
+    const sectionAverages = (() => {
+        const acc = {};
+        results.forEach(r => (r.sectionScores || []).forEach(sec => {
+            if (!acc[sec.name]) acc[sec.name] = { name: sec.name, total: 0, max: 0, n: 0 };
+            acc[sec.name].total += Number(sec.score) || 0;
+            acc[sec.name].max = Math.max(acc[sec.name].max, Number(sec.max) || 0);
+            acc[sec.name].n += 1;
+        }));
+        return Object.values(acc).map(a => ({ ...a, avg: a.n ? Math.round((a.total / a.n) * 10) / 10 : 0 }));
+    })();
+
     const avgPct = results.length
         ? Math.round(results.reduce((s, r) => s + (r.totalMarks ? (r.score / r.totalMarks) * 100 : 0), 0) / results.length)
         : 0;
 
     const subjectName = subjects.find(s => s._id === newTest.subjectId)?.name;
+    const isJee = newTest.pattern === 'jee_main';
+    const unsavedAI = newTest.questions.map((q, i) => (q.fromAI && !q.bankSaved ? i : -1)).filter(i => i >= 0);
+    const sectionCounts = JEE_SECTIONS.map(name => [name, newTest.questions.filter(q => q.section === name).length]);
+    const hasContent = newTest.questions.some(q => !isBlankQuestion(q));
 
     return (
         <div className="space-y-6">
@@ -347,7 +488,7 @@ const TeacherTest = ({ teacherData }) => {
                     {visibleTests.map(test => {
                         const status = test.status || 'draft';
                         return (
-                            <div key={test._id} className="group ui-card ui-card-hover p-5 flex flex-col relative overflow-hidden">
+                            <div key={test._id} className={`group ui-card ui-card-hover p-5 flex flex-col relative overflow-hidden ${highlightId === test._id ? 'ring-2 ring-brand-500 shadow-brand-glow' : ''}`}>
                                 <div className={`absolute inset-x-0 top-0 h-1 ${status === 'active' ? 'bg-brand-gradient' : status === 'completed' ? 'bg-ink-900 dark:bg-white/30' : 'bg-gray-200 dark:bg-white/10'}`} />
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-3 min-w-0">
@@ -359,7 +500,10 @@ const TeacherTest = ({ teacherData }) => {
                                             <p className="text-xs text-gray-500 truncate">{test.subjectId?.name || 'Academic'} · {test.classId?.name || 'Class'}</p>
                                         </div>
                                     </div>
-                                    <Badge tone={STATUS_TONE[status]} dot={status === 'active'}>{status}</Badge>
+                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                        <Badge tone={STATUS_TONE[status]} dot={status === 'active'}>{status}</Badge>
+                                        {test.isMock && <Badge tone="amber"><FiTarget /> {test.pattern === 'jee_main' ? 'JEE Main' : 'Mock'}</Badge>}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-2 mt-4">
@@ -436,6 +580,24 @@ const TeacherTest = ({ teacherData }) => {
                     {/* Step 1 — details */}
                     <section className="ui-card p-4 md:p-5">
                         <StepTitle n={1} title="Test details" hint="Who it's for and how it's scored" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                            {[
+                                { k: 'custom', icon: FiClipboard, label: 'Custom test', hint: 'Your own marking & duration' },
+                                { k: 'jee_main', icon: FiTarget, label: 'JEE Main mock', hint: '3 sections · 75 Qs · 180 min · +4/−1' },
+                            ].map(opt => {
+                                const on = (newTest.pattern || 'custom') === opt.k;
+                                return (
+                                    <button key={opt.k} type="button" onClick={() => setPattern(opt.k)} aria-pressed={on}
+                                        className={`text-left p-3 rounded-2xl border-2 transition-all flex items-center gap-3 ${on ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-100 dark:border-white/10 hover:border-brand-200'}`}>
+                                        <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${on ? 'bg-brand-gradient text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}><opt.icon /></span>
+                                        <span className="min-w-0">
+                                            <span className="block text-sm font-bold text-gray-900 dark:text-white">{opt.label}</span>
+                                            <span className="block text-[11px] text-gray-500">{opt.hint}</span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                             <Field label="Test title" className="md:col-span-3">
                                 <input required type="text" placeholder="e.g. Weekly Physics Quiz – Kinematics" className="ui-input" value={newTest.title} onChange={(e) => setNewTest({ ...newTest, title: e.target.value })} />
@@ -461,7 +623,7 @@ const TeacherTest = ({ teacherData }) => {
                             <Field label="Duration (minutes)">
                                 <input required type="number" min="1" className="ui-input" value={newTest.duration} onChange={(e) => setNewTest({ ...newTest, duration: e.target.value })} />
                             </Field>
-                            <Field label="Negative marks / wrong">
+                            <Field label={isJee ? 'Negative marks (per question below)' : 'Negative marks / wrong'}>
                                 <input type="number" min="0" step="0.25" className="ui-input" value={newTest.negativeMarks} onChange={(e) => setNewTest({ ...newTest, negativeMarks: e.target.value })} />
                             </Field>
                             <Field label="Status">
@@ -549,6 +711,11 @@ const TeacherTest = ({ teacherData }) => {
                                             {aiLoading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating…</> : <><FiZap /> Generate & append</>}
                                         </button>
                                         <p className="text-[11px] text-gray-500">Questions are appended below — always review answers before publishing.</p>
+                                        {unsavedAI.length > 0 && (
+                                            <button type="button" disabled={bankSaving} onClick={() => saveToBank(unsavedAI)} className="ui-btn-secondary sm:ml-auto !py-2 text-xs">
+                                                <FiDatabase /> {bankSaving ? 'Saving…' : `${t('teacher.qb.saveToBank')} (${unsavedAI.length})`}
+                                            </button>
+                                        )}
                                     </div>
                                     {aiLoading && (
                                         <div className="space-y-2.5 pt-1" aria-hidden="true">
@@ -566,6 +733,33 @@ const TeacherTest = ({ teacherData }) => {
                             </div>
                         )}
                     </section>
+
+                    {isJee && (
+                        <section className="ui-card p-4 md:p-5 animate-fade-up">
+                            <div className="flex flex-col md:flex-row md:items-center gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <span className="w-10 h-10 rounded-xl bg-brand-gradient text-white flex items-center justify-center shrink-0"><FiLayers /></span>
+                                    <div className="min-w-0">
+                                        <h4 className="text-sm font-extrabold text-gray-900 dark:text-white">Sections</h4>
+                                        <div className="flex flex-wrap gap-1.5 mt-1">
+                                            {sectionCounts.map(([name, n]) => <Badge key={name} tone={SECTION_TONE[name]}>{name}: {n}</Badge>)}
+                                            {newTest.questions.some(q => !q.section) && <Badge tone="red">Unassigned: {newTest.questions.filter(q => !q.section).length}</Badge>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2 md:ml-auto">
+                                    <button type="button" onClick={() => setQuestions(autoSections)} className="ui-btn-secondary !py-2 text-xs">Auto-assign in thirds</button>
+                                    {hasContent ? (
+                                        <ConfirmButton onConfirm={loadJeeTemplate} prompt="Replace all questions?" yesLabel="Replace" title="Load JEE Main template" className="ui-btn-dark !py-2 text-xs">
+                                            <FiTarget /> Load 75-Q template
+                                        </ConfirmButton>
+                                    ) : (
+                                        <button type="button" onClick={loadJeeTemplate} className="ui-btn-dark !py-2 text-xs"><FiTarget /> Load 75-Q template</button>
+                                    )}
+                                </div>
+                            </div>
+                        </section>
+                    )}
 
                     {/* Upload paper */}
                     {testMode === 'upload' && (
@@ -613,14 +807,22 @@ const TeacherTest = ({ teacherData }) => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                 {newTest.questions.map((q, qIndex) => (
                                     <div key={qIndex} className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-ink-800 p-2.5 flex items-center justify-between gap-2">
-                                        <span className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-xs font-extrabold text-gray-500">Q{qIndex + 1}</span>
+                                        <span className="flex items-center gap-1.5">
+                                            <span className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-xs font-extrabold text-gray-500">Q{qIndex + 1}</span>
+                                            {isJee && (
+                                                <select aria-label={`Section for Q${qIndex + 1}`} value={q.section || ''} onChange={(e) => updateQuestion(qIndex, { section: e.target.value })} className="bg-gray-50 dark:bg-white/5 rounded-lg px-1 py-2 text-[10px] font-bold text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-300">
+                                                    <option value="">—</option>
+                                                    {JEE_SECTIONS.map(n => <option key={n} value={n}>{n.slice(0, 4)}</option>)}
+                                                </select>
+                                            )}
+                                        </span>
                                         <div className="flex items-center gap-1.5">
                                             <select
                                                 aria-label={`Answer for Q${qIndex + 1}`}
                                                 value={q.type === 'numerical' ? 'num' : q.correctOption}
                                                 onChange={(e) => (e.target.value === 'num'
-                                                    ? updateQuestion(qIndex, { type: 'numerical' })
-                                                    : updateQuestion(qIndex, { type: 'mcq', correctOption: Number(e.target.value), options: q.options.some(o => o) ? q.options : ['A', 'B', 'C', 'D'] }))}
+                                                    ? updateQuestion(qIndex, { type: 'numerical', ...(isJee ? { negativeMarks: 0 } : {}) })
+                                                    : updateQuestion(qIndex, { type: 'mcq', correctOption: Number(e.target.value), options: q.options.some(o => o) ? q.options : ['A', 'B', 'C', 'D'], ...(isJee && q.type === 'numerical' ? { negativeMarks: 1 } : {}) }))}
                                                 className="bg-brand-50 dark:bg-brand-500/10 rounded-lg px-2 py-2 text-xs font-bold text-brand-700 dark:text-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
                                             >
                                                 {[0, 1, 2, 3].map(oIdx => (
@@ -669,9 +871,21 @@ const TeacherTest = ({ teacherData }) => {
                                         <Segmented
                                             size="sm"
                                             value={question.type}
-                                            onChange={(t) => updateQuestion(qIndex, { type: t })}
+                                            onChange={(type) => changeType(qIndex, type)}
                                             options={[['mcq', 'MCQ'], ['numerical', 'Numerical']]}
                                         />
+                                        {isJee && (
+                                            <select aria-label={`Section for question ${qIndex + 1}`} value={question.section || ''} onChange={(e) => updateQuestion(qIndex, { section: e.target.value })}
+                                                className={`rounded-lg px-2 py-1.5 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-brand-300 ${question.section ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-red-50 text-red-600'}`}>
+                                                <option value="">Section…</option>
+                                                {JEE_SECTIONS.map(n => <option key={n} value={n}>{n}</option>)}
+                                            </select>
+                                        )}
+                                        {question.fromAI && (
+                                            question.bankSaved
+                                                ? <Badge tone="green"><FiCheck /> In bank</Badge>
+                                                : <button type="button" disabled={bankSaving} onClick={() => saveToBank([qIndex])} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-brand-600 bg-brand-50 dark:bg-brand-500/10 hover:bg-brand-100 transition disabled:opacity-50"><FiDatabase /> {t('teacher.qb.saveToBank')}</button>
+                                        )}
                                         <label className="ml-auto flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg border border-gray-200 dark:border-white/10">
                                             <span className="text-[11px] font-bold text-gray-500">Marks</span>
                                             <input
@@ -682,6 +896,17 @@ const TeacherTest = ({ teacherData }) => {
                                                 onChange={(e) => updateQuestion(qIndex, { marks: e.target.value })}
                                             />
                                         </label>
+                                        {(isJee || (question.negativeMarks !== '' && question.negativeMarks != null)) && (
+                                            <label className="flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg border border-gray-200 dark:border-white/10">
+                                                <span className="text-[11px] font-bold text-gray-500">−ve</span>
+                                                <input
+                                                    type="number" min="0" step="0.25" aria-label={`Negative marks for question ${qIndex + 1}`}
+                                                    className="w-12 py-1 rounded-md bg-gray-50 dark:bg-white/5 text-center text-sm font-bold text-red-500 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                                                    value={question.negativeMarks}
+                                                    onChange={(e) => updateQuestion(qIndex, { negativeMarks: e.target.value })}
+                                                />
+                                            </label>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveQuestion(qIndex)}
@@ -752,7 +977,7 @@ const TeacherTest = ({ teacherData }) => {
 
                             <button
                                 type="button"
-                                onClick={handleAddQuestion}
+                                onClick={() => (isJee ? setQuestions(qs => [...qs, { ...blankQuestion(), negativeMarks: 1, section: qs[qs.length - 1]?.section || JEE_SECTIONS[0] }]) : handleAddQuestion())}
                                 className="w-full py-5 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl text-sm font-bold text-gray-400 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/60 dark:hover:bg-brand-500/5 transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
                             >
                                 <FiPlus /> Add another question
@@ -770,7 +995,7 @@ const TeacherTest = ({ teacherData }) => {
                             <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
                             <div className="relative flex justify-between items-start gap-4">
                                 <div className="min-w-0">
-                                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">Test results</p>
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">{viewing.isMock ? (viewing.pattern === 'jee_main' ? 'JEE Main mock · results' : 'Mock test · results') : 'Test results'}</p>
                                     <h3 className="text-xl font-extrabold tracking-tight truncate">{viewing.title}</h3>
                                 </div>
                                 <button type="button" onClick={() => setViewing(null)} aria-label="Close results" className="w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center hover:rotate-90 transition-all"><FiX /></button>
@@ -783,6 +1008,15 @@ const TeacherTest = ({ teacherData }) => {
                                     </div>
                                 ))}
                             </div>
+                            {sectionAverages.length > 0 && (
+                                <div className="relative flex flex-wrap gap-2">
+                                    {sectionAverages.map(sec => (
+                                        <span key={sec.name} className="px-3 py-1.5 rounded-full bg-black/20 border border-white/15 text-[11px] font-bold">
+                                            {sec.name}: avg {sec.avg}/{sec.max}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div className="px-5 md:px-6 pt-4">
                             <Segmented
@@ -807,7 +1041,7 @@ const TeacherTest = ({ teacherData }) => {
                                         <Avatar name={row.studentName || 'Student'} size="sm" />
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-gray-900 dark:text-white truncate">{row.studentName || 'Student'}</p>
-                                            <p className="text-[11px] text-gray-400">Rank #{row.rank}{row.timeTaken ? ` · ${fmtSeconds(row.timeTaken)}` : ''}</p>
+                                            <p className="text-[11px] text-gray-400">Rank #{row.rank}{row.percentile != null ? ` · ${Number(row.percentile).toFixed(2)} %ile` : ''}{row.timeTaken ? ` · ${fmtSeconds(row.timeTaken)}` : ''}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-base font-extrabold text-gray-900 dark:text-white tabular-nums">{row.score}/{row.totalMarks}</p>
@@ -831,8 +1065,22 @@ const TeacherTest = ({ teacherData }) => {
                                                     {res.submittedAt && <span>{new Date(res.submittedAt).toLocaleDateString()}</span>}
                                                 </p>
                                             </div>
-                                            <p className="text-lg font-extrabold text-brand-600 tabular-nums">{res.score}/{res.totalMarks}</p>
+                                            <div className="text-right">
+                                                <p className="text-lg font-extrabold text-brand-600 tabular-nums">{res.score}/{res.totalMarks}</p>
+                                                {res.percentile != null && <p className="text-[11px] font-bold text-gray-500 tabular-nums">{Number(res.percentile).toFixed(2)} %ile</p>}
+                                            </div>
                                         </div>
+                                        {res.sectionScores?.length > 0 && (
+                                            <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+                                                {res.sectionScores.map(sec => (
+                                                    <div key={sec.name} className="rounded-lg bg-gray-50 dark:bg-white/5 px-2 py-1.5 text-center">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 truncate">{sec.name}</p>
+                                                        <p className="text-xs font-extrabold text-gray-900 dark:text-white tabular-nums">{sec.score}/{sec.max}</p>
+                                                        <p className="text-[10px] text-gray-400"><span className="text-emerald-600">✓{sec.correct ?? 0}</span> <span className="text-red-500">✗{sec.wrong ?? 0}</span></p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                         <div className="mt-2.5 h-1.5 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
                                             <div className="h-full bg-brand-gradient rounded-full transition-all duration-700" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
                                         </div>

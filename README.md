@@ -48,7 +48,8 @@ Marketing site, online tests, live classes, QR attendance, fees, results and AI 
 - Courses with class picker (7th–12th), faculty flip-cards, toppers wall, events gallery, FAQ
 - **Free-demo booking** form → admin gets a real-time lead + the visitor gets a confirmation email
 - **AI Study Buddy** chat (Gemini) for doubts and site navigation, WhatsApp & call shortcuts
-- Installable **PWA**, fully responsive, light theme, `prefers-reduced-motion` aware
+- **Online admission form** (`/admission`) with document upload & status check
+- Installable **PWA** with **push notifications**, **English / हिंदी** toggle, fully responsive
 
 <table>
 <tr>
@@ -60,6 +61,10 @@ Marketing site, online tests, live classes, QR attendance, fees, results and AI 
 - **JEE-style online tests** — MCQ + numerical, negative marking, timer, question palette
 - Results with **leaderboard / podium** & subject-wise analysis
 - **Live classes** (join = auto attendance) & **video library** with progress
+- **Daily Practice (DPP)** with XP, levels & weekly leaderboard
+- **Mistake Notebook** — every wrong answer saved for re-practice
+- 📸 **AI Doubt Solver** — snap a photo, get a hint or full solution
+- Syllabus tracker, **Pomodoro study timer**, bookmarks & formula sheets, homework submission
 - **QR + GPS attendance** scan, doubts with image upload, AI buddy
 - Fees, receipts, report card, notices, digital ID card
 
@@ -71,6 +76,8 @@ Marketing site, online tests, live classes, QR attendance, fees, results and AI 
 - **Child health check** — attendance, test average, fees paid
 - 30-day attendance heat-strip & performance trends
 - Test results with class rank
+- **Chat with teachers** · homework & learning insights (syllabus, mistakes, study time)
+- Fee **installment plan** with due countdown & **GST invoice** download
 - **Pay fees online** (Razorpay) or submit UPI / bank transfer for approval
 - Downloadable **monthly progress report**
 - Real-time notifications (absent alert, results, fee reminders)
@@ -84,7 +91,10 @@ Marketing site, online tests, live classes, QR attendance, fees, results and AI 
 - "Today" timeline, daily **check-in**, quick actions
 - **Attendance** — bulk roster or rotating **QR code**
 - **Marks** — single, bulk sheet, or paste from Excel
-- **Test builder** with ✨ **AI question generator** (Gemini)
+- **Test builder** with ✨ **AI question generator** (Gemini) & **JEE Main mock** pattern
+- **Question bank** — tag by chapter/difficulty, build tests in 2 clicks
+- **Homework** with grading · **at-risk students** alert · syllabus coverage
+- Chat with parents · leave approvals · calendar
 - Schedule & manage live classes, videos, study material
 - Doubt board with chat-style replies
 
@@ -99,6 +109,10 @@ Marketing site, online tests, live classes, QR attendance, fees, results and AI 
 - **Fees** — approvals, defaulters, reminders, receipts
 - **Results center** — publish exams & report cards (with email)
 - Notice center with email broadcast · **Leads CRM** (list + kanban)
+- **Online admissions** → one-click approve creates student & parent accounts
+- **Fee installments** with automatic reminders · **bulk CSV import**
+- **Salaries, expenses & P&L** · **certificate generator** · holiday/event calendar
+- **Staff (reception) role** with its own limited dashboard
 
 </td>
 </tr>
@@ -210,6 +224,9 @@ Full template: [`backend/.env.example`](backend/.env.example)
 | `TWILIO_SID` · `TWILIO_AUTH_TOKEN` · `TWILIO_PHONE` · `TWILIO_WHATSAPP` | 📱 | SMS / WhatsApp alerts to parents (skipped until set) |
 | `INSTITUTE_LAT` · `INSTITUTE_LON` · `MAX_ATTENDANCE_DISTANCE` | 📍 | Geofence for QR attendance (metres) |
 | `TRUST_PROXY` | | Proxy hops for correct client IPs (auto on Render) |
+| `VAPID_PUBLIC_KEY` · `VAPID_PRIVATE_KEY` · `VAPID_SUBJECT` | 🔔 | Web push notifications (`npx web-push generate-vapid-keys`) |
+| `INSTITUTE_NAME` · `INSTITUTE_ADDRESS` · `INSTITUTE_GSTIN` | 🧾 | Details printed on invoices |
+| `DISABLE_SCHEDULER` | | Turn off daily fee-reminder jobs |
 | `OTP_CONSOLE_FALLBACK` | 🧪 | **Local dev only** — print OTPs in the console |
 
 Frontend (`my-app/.env`): `VITE_RAZORPAY_KEY_ID` — Razorpay public key.

@@ -14,6 +14,15 @@ const testResultSchema = new mongoose.Schema({
     correct: { type: Number, default: 0 },
     wrong: { type: Number, default: 0 },
     unattempted: { type: Number, default: 0 },
+    sectionScores: [{
+        name: { type: String },
+        score: { type: Number },
+        max: { type: Number },
+        correct: { type: Number },
+        wrong: { type: Number }
+    }],
+    percentile: { type: Number }, // snapshot at submission time (recomputed live on reads)
+    xpEarned: { type: Number, default: 0 },
     timeTaken: { type: Number }, // seconds (optional, sent by client)
     submittedAt: { type: Date, default: Date.now }
 });

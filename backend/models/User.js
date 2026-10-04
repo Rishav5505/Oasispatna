@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
   address: { type: String },
   profilePhoto: { type: String }, // URL to photo
   password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'teacher', 'student', 'parent'], required: true },
+  role: { type: String, enum: ['admin', 'teacher', 'student', 'parent', 'staff'], required: true },
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student' }, // For parent role only
   mustChangePassword: { type: Boolean, default: false },
   resetToken: { type: String },

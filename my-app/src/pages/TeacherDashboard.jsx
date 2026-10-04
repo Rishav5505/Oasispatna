@@ -1,13 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, lazy, Suspense } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { AuthContext } from '../contexts/AuthContext';
 import oasisLogo from '../assets/oasis_logo.png';
 import config from '../config';
-import TeacherLiveClass from '../components/live/TeacherLiveClass';
-import TeacherVideo from '../components/video/TeacherVideo';
-import TeacherTest from '../components/test/TeacherTest';
-import DoubtBoard from '../components/doubt/DoubtBoard';
 import { notify, toast } from '../utils/notify';
 import TeacherTimetable from '../components/teacher/TeacherTimetable';
 import StudyResources from '../components/teacher/StudyResources';
@@ -16,6 +12,19 @@ import TeacherOverview from '../components/teacher/TeacherOverview';
 import AttendancePanel from '../components/teacher/AttendancePanel';
 import MarksPanel from '../components/teacher/MarksPanel';
 import { MyAttendanceTab, NoticesTab, NoticeModal, ProfileTab } from '../components/teacher/TeacherSelfTabs';
+import { CalendarTab, LeavesTab, MessagesTab, PreferencesCard } from '../components/teacher/TeacherExtraTabs';
+import { useChatUnread } from '../components/common/useChatUnread';
+import { Spinner } from '../components/teacher/TeacherUI';
+
+// Heavier tabs load on demand to keep the main bundle small.
+const TeacherLiveClass = lazy(() => import('../components/live/TeacherLiveClass'));
+const TeacherVideo = lazy(() => import('../components/video/TeacherVideo'));
+const TeacherTest = lazy(() => import('../components/test/TeacherTest'));
+const DoubtBoard = lazy(() => import('../components/doubt/DoubtBoard'));
+const QuestionBank = lazy(() => import('../components/teacher/QuestionBank'));
+const Homework = lazy(() => import('../components/teacher/Homework'));
+const Syllabus = lazy(() => import('../components/teacher/Syllabus'));
+const AtRiskTab = lazy(() => import('../components/teacher/AtRisk').then(m => ({ default: m.AtRiskTab })));
 
 const TeacherDashboard = () => {
   const { user, updateUser } = useContext(AuthContext);
@@ -63,6 +72,10 @@ const TeacherDashboard = () => {
   const [notices, setNotices] = useState([]);
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [inbox, setInbox] = useState([]); // live socket notifications for the bell (UI only)
+  const [socket, setSocket] = useState(null); // shared with chat (set once connected)
+  const [chatTarget, setChatTarget] = useState(null); // parent userId to open in chat
+  const [focusTestId, setFocusTestId] = useState(null); // test to open after "build from bank"
+  const { count: chatUnread } = useChatUnread({ socket });
 
   useEffect(() => {
     if (user?.id) {
@@ -80,13 +93,13 @@ const TeacherDashboard = () => {
       }
       const socket = io(config.SOCKET_URL, { auth: { token } });
       // Server verifies the JWT and joins the user's room (a raw userId is rejected)
-      socket.on('connect', () => { if (token) socket.emit('join', token); });
+      socket.on('connect', () => { if (token) socket.emit('join', token); setSocket(socket); });
       socket.on('notification', (n) => {
         const message = n?.message || n?.title || 'New notification';
         toast(message, { icon: '🔔' });
         setInbox(list => [{ id: Date.now() + Math.random(), message, at: new Date(), read: false }, ...list].slice(0, 20));
       });
-      return () => socket.disconnect();
+      return () => { socket.disconnect(); setSocket(null); };
     } else if (!sessionStorage.getItem('token')) {
       setLoading(false); // nothing to load; avoid an endless spinner
     }
@@ -379,19 +392,25 @@ const TeacherDashboard = () => {
     </div>
   );
 
+  const navigate = (tab) => {
+    if (tab !== 'messages') setChatTarget(null);
+    setActiveTab(tab);
+  };
+
   const handleLogout = () => { sessionStorage.removeItem('token'); window.location.href = '/login'; };
 
   return (
     <TeacherShell
       activeTab={activeTab}
-      onNavigate={setActiveTab}
+      onNavigate={navigate}
       user={user}
       onLogout={handleLogout}
-      badges={{ doubts: activityStats?.pendingDoubts || 0 }}
+      badges={{ doubts: activityStats?.pendingDoubts || 0, messages: chatUnread }}
       notifications={inbox}
       onNotificationsSeen={() => setInbox(list => list.map(n => ({ ...n, read: true })))}
       notices={notices}
     >
+      <Suspense fallback={<Spinner label="Loading…" variant="grid" />}>
       <div key={activeTab} className="animate-fade-up">
         {activeTab === 'overview' && (
           <TeacherOverview
@@ -403,7 +422,7 @@ const TeacherDashboard = () => {
             onCheckIn={handleTeacherCheckIn}
             activityStats={activityStats}
             onStats={setActivityStats}
-            onNavigate={setActiveTab}
+            onNavigate={navigate}
           />
         )}
 
@@ -466,7 +485,23 @@ const TeacherDashboard = () => {
 
         {activeTab === 'live-classes' && <TeacherLiveClass teacherData={teacherData} />}
         {activeTab === 'recorded-classes' && <TeacherVideo teacherData={teacherData} />}
-        {activeTab === 'online-tests' && <TeacherTest teacherData={teacherData} />}
+        {activeTab === 'online-tests' && (
+          <TeacherTest teacherData={teacherData} focusTestId={focusTestId} onFocusHandled={() => setFocusTestId(null)} />
+        )}
+        {activeTab === 'question-bank' && (
+          <QuestionBank
+            teacherData={teacherData}
+            onTestBuilt={(test) => { if (test?._id) setFocusTestId(test._id); navigate('online-tests'); }}
+          />
+        )}
+        {activeTab === 'homework' && <Homework teacherData={teacherData} />}
+        {activeTab === 'syllabus' && <Syllabus teacherData={teacherData} />}
+        {activeTab === 'at-risk' && (
+          <AtRiskTab teacherData={teacherData} onMessage={(userId) => { setChatTarget(userId); setActiveTab('messages'); }} />
+        )}
+        {activeTab === 'messages' && <MessagesTab socket={socket} initialUserId={chatTarget} />}
+        {activeTab === 'leaves' && <LeavesTab />}
+        {activeTab === 'calendar' && <CalendarTab teacherData={teacherData} />}
         {activeTab === 'doubts' && <DoubtBoard teacherData={teacherData} />}
 
         {activeTab === 'my-attendance' && (
@@ -493,7 +528,9 @@ const TeacherDashboard = () => {
             onPhotoCancel={() => { setPhotoFile(null); setPhotoPreview(null); }}
           />
         )}
+        {activeTab === 'profile' && <div className="mt-6"><PreferencesCard /></div>}
       </div>
+      </Suspense>
 
       <NoticeModal notice={selectedNotice} onClose={() => setSelectedNotice(null)} />
     </TeacherShell>

@@ -23,7 +23,8 @@
     "sib-api-v3-sdk": "^8.5.0",
     "socket.io": "^4.8.3",
     "stripe": "^20.1.0",
-    "twilio": "^4.19.0"
+    "twilio": "^4.19.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

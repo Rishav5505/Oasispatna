@@ -7,13 +7,13 @@ import {
   FiAlertTriangle, FiClock, FiSettings, FiChevronRight, FiCalendar, FiAward, FiFileText,
   FiPrinter, FiCreditCard, FiRefreshCw, FiVolume2, FiCpu, FiTrendingUp, FiClipboard, FiVideo,
   FiHeart, FiLink, FiBookOpen, FiCamera, FiShield, FiHash, FiPhone, FiEdit2, FiTarget, FiLogOut,
-  FiInbox, FiSend,
+  FiInbox, FiSend, FiUploadCloud, FiMessageSquare, FiCoffee, FiStar, FiDollarSign,
 } from 'react-icons/fi';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
 import receiptBanner from '../assets/receipt_banner.png';
 import config from '../config';
-import { notify } from '../utils/notify';
+import { notify, toast } from '../utils/notify';
 import OverviewAnalytics from '../components/admin/OverviewAnalytics';
 import FeeApprovals from '../components/admin/FeeApprovals';
 import AddStudentModal from '../components/admin/AddStudentModal';
@@ -26,6 +26,26 @@ import {
   tableScroll, theadRow, thCls, tdCls, rowCls, tbodyCls, iconBtn,
 } from '../components/admin/AdminUI';
 import { Sidebar, Topbar, MobileBottomNav, CommandPalette } from '../components/admin/AdminShell';
+import { ADMIN_NAV_SPEC, buildNav } from '../components/admin/adminNav';
+import AdmissionsManager from '../components/admin/AdmissionsManager';
+import AdmissionFunnel from '../components/admin/AdmissionFunnel';
+import FeePlanCard from '../components/admin/FeePlanCard';
+import UpcomingDues from '../components/admin/UpcomingDues';
+import BulkImportModal from '../components/admin/BulkImportModal';
+import FinanceManager from '../components/admin/FinanceManager';
+import CertificateGenerator from '../components/admin/CertificateGenerator';
+import StaffManager from '../components/admin/StaffManager';
+import AtRiskCard from '../components/admin/AtRiskCard';
+import TopbarExtras from '../components/admin/TopbarExtras';
+import PreferencesCard from '../components/admin/PreferencesCard';
+import { printInvoice } from '../components/admin/printDocs';
+import { api } from '../components/admin/adminApi';
+import EventCalendar from '../components/common/EventCalendar';
+import UpcomingEventsCard from '../components/common/UpcomingEventsCard';
+import LeaveRequests from '../components/common/LeaveRequests';
+import ChatPanel from '../components/common/ChatPanel';
+import { useChatUnread } from '../components/common/useChatUnread';
+import { useI18n } from '../i18n/useI18n';
 import { StatCard } from '../components/ui/Motion';
 import usePagination from '../components/admin/usePagination';
 import { toastError, formatINR } from '../components/admin/adminApi';
@@ -137,6 +157,14 @@ const AdminDashboard = () => {
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [noticeReloadKey, setNoticeReloadKey] = useState(0);
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [admissionsLiveKey, setAdmissionsLiveKey] = useState(0);
+  const [pendingAdmissions, setPendingAdmissions] = useState(0);
+  const [socket, setSocket] = useState(null);
+  const [planReloadKey, setPlanReloadKey] = useState(0);
+  const { t } = useI18n();
+  const nav = useMemo(() => buildNav(ADMIN_NAV_SPEC, t), [t]);
+  const { count: chatUnread } = useChatUnread({ socket });
 
   // Shell / presentation-only state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -204,8 +232,20 @@ const AdminDashboard = () => {
       notify(`New Demo Request from: ${newLead.name}`);
     });
 
+    // Online admission submitted from the public /admission page
+    socket.on('new-admission', (payload) => {
+      const name = payload?.studentName || payload?.admission?.studentName || '';
+      toast.success(t('admin.adm.liveToast', { name, no: payload?.applicationNo || payload?.admission?.applicationNo || '' }), { icon: '🎓', duration: 6000 });
+      setAdmissionsLiveKey(k => k + 1);
+      setPendingAdmissions(n => n + 1);
+    });
+    socket.on('connect', () => setSocket(socket));
+
+    api.get('/admissions', { status: 'submitted' }).then(list => setPendingAdmissions(list.length)).catch(() => {});
+
     return () => {
       socket.disconnect();
+      setSocket(null);
     };
   }, [token, user, authLoading]);
 
@@ -629,8 +669,9 @@ const AdminDashboard = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       notify('Payment recorded successfully!');
-      setFeeForm({ studentId: '', amount: '', type: 'Tuition', remarks: '' });
+      setFeeForm(prev => ({ studentId: prev.studentId, amount: '', type: 'Tuition', remarks: '' }));
       fetchFees();
+      setPlanReloadKey(k => k + 1);
       // Refresh users/students to update stats if necessary (though fee stats are separate)
       // Ideally we should also refresh the student list to get updated Paid amounts if we tracked that there, but we calculate it live.
     } catch (err) {
@@ -875,6 +916,16 @@ const AdminDashboard = () => {
     return matchesSearch && matchesClass;
   });
 
+  // Jump to a student's fee profile (from dues lists)
+  const openFeeStudent = (studentId) => {
+    const s = allStudents.find(x => String(x._id) === String(studentId));
+    if (!s) return;
+    setSelectedFeeStudent(s);
+    setFeeForm(prev => ({ ...prev, studentId: s._id }));
+    setFeeSearchTerm(s.name);
+    navigate('fees');
+  };
+
   // Client-side pagination (20/page) for the large tables
   const studentPg = usePagination(filteredStudents);
   const feesPg = usePagination(fees);
@@ -906,10 +957,12 @@ const AdminDashboard = () => {
   const askConfirm = (opts) => setConfirmState(opts);
   const myPhoto = photoUrl(user?.profilePhoto || profile?.profilePhoto);
   const newLeadCount = Math.max(summary.newLeads || 0, leads.filter(l => (l.status || 'new') === 'new').length);
-  const navBadges = { fees: summary.pendingPayments || 0, leads: newLeadCount };
+  const navBadges = { fees: summary.pendingPayments || 0, leads: newLeadCount, admissions: pendingAdmissions, chat: chatUnread };
   const notifications = [
     { id: 'leads', icon: FiInbox, count: newLeadCount, label: `new demo request${newLeadCount === 1 ? '' : 's'}`, hint: 'Open the leads CRM', tab: 'leads' },
     { id: 'fees', icon: FiCreditCard, count: summary.pendingPayments || 0, label: `payment${summary.pendingPayments === 1 ? '' : 's'} awaiting approval`, hint: 'Review in Fees', tab: 'fees' },
+    { id: 'admissions', icon: FiFileText, count: pendingAdmissions, label: t('admin.notif.admissions'), hint: t('admin.notif.admissionsHint'), tab: 'admissions' },
+    { id: 'chat', icon: FiMessageSquare, count: chatUnread, label: t('admin.notif.chat'), hint: t('admin.notif.chatHint'), tab: 'chat' },
   ];
   const paletteActions = [
     { key: 'add-student', label: 'Add a new student', hint: 'Create login & email credentials', icon: FiUserPlus, run: () => { navigate('students'); setShowAddStudent(true); } },
@@ -917,6 +970,12 @@ const AdminDashboard = () => {
     { key: 'record-payment', label: 'Record a fee payment', hint: 'Search a student in Fees', icon: FiCreditCard, run: () => navigate('fees') },
     { key: 'broadcast', label: 'Broadcast a notice', hint: 'Students, parents, teachers', icon: FiVolume2, run: () => navigate('communication') },
     { key: 'link-parent', label: 'Link parent to student', hint: 'Parents directory', icon: FiLink, run: () => navigate('parents') },
+    { key: 'bulk-import', label: t('admin.palette.bulk'), hint: t('admin.palette.bulkHint'), icon: FiUploadCloud, run: () => { navigate('students'); setShowBulkImport(true); } },
+    { key: 'review-admissions', label: t('admin.palette.admissions'), hint: t('admin.palette.admissionsHint'), icon: FiFileText, run: () => navigate('admissions') },
+    { key: 'salaries', label: t('admin.palette.salaries'), hint: t('admin.palette.salariesHint'), icon: FiDollarSign, run: () => navigate('finance') },
+    { key: 'certificates', label: t('admin.palette.certificates'), hint: t('admin.palette.certificatesHint'), icon: FiStar, run: () => navigate('certificates') },
+    { key: 'add-event', label: t('admin.palette.event'), hint: t('admin.palette.eventHint'), icon: FiCalendar, run: () => navigate('calendar') },
+    { key: 'leaves', label: t('admin.palette.leaves'), hint: t('admin.palette.leavesHint'), icon: FiCoffee, run: () => navigate('leaves') },
   ];
 
   const labelSm = 'text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider';
@@ -988,6 +1047,7 @@ const AdminDashboard = () => {
         onLogout={logout}
         logo={oasisFullLogo}
         logoMark={oasisLogo}
+        nav={nav}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -1001,6 +1061,8 @@ const AdminDashboard = () => {
           photoUrl={myPhoto}
           onLogout={logout}
           logoMark={oasisLogo}
+          nav={nav}
+          extras={<TopbarExtras onOpenChat={() => navigate('chat')} chatCount={chatUnread} />}
         />
 
         <main ref={mainRef} className="flex-1 overflow-y-auto ui-scrollbar scroll-smooth">
@@ -1016,6 +1078,13 @@ const AdminDashboard = () => {
                 leads={leads}
                 onSummary={setSummary}
               />
+            )}
+            {activeTab === 'overview' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
+                <UpcomingDues compact limit={5} onViewAll={() => navigate('fees')} onSelectStudent={openFeeStudent} />
+                <AtRiskCard limit={5} />
+                <UpcomingEventsCard limit={5} onViewAll={() => navigate('calendar')} className="h-full" />
+              </div>
             )}
 
             {/* ============================ STUDENTS ============================ */}
@@ -1038,6 +1107,9 @@ const AdminDashboard = () => {
                         <option value="all">All classes</option>
                         {availableClasses.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
                       </select>
+                      <button type="button" onClick={() => setShowBulkImport(true)} className="ui-btn-secondary whitespace-nowrap">
+                        <FiUploadCloud /> {t('admin.bulk.button')}
+                      </button>
                       <button onClick={() => setShowAddStudent(true)} className="ui-btn-primary whitespace-nowrap">
                         <FiUserPlus /> Add student
                       </button>
@@ -1342,6 +1414,15 @@ const AdminDashboard = () => {
                         </div>
                       </div>
 
+                      <FeePlanCard
+                        key={selectedFeeStudent._id}
+                        studentId={selectedFeeStudent._id}
+                        defaultTotal={selectedFeeStudent.totalFee}
+                        canEdit
+                        reloadKey={planReloadKey}
+                        onChanged={(p) => { setSelectedFeeStudent(prev => ({ ...prev, totalFee: p.netFee })); fetchAllStudents(); }}
+                      />
+
                       {/* Financial summary */}
                       <div className="ui-card p-5 md:p-6">
                         <h4 className={`${h3} mb-4`}>Fee status</h4>
@@ -1450,7 +1531,10 @@ const AdminDashboard = () => {
                                     <td className={tdCls}><Badge tone="brand">{fee.type}</Badge></td>
                                     <td className={`${tdCls} font-extrabold text-gray-900 dark:text-white`}>₹{fee.amount.toLocaleString()}</td>
                                     <td className={`${tdCls} text-right`}>
-                                      <button onClick={() => handleDownloadReceipt(fee)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-600 hover:bg-brand-50 dark:hover:bg-white/5"><FiFileText /> View receipt</button>
+                                      <span className="inline-flex flex-wrap justify-end gap-1">
+                                        <button onClick={() => handleDownloadReceipt(fee)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-600 hover:bg-brand-50 dark:hover:bg-white/5"><FiFileText /> View receipt</button>
+                                        {(fee.status || 'Paid') === 'Paid' && <button type="button" onClick={() => printInvoice(fee._id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5"><FiPrinter /> {t('admin.fees.invoice')}</button>}
+                                      </span>
                                     </td>
                                   </tr>
                                 ))
@@ -1488,6 +1572,8 @@ const AdminDashboard = () => {
                       <StatCard icon={FiClock} label="Awaiting approval" value={feeKpis.pendingCount} hint="Manual payments to review" tone={feeKpis.pendingCount ? 'amber' : 'dark'} />
                     </div>
 
+                    <UpcomingDues onSelectStudent={openFeeStudent} />
+
                     <FeeApprovals onChanged={fetchFees} />
 
                     <div className="ui-card overflow-hidden">
@@ -1507,11 +1593,12 @@ const AdminDashboard = () => {
                               <th className={thCls}>Type</th>
                               <th className={thCls}>Amount</th>
                               <th className={thCls}>Status</th>
+                              <th className={`${thCls} text-right`}>{t('admin.fees.invoice')}</th>
                             </tr>
                           </thead>
                           <tbody className={tbodyCls}>
-                            {feesLoading && fees.length === 0 ? <SkeletonRows rows={5} cols={5} /> : feesPg.total === 0 ? (
-                              <EmptyRow colSpan={5} icon={FiCreditCard} title="No transactions found" hint="Search a student above to record the first payment." />
+                            {feesLoading && fees.length === 0 ? <SkeletonRows rows={5} cols={6} /> : feesPg.total === 0 ? (
+                              <EmptyRow colSpan={6} icon={FiCreditCard} title="No transactions found" hint="Search a student above to record the first payment." />
                             ) : feesPg.pageItems.map(fee => {
                               const st = (fee.status || 'Paid').toLowerCase();
                               return (
@@ -1530,6 +1617,11 @@ const AdminDashboard = () => {
                                   <td className={`${tdCls} font-extrabold text-gray-900 dark:text-white`}>₹{Number(fee.amount || 0).toLocaleString('en-IN')}</td>
                                   <td className={tdCls}>
                                     <Badge tone={st === 'paid' ? 'green' : st === 'rejected' ? 'red' : 'amber'} dot>{fee.status || 'Paid'}</Badge>
+                                  </td>
+                                  <td className={`${tdCls} text-right`}>
+                                    {st === 'paid' ? (
+                                      <button type="button" onClick={() => printInvoice(fee._id)} className={iconBtn} title={t('admin.fees.invoice')} aria-label={t('admin.fees.invoiceFor', { name: fee.studentId?.name || '' })}><FiPrinter /></button>
+                                    ) : <span className="text-xs text-gray-300">—</span>}
                                   </td>
                                 </tr>
                               );
@@ -1848,7 +1940,45 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'leads' && (
-              <LeadsCRM leads={leads} setLeads={setLeads} loading={leadsLoading} onRefresh={fetchLeads} />
+              <>
+                <LeadsCRM leads={leads} setLeads={setLeads} loading={leadsLoading} onRefresh={fetchLeads} />
+                <AdmissionFunnel reloadKey={leads.length} />
+              </>
+            )}
+
+            {activeTab === 'admissions' && (
+              <AdmissionsManager canApprove reloadKey={admissionsLiveKey} />
+            )}
+
+            {activeTab === 'finance' && (
+              <FinanceManager teachers={teacherUsers} onTeachersChanged={fetchUsers} />
+            )}
+
+            {activeTab === 'certificates' && (
+              <CertificateGenerator students={allStudents} classes={availableClasses} />
+            )}
+
+            {activeTab === 'staff' && <StaffManager />}
+
+            {activeTab === 'calendar' && (
+              <>
+                <PageHeader icon={FiCalendar} eyebrow={t('admin.group.academics')} title={t('admin.heading.calendar')} subtitle={t('admin.calendar.subtitle')} />
+                <EventCalendar canEdit classOptions={availableClasses} />
+              </>
+            )}
+
+            {activeTab === 'leaves' && (
+              <>
+                <PageHeader icon={FiCoffee} eyebrow={t('admin.group.engagement')} title={t('admin.heading.leaves')} subtitle={t('admin.leaves.subtitle')} />
+                <LeaveRequests mode="review" role="admin" />
+              </>
+            )}
+
+            {activeTab === 'chat' && (
+              <>
+                <PageHeader icon={FiMessageSquare} eyebrow={t('admin.group.engagement')} title={t('admin.heading.chat')} subtitle={t('admin.chat.subtitle')} />
+                <ChatPanel socket={socket} />
+              </>
             )}
 
             {/* ============================ RESULTS ============================ */}
@@ -1878,6 +2008,7 @@ const AdminDashboard = () => {
                       disabled={!selectedResultClass}
                     >
                       <option value="">Choose exam</option>
+                      {availableExams.map(ex => <option key={ex._id} value={ex._id}>{ex.name}</option>)}
                       {selectedResultClass && (
                         <option value="total">TOTAL (OVERALL)</option>
                       )}
@@ -2163,6 +2294,7 @@ const AdminDashboard = () => {
                         </div>
                       ))}
                     </div>
+                    <PreferencesCard />
                     <button className="ui-btn-dark w-full mt-6 !py-3">
                       <FiShield /> Security settings
                     </button>
@@ -2174,8 +2306,8 @@ const AdminDashboard = () => {
         </main>
       </div>
 
-      <MobileBottomNav activeTab={activeTab} onNavigate={navigate} badges={navBadges} />
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={navigate} actions={paletteActions} />
+      <MobileBottomNav activeTab={activeTab} onNavigate={navigate} badges={navBadges} nav={nav} />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={navigate} actions={paletteActions} nav={nav} />
       <ConfirmDialog
         open={Boolean(confirmState)}
         title={confirmState?.title}
@@ -2251,6 +2383,14 @@ const AdminDashboard = () => {
             </div>
           </form>
         </Modal>
+      )}
+
+      {showBulkImport && (
+        <BulkImportModal
+          classes={availableClasses}
+          onClose={() => setShowBulkImport(false)}
+          onImported={() => { fetchUsers(); fetchAllStudents(); }}
+        />
       )}
 
       {showAddStudent && (

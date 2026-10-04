@@ -69,7 +69,7 @@ const OverviewAnalytics = ({ profileName, presentTeachers, setActiveTab, onAddSt
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   // Secondary, best-effort reads for the attention panel & activity feed (silent on failure).
-  const [extra, setExtra] = useState({ defaulters: null, liveClasses: [], leads: [] });
+  const [extra, setExtra] = useState({ defaulters: null, liveClasses: [], leads: [], dues: null, admissions: null });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,12 +83,14 @@ const OverviewAnalytics = ({ profileName, presentTeachers, setActiveTab, onAddSt
     } finally {
       setLoading(false);
     }
-    const [defaulters, liveClasses, leads] = await Promise.all([
+    const [defaulters, liveClasses, leads, dues, admissions] = await Promise.all([
       api.get('/fees/defaulters').catch(() => null),
       api.get('/live-classes/all').catch(() => []),
       api.get('/leads').catch(() => []),
+      api.get('/finance/upcoming-dues', { days: 7 }).catch(() => null),
+      api.get('/admissions', { status: 'submitted' }).catch(() => null),
     ]);
-    setExtra({ defaulters, liveClasses: liveClasses || [], leads: leads || [] });
+    setExtra({ defaulters, liveClasses: liveClasses || [], leads: leads || [], dues, admissions });
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -143,7 +145,12 @@ const OverviewAnalytics = ({ profileName, presentTeachers, setActiveTab, onAddSt
   const firstName = profileName?.split(' ')[0] || 'Admin';
   const dateLabel = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  const dues = extra.dues;
+  const overdueDues = (dues || []).filter(d => d.daysLeft < 0);
+  const duesAmount = (dues || []).reduce((a, d) => a + (d.amount || 0), 0);
   const attention = [
+    { key: 'admissions', icon: FiFileText, label: 'New admission applications', value: extra.admissions ? extra.admissions.length : '—', sub: 'Submitted online, awaiting review', cta: 'Review', tab: 'admissions' },
+    { key: 'dues', icon: FiCalendar, label: 'Installments due this week', value: dues ? dues.length : '—', sub: dues ? `${formatINR(duesAmount)}${overdueDues.length ? ` · ${overdueDues.length} overdue` : ''}` : 'Loading…', cta: 'View dues', tab: 'fees', urgent: overdueDues.length > 0 },
     { key: 'approvals', icon: FiCreditCard, label: 'Payments awaiting approval', value: data?.pendingPayments ?? 0, sub: 'Manual payments from parents', cta: 'Review', tab: 'fees' },
     { key: 'defaulters', icon: FiAlertTriangle, label: 'Fee defaulters', value: defaulters ? defaulters.length : '—', sub: defaulters ? `${formatINR(defaulterDue)} outstanding` : 'Loading…', cta: 'Remind', tab: 'fees', urgent: true },
     { key: 'leads', icon: FiInbox, label: 'New demo leads', value: data?.newLeads ?? 0, sub: 'Not yet contacted', cta: 'Open CRM', tab: 'leads' },

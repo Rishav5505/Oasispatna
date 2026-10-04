@@ -8,7 +8,8 @@ const sendFeeReceipt = require('../utils/sendFeeReceipt');
 const sendEmail = require('../utils/sendEmail');
 const sendSMS = require('../utils/sendSMS');
 const { notifyUser } = require('../utils/notify');
-const { getAccessibleStudent, getParentUsers, isObjectId } = require('../utils/access');
+const { getAccessibleStudent, getParentUsers, isObjectId, resolveStudent } = require('../utils/access');
+const { allocateFeeToPlan } = require('../utils/feeAllocation');
 
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
@@ -30,6 +31,20 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
 }
 
 const formatINR = (n) => Number(n || 0).toLocaleString('en-IN');
+
+// Staff (front office) may act on any student's fees; everyone else goes through the normal ownership check.
+async function loadStudentFor(req, res, id) {
+    if (req.user && req.user.role === 'staff') {
+        if (!id || !isObjectId(String(id))) {
+            res.status(400).json({ message: 'Invalid student id' });
+            return null;
+        }
+        const student = await resolveStudent(id);
+        if (!student) res.status(404).json({ message: 'Student not found' });
+        return student;
+    }
+    return getAccessibleStudent(req, res, id);
+}
 
 // Collect student + parent emails / user ids / phones for a Student doc
 async function getFeeContacts(student) {
@@ -131,6 +146,7 @@ router.post('/razorpay/verify', auth, roleAuth('parent'), async (req, res) => {
             submittedBy: req.user.id
         });
         await fee.save();
+        await allocateFeeToPlan(fee);
 
         const { studentUserId, parents, emails } = await getFeeContacts(student);
         if (emails.length > 0) {
@@ -167,17 +183,17 @@ router.post('/razorpay/verify', auth, roleAuth('parent'), async (req, res) => {
 });
 
 // Add new fee payment (Admin records as Paid; Parent manual payment => Pending until approved)
-router.post('/pay', auth, roleAuth('admin', 'parent'), async (req, res) => {
+router.post('/pay', auth, roleAuth('admin', 'staff', 'parent'), async (req, res) => {
     try {
         const { studentId, amount, type, transactionId, remarks, mode } = req.body;
 
-        const studentProfile = await getAccessibleStudent(req, res, studentId);
+        const studentProfile = await loadStudentFor(req, res, studentId);
         if (!studentProfile) return;
 
         const amt = Number(amount);
         if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ message: 'Invalid amount' });
 
-        const isAdmin = req.user.role === 'admin';
+        const isAdmin = req.user.role === 'admin' || req.user.role === 'staff';
         const status = isAdmin ? 'Paid' : 'Pending';
 
         const fee = new Fee({
@@ -193,6 +209,7 @@ router.post('/pay', auth, roleAuth('admin', 'parent'), async (req, res) => {
             reviewedAt: isAdmin ? new Date() : undefined
         });
         await fee.save();
+        if (status === 'Paid') await allocateFeeToPlan(fee);
 
         const { studentUserId, parents, emails } = await getFeeContacts(studentProfile);
 
@@ -234,7 +251,7 @@ router.post('/pay', auth, roleAuth('admin', 'parent'), async (req, res) => {
 });
 
 // Get all fee records (Admin)
-router.get('/all', auth, roleAuth('admin'), async (req, res) => {
+router.get('/all', auth, roleAuth('admin', 'staff'), async (req, res) => {
     try {
         const fees = await Fee.find()
             .populate('studentId', 'name fatherName totalFee')
@@ -247,7 +264,7 @@ router.get('/all', auth, roleAuth('admin'), async (req, res) => {
 });
 
 // Pending manual payments awaiting approval (Admin)
-router.get('/pending', auth, roleAuth('admin'), async (req, res) => {
+router.get('/pending', auth, roleAuth('admin', 'staff'), async (req, res) => {
     try {
         const fees = await Fee.find({ status: 'Pending' })
             .populate({ path: 'studentId', select: 'name classId', populate: { path: 'classId', select: 'name' } })
@@ -274,7 +291,7 @@ router.get('/pending', auth, roleAuth('admin'), async (req, res) => {
 });
 
 // Students with outstanding fees (Admin)
-router.get('/defaulters', auth, roleAuth('admin'), async (req, res) => {
+router.get('/defaulters', auth, roleAuth('admin', 'staff'), async (req, res) => {
     try {
         const students = await Student.find({ totalFee: { $gt: 0 } })
             .populate('userId', 'phone')
@@ -310,7 +327,7 @@ router.get('/defaulters', auth, roleAuth('admin'), async (req, res) => {
 });
 
 // Approve a pending manual payment (Admin)
-router.post('/:id/approve', auth, roleAuth('admin'), async (req, res) => {
+router.post('/:id/approve', auth, roleAuth('admin', 'staff'), async (req, res) => {
     try {
         if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid fee id' });
         const fee = await Fee.findById(req.params.id);
@@ -321,6 +338,7 @@ router.post('/:id/approve', auth, roleAuth('admin'), async (req, res) => {
         fee.reviewedBy = req.user.id;
         fee.reviewedAt = new Date();
         await fee.save();
+        await allocateFeeToPlan(fee);
 
         const student = await Student.findById(fee.studentId);
         if (student) {
@@ -359,7 +377,7 @@ router.post('/:id/approve', auth, roleAuth('admin'), async (req, res) => {
 });
 
 // Reject a pending manual payment (Admin)
-router.post('/:id/reject', auth, roleAuth('admin'), async (req, res) => {
+router.post('/:id/reject', auth, roleAuth('admin', 'staff'), async (req, res) => {
     try {
         if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid fee id' });
         const fee = await Fee.findById(req.params.id);
@@ -401,7 +419,7 @@ router.post('/:id/reject', auth, roleAuth('admin'), async (req, res) => {
 // Get fees for a specific student (Admin/Teacher, the student, or a linked parent)
 router.get('/student/:id', auth, async (req, res) => {
     try {
-        const student = await getAccessibleStudent(req, res, req.params.id);
+        const student = await loadStudentFor(req, res, req.params.id);
         if (!student) return;
 
         const fees = await Fee.find({ studentId: student._id }).sort({ date: -1 });
@@ -424,7 +442,7 @@ router.get('/student/:id', auth, async (req, res) => {
 });
 
 // Get Fee Stats (Total Collection)
-router.get('/stats', auth, roleAuth('admin'), async (req, res) => {
+router.get('/stats', auth, roleAuth('admin', 'staff'), async (req, res) => {
     try {
         const fees = await Fee.find({ status: 'Paid' });
         const totalCollection = fees.reduce((acc, curr) => acc + curr.amount, 0);

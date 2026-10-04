@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'Oasis JEE Classes',
         short_name: 'Oasis',
         description: 'Premium Coaching for JEE Main & Advanced',
-        theme_color: '#4f46e5',
+        theme_color: '#f37021',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
@@ -37,6 +37,12 @@ export default defineConfig({
             purpose: 'any maskable'
           }
         ]
+      },
+      workbox: {
+        // Web Push handlers (push + notificationclick) live in public/push-sw.js
+        importScripts: ['push-sw.js'],
+        // Dashboards are large; keep them precacheable for offline/PWA use
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
       },
       devOptions: {
         enabled: true

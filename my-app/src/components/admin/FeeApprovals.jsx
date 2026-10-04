@@ -147,7 +147,7 @@ const PendingApprovals = ({ onChanged }) => {
   );
 };
 
-const Defaulters = ({ reloadKey }) => {
+const Defaulters = ({ reloadKey, canRemind = true }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -251,13 +251,13 @@ const Defaulters = ({ reloadKey }) => {
                   </td>
                   <td className={tdCls}><Badge tone="red">{formatINR(d.pending)}</Badge></td>
                   <td className={`${tdCls} text-right`}>
-                    <button
+                    {canRemind && <button
                       disabled={sending === d.studentId}
                       onClick={() => remind(d)}
                       className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50 ${reminded[d.studentId] ? 'bg-gray-100 text-gray-500 dark:bg-white/5' : 'bg-brand-50 text-brand-700 hover:bg-brand-600 hover:text-white dark:bg-brand-500/10 dark:text-brand-300'}`}
                     >
                       <FiBell /> {sending === d.studentId ? 'Sending…' : reminded[d.studentId] ? 'Sent — resend' : 'Send reminder'}
-                    </button>
+                    </button>}
                   </td>
                 </tr>
               );
@@ -270,7 +270,7 @@ const Defaulters = ({ reloadKey }) => {
   );
 };
 
-const FeeApprovals = ({ onChanged }) => {
+const FeeApprovals = ({ onChanged, canRemind = true }) => {
   const [reloadKey, setReloadKey] = useState(0);
   const handleChanged = () => {
     setReloadKey(k => k + 1);
@@ -279,7 +279,7 @@ const FeeApprovals = ({ onChanged }) => {
   return (
     <div className="space-y-6">
       <PendingApprovals onChanged={handleChanged} />
-      <Defaulters reloadKey={reloadKey} />
+      <Defaulters reloadKey={reloadKey} canRemind={canRemind} />
     </div>
   );
 };

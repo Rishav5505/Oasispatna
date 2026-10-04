@@ -4,6 +4,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const auth = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 const { rateLimit } = require('../utils/rateLimit');
+const fs = require('fs');
+const path = require('path');
+const Student = require('../models/Student');
+const Doubt = require('../models/Doubt');
+const { uploadSingle, fileUrl, removeUpload, UPLOAD_DIR } = require('../utils/upload');
+const { isObjectId, sameId } = require('../utils/access');
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -80,16 +86,14 @@ router.post('/chat', chatLimiter, chatDailyLimiter, async (req, res) => {
         while (cleanHistory.length && cleanHistory[0].role === 'model') cleanHistory.shift();
         cleanHistory = cleanHistory.map(h => ({ role: h.role, parts: [{ text: h.text }] }));
 
-        const chat = model.startChat({
-            history: cleanHistory,
-        });
-
         // Send message with system context if first time
         const finalPrompt = (cleanHistory.length === 0) ? (systemPrompt + "\n\nStudent Question: " + message) : message;
 
-        const result = await chat.sendMessage(finalPrompt);
-        const response = await result.response;
-        const text = response.text();
+        const text = await withModelFallback({}, async (model) => {
+            const chat = model.startChat({ history: cleanHistory });
+            const result = await chat.sendMessage(finalPrompt);
+            return result.response.text();
+        });
 
         res.json({ text });
     } catch (err) {
@@ -184,4 +188,113 @@ Respond with STRICT JSON only, no markdown, no commentary, in exactly this shape
     }
 });
 
+// ---------------------------------------------------------------------
+// AI doubt solver (FEATURES_CONTRACT A8)
+// POST /ai-buddy/solve-doubt (student; multipart optional `image` + `question`; optional `doubtId`, `mode`=solution|hint)
+// ---------------------------------------------------------------------
+const doubtLimiter = rateLimit({
+    name: 'ai-doubt',
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    keyFn: (req) => req.user.id,
+    message: 'You have used all 20 AI doubt solves for this hour. Please try again later.'
+});
+
+const MAX_QUESTION_LENGTH = 4000;
+const EXT_MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif', '.pdf': 'application/pdf' };
+
+// Read a stored upload (web path /uploads/<file>) as Gemini inlineData, or null
+async function inlineFromWebPath(webPath) {
+    try {
+        if (!webPath) return null;
+        const name = path.basename(String(webPath).split('\\').join('/'));
+        const full = path.join(UPLOAD_DIR, name);
+        const mimeType = EXT_MIME[path.extname(name).toLowerCase()];
+        if (!mimeType || !full.startsWith(UPLOAD_DIR) || !fs.existsSync(full)) return null;
+        const data = (await fs.promises.readFile(full)).toString('base64');
+        return { inlineData: { data, mimeType } };
+    } catch (e) {
+        return null;
+    }
+}
+
+router.post('/solve-doubt', auth, roleAuth('student'), doubtLimiter, uploadSingle('image'), async (req, res) => {
+    const uploaded = req.file ? fileUrl(req.file) : null;
+    try {
+        const question = typeof req.body.question === 'string' ? req.body.question.trim() : '';
+        const mode = req.body.mode === 'hint' ? 'hint' : 'solution';
+        const { doubtId } = req.body;
+        if (question.length > MAX_QUESTION_LENGTH) {
+            return res.status(400).json({ message: `Question is too long (max ${MAX_QUESTION_LENGTH} characters)` });
+        }
+
+        let doubt = null;
+        if (doubtId) {
+            if (!isObjectId(String(doubtId))) return res.status(400).json({ message: 'Invalid doubtId' });
+            const student = await Student.findOne({ userId: req.user.id }).select('_id');
+            doubt = await Doubt.findById(doubtId);
+            if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
+            if (!student || !sameId(doubt.studentId, student._id)) return res.status(403).json({ message: 'Access denied' });
+        }
+
+        // Image: the uploaded file, else the attached doubt's image
+        let imagePart = null;
+        if (req.file) {
+            const data = (await fs.promises.readFile(req.file.path)).toString('base64');
+            imagePart = { inlineData: { data, mimeType: req.file.mimetype } };
+        } else if (doubt && doubt.imageUrl) {
+            imagePart = await inlineFromWebPath(doubt.imageUrl);
+        }
+        const questionText = question || (doubt ? `${doubt.title}\n${doubt.description}` : '');
+        if (!questionText && !imagePart) {
+            return res.status(400).json({ message: 'Provide a question or an image' });
+        }
+
+        const instructions = `You are an expert IIT-JEE (Main & Advanced) tutor at Oasis JEE Classes helping a student with a doubt.
+${mode === 'hint'
+    ? 'Give ONLY a helpful hint and the key concept/formula needed, so the student can solve it themselves. Do NOT reveal the final answer.'
+    : 'Give a clear step-by-step solution, explaining the concept used at each step, and end with a line "**Final Answer:** ...".'}
+Formatting rules:
+- Use short markdown: headings (###), numbered steps, **bold** for key results, bullet points.
+- Write math in plain readable text (e.g. v^2 = u^2 + 2as, sqrt(2), pi, theta); no LaTeX blocks.
+- If the image is unclear or the question is incomplete, say what is missing and solve what you can.
+- If the question is not academic (Physics, Chemistry, Mathematics), politely ask for a study-related doubt.
+- Keep it concise (under ~400 words).`;
+
+        const parts = [{ text: instructions }];
+        if (imagePart) parts.push(imagePart);
+        parts.push({ text: questionText ? `Student's question:\n${questionText}` : "Student's question is in the image above." });
+
+        let answer;
+        try {
+            answer = await withModelFallback(
+                { generationConfig: { temperature: 0.3 } },
+                async (model) => (await model.generateContent({ contents: [{ role: 'user', parts }] })).response.text()
+            );
+        } catch (err) {
+            console.error('Gemini solve-doubt error:', err.message);
+            return res.status(502).json({ message: 'AI is busy right now. Please try again in a minute.' });
+        }
+        answer = String(answer || '').trim();
+        if (!answer) return res.status(502).json({ message: 'AI returned an empty answer. Please try again.' });
+
+        let attached = false;
+        if (doubt) {
+            doubt.replies.push({ by: 'AI', isAI: true, message: answer.slice(0, 20000), createdAt: new Date() });
+            await doubt.save();
+            attached = true;
+        }
+
+        res.json({ answer, attached, doubtId: doubt ? doubt._id : undefined });
+    } catch (err) {
+        console.error('solve-doubt error:', err);
+        res.status(500).json({ message: 'Server error' });
+    } finally {
+        // The image is only needed for this request
+        if (uploaded) removeUpload(uploaded);
+    }
+});
+
 module.exports = router;
+// Shared Gemini helper for other routes
+module.exports.withModelFallback = withModelFallback;

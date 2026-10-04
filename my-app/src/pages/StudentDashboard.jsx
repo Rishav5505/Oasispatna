@@ -1,20 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, lazy, Suspense } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
 import {
   FiActivity, FiBarChart2, FiCreditCard, FiZap, FiPieChart, FiClock, FiTarget, FiBookOpen, FiLayers,
-  FiCamera, FiCheck, FiX, FiEdit2, FiBell, FiLogOut,
+  FiCamera, FiCheck, FiX, FiEdit2, FiBell, FiLogOut, FiBookmark, FiEdit,
 } from 'react-icons/fi';
 import receiptBanner from '../assets/receipt_banner.png';
 import config from '../config';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { io } from 'socket.io-client';
-import StudentLiveClass from '../components/live/StudentLiveClass';
-import StudentVideo from '../components/video/StudentVideo';
-import StudentTest from '../components/test/StudentTest';
-import StudentDoubt from '../components/doubt/StudentDoubt';
-import AIStudyBuddy from '../components/ai/AIStudyBuddy';
-import QRScanner from '../components/attendance/QRScanner';
 import { notify, toast } from '../utils/notify';
 import Timetable, { TodayClasses } from '../components/student/Timetable';
 import PerformanceAnalysis from '../components/student/PerformanceAnalysis';
@@ -27,6 +21,26 @@ import { SelectionModal, NotificationDrawer, NoticeModal, ReportCardModal } from
 import { errorMessage, todayName, findCurrentAndNext, formatTime12 } from '../components/student/helpers';
 import { StatCard, GradientBanner } from '../components/ui/Motion';
 import { greeting } from '../components/ui/motionUtils';
+import Leaderboard, { XpChip, XpProgressCard } from '../components/student/XpLeaderboard';
+import { useStudentStats } from '../components/student/useStudentStats';
+import UpcomingEventsCard from '../components/common/UpcomingEventsCard';
+import { useI18n } from '../i18n/useI18n';
+
+// Tabs are code-split so the dashboard shell loads fast
+const StudentLiveClass = lazy(() => import('../components/live/StudentLiveClass'));
+const StudentVideo = lazy(() => import('../components/video/StudentVideo'));
+const StudentTest = lazy(() => import('../components/test/StudentTest'));
+const StudentDoubt = lazy(() => import('../components/doubt/StudentDoubt'));
+const AIStudyBuddy = lazy(() => import('../components/ai/AIStudyBuddy'));
+const QRScanner = lazy(() => import('../components/attendance/QRScanner'));
+const DailyPractice = lazy(() => import('../components/student/DailyPractice'));
+const MistakeNotebook = lazy(() => import('../components/student/MistakeNotebook'));
+const SyllabusTracker = lazy(() => import('../components/student/SyllabusTracker'));
+const StudyTimer = lazy(() => import('../components/student/StudyTimer'));
+const Bookmarks = lazy(() => import('../components/student/Bookmarks'));
+const Homework = lazy(() => import('../components/student/Homework'));
+const EventCalendar = lazy(() => import('../components/common/EventCalendar'));
+const LeaveRequests = lazy(() => import('../components/common/LeaveRequests'));
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -75,6 +89,12 @@ const StudentDashboard = () => {
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [scheduleError, setScheduleError] = useState('');
   const [testBest, setTestBest] = useState(0);
+
+  // XP / level (refetched after DPP, tests and study sessions)
+  const { t } = useI18n();
+  const [statsVersion, setStatsVersion] = useState(0);
+  const { stats: xpStats } = useStudentStats(statsVersion);
+  const bumpXp = () => setStatsVersion(v => v + 1);
 
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -662,6 +682,7 @@ const StudentDashboard = () => {
         )}
       >
         <div className="flex flex-wrap items-center gap-2">
+          {xpStats && <XpChip stats={xpStats} variant="glass" onClick={() => setActiveView('leaderboard')} />}
           {streak && <StreakBadge streak={streak} />}
           {(currentSlot || nextSlot) && (
             <BannerChip icon={<FiClock />} onClick={() => setActiveView('timetable')}>
@@ -697,6 +718,46 @@ const StudentDashboard = () => {
           hint={fees.dueDate ? `Due ${new Date(fees.dueDate).toLocaleDateString()}` : 'All clear'}
         />
         <StatCard icon={FiZap} label="Day Streak" value={streakCurrent} tone="dark" hint={`Best: ${streakBest} day${streakBest === 1 ? '' : 's'}`} />
+      </div>
+
+      {/* Practice hub · XP · Upcoming events */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="space-y-4">
+          <XpProgressCard stats={xpStats} />
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { id: 'practice', icon: FiZap, label: t('student.nav.practice') },
+              { id: 'study', icon: FiClock, label: t('student.nav.timer') },
+              { id: 'mistakes', icon: FiBookOpen, label: t('student.nav.mistakes') },
+              { id: 'homework', icon: FiEdit, label: t('student.nav.homework') },
+            ].map(a => (
+              <button
+                key={a.id}
+                onClick={() => setActiveView(a.id)}
+                className="ui-card ui-card-hover group flex items-center gap-2.5 p-3 text-left"
+              >
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center group-hover:scale-110 transition-transform"><a.icon /></span>
+                <span className="text-xs font-bold text-gray-800 dark:text-gray-200 leading-tight">{a.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <UpcomingEventsCard limit={5} onViewAll={() => setActiveView('calendar')} className="h-full" />
+        <div className="ui-card p-6 md:col-span-2 xl:col-span-1">
+          <CardHeader icon={FiBookmark} title={t('student.overview.quickTitle')} subtitle={t('student.overview.quickSub')} />
+          <div className="space-y-2">
+            {[
+              { id: 'syllabus', label: t('student.nav.syllabus') },
+              { id: 'bookmarks', label: t('student.nav.bookmarks') },
+              { id: 'leaderboard', label: t('student.nav.leaderboard') },
+              { id: 'leaves', label: t('nav.leaves') },
+            ].map(a => (
+              <button key={a.id} onClick={() => setActiveView(a.id)} className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-gray-50 dark:bg-white/5 hover:bg-brand-50 dark:hover:bg-brand-500/10 text-sm font-bold text-gray-700 dark:text-gray-200 transition-colors">
+                {a.label} <span className="text-brand-500">&rarr;</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Progress · Today · Countdown */}
@@ -824,7 +885,16 @@ const StudentDashboard = () => {
     notices: <NoticesList notices={notices} onSelect={setSelectedNotice} />,
     live: <StudentLiveClass studentId={studentId} />,
     videos: <StudentVideo studentId={studentId} />,
-    tests: <StudentTest studentId={studentId} />,
+    tests: <StudentTest studentId={studentId} onXpChange={bumpXp} />,
+    homework: <Homework studentId={student._id} />,
+    practice: <DailyPractice onXpChange={bumpXp} onNavigate={setActiveView} />,
+    mistakes: <MistakeNotebook />,
+    study: <StudyTimer onXpChange={bumpXp} />,
+    syllabus: <SyllabusTracker />,
+    leaderboard: <Leaderboard stats={xpStats} />,
+    bookmarks: <Bookmarks />,
+    calendar: <EventCalendar />,
+    leaves: <LeaveRequests mode="request" role="student" />,
     doubts: <StudentDoubt studentId={studentId} />,
     'ai-buddy': <AIStudyBuddy />,
     attendance: <QRScanner studentId={studentId} />,
@@ -843,9 +913,12 @@ const StudentDashboard = () => {
       hasUnread={hasUnread}
       onBellClick={() => setShowNotifications(v => !v)}
       extraCommands={extraCommands}
+      topBarExtra={xpStats ? <XpChip stats={xpStats} onClick={() => setActiveView('leaderboard')} /> : null}
     >
       <TabPanel key={activeView}>
-        {tabContent[activeView] || null}
+        <Suspense fallback={<div className="space-y-4" aria-busy="true"><div className="ui-skeleton h-12 w-64" /><div className="ui-skeleton h-64 !rounded-3xl" /></div>}>
+          {tabContent[activeView] || null}
+        </Suspense>
       </TabPanel>
 
       <SelectionModal

@@ -4,9 +4,13 @@ import config from '../../config';
 import { toast } from '../../utils/notify';
 import { errorMessage, resolveFileUrl } from '../student/helpers';
 import { SkeletonRows, EmptyState, PageHeader } from '../student/StudentUI';
-import { FiHelpCircle, FiPlus, FiImage, FiX, FiMessageCircle, FiCheckCircle, FiClock, FiUser, FiSend } from 'react-icons/fi';
+import { FiHelpCircle, FiPlus, FiImage, FiX, FiMessageCircle, FiCheckCircle, FiClock, FiUser, FiSend, FiCpu } from 'react-icons/fi';
+import AIDoubtSolver from '../student/AIDoubtSolver';
+import { RichText } from '../student/PracticeUI';
+import { useI18n } from '../../i18n/useI18n';
 
 const StudentDoubt = ({ studentId }) => {
+    const { t } = useI18n();
     const [doubts, setDoubts] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [subjects, setSubjects] = useState([]);
@@ -94,14 +98,16 @@ const StudentDoubt = ({ studentId }) => {
         <div className="space-y-6">
             <PageHeader
                 icon={FiHelpCircle}
-                title="Doubt Board"
-                subtitle="Get your queries resolved by expert faculty"
+                title={t('student.doubts.title')}
+                subtitle={t('student.doubts.subtitle')}
                 action={(
                     <button onClick={() => setIsModalOpen(true)} className="ui-btn-primary w-full md:w-auto">
-                        <FiPlus /> Ask a doubt
+                        <FiPlus /> {t('student.doubts.askFaculty')}
                     </button>
                 )}
             />
+
+            <AIDoubtSolver doubts={doubts} onAttached={fetchDoubts} />
 
             {doubts.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -135,17 +141,23 @@ const StudentDoubt = ({ studentId }) => {
                                     {doubt.replies?.length > 0 && (
                                         <div className="mt-6 space-y-3">
                                             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                                <FiMessageCircle /> Faculty replies ({doubt.replies.length})
+                                                <FiMessageCircle /> {t('student.doubts.replies', { count: doubt.replies.length })}
                                             </h4>
-                                            {doubt.replies.map((reply, idx) => (
-                                                <div key={idx} className="flex gap-3">
-                                                    <span className="w-9 h-9 shrink-0 rounded-full bg-brand-gradient text-white flex items-center justify-center text-sm"><FiUser /></span>
-                                                    <div className="flex-1 bg-gray-50 dark:bg-white/5 rounded-2xl rounded-tl-md px-4 py-3">
-                                                        <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{reply.message}</p>
-                                                        <p className="text-[11px] font-semibold text-gray-400 mt-2">Replied on {new Date(reply.createdAt).toLocaleDateString()}</p>
+                                            {doubt.replies.map((reply, idx) => {
+                                                const isAI = reply.isAI || reply.by === 'AI';
+                                                return (
+                                                    <div key={idx} className="flex gap-3 min-w-0">
+                                                        <span className={`w-9 h-9 shrink-0 rounded-full text-white flex items-center justify-center text-sm ${isAI ? 'bg-ink-900 dark:bg-white dark:text-ink-900' : 'bg-brand-gradient'}`}>{isAI ? <FiCpu /> : <FiUser />}</span>
+                                                        <div className={`flex-1 min-w-0 rounded-2xl rounded-tl-md px-4 py-3 ${isAI ? 'bg-brand-50/60 dark:bg-brand-500/5 border border-brand-100 dark:border-brand-500/20' : 'bg-gray-50 dark:bg-white/5'}`}>
+                                                            {isAI && <p className="text-[11px] font-extrabold uppercase tracking-widest text-brand-600 dark:text-brand-400 mb-2">{t('student.doubts.aiReply')}</p>}
+                                                            {isAI
+                                                                ? <RichText text={reply.message || reply.text} />
+                                                                : <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{reply.message}</p>}
+                                                            <p className="text-[11px] font-semibold text-gray-400 mt-2">{t('student.doubts.repliedOn', { date: new Date(reply.createdAt).toLocaleDateString() })}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>

@@ -466,16 +466,8 @@ router.post('/publish-overall/:classId', auth, roleAuth('admin'), async (req, re
     }));
 
     if (notifications.length > 0) {
-      await Notification.insertMany(notifications);
-      if (req.io) {
-        students.forEach(student => {
-          req.io.to(student.userId.toString()).emit('notification', {
-            title: 'Final Results Published! 🏆',
-            message: `Your final cumulative report for ${classRecord.name} is now available.`,
-            type: 'academic'
-          });
-        });
-      }
+      // Saves, emits over socket and sends web push in one go
+      await require('../utils/notify').notifyMany(req.io, notifications);
     }
 
     // Send Email Notifications using Brevo (proven method)

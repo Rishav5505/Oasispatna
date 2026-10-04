@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import config from '../../config';
-import { FiMessageCircle, FiCornerUpLeft, FiX, FiCheckCircle, FiImage, FiUser, FiSearch, FiSend } from 'react-icons/fi';
+import { FiMessageCircle, FiCornerUpLeft, FiX, FiCheckCircle, FiImage, FiUser, FiSearch, FiSend, FiZap } from 'react-icons/fi';
 import { notify } from '../../utils/notify';
 import { authHeaders, errMsg, fileHref, idOf, timeAgo } from '../teacher/teacherApi';
 import { Avatar, Badge, EmptyState, PageHeader, Segmented, Spinner } from '../teacher/TeacherUI';
@@ -157,12 +157,12 @@ const DoubtBoard = () => {
                                     {doubt.replies?.map((r, i) => (
                                         <div key={r._id || i} className="flex items-end justify-end gap-2.5 ml-auto max-w-[92%] md:max-w-[80%]">
                                             <div className="min-w-0 text-right">
-                                                <p className="text-[11px] font-semibold text-gray-400 mb-1 mr-1">Faculty reply{r.createdAt ? ` · ${timeAgo(r.createdAt)}` : ''}</p>
-                                                <div className="rounded-2xl rounded-br-md bg-brand-gradient text-white px-4 py-3 text-left shadow-brand-soft">
+                                                <p className="text-[11px] font-semibold text-gray-400 mb-1 mr-1">{r.isAI ? 'AI tutor (auto-generated)' : 'Faculty reply'}{r.createdAt ? ` · ${timeAgo(r.createdAt)}` : ''}</p>
+                                                <div className={`rounded-2xl rounded-br-md px-4 py-3 text-left ${r.isAI ? 'bg-ink-900 text-white dark:bg-white/10 border border-brand-500/30' : 'bg-brand-gradient text-white shadow-brand-soft'}`}>
                                                     <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{r.message}</p>
                                                 </div>
                                             </div>
-                                            <div className="shrink-0 w-9 h-9 rounded-full bg-ink-900 text-white flex items-center justify-center text-sm"><FiUser /></div>
+                                            <div className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm ${r.isAI ? 'bg-brand-gradient text-white' : 'bg-ink-900 text-white'}`}>{r.isAI ? <FiZap /> : <FiUser />}</div>
                                         </div>
                                     ))}
                                 </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiDownload, FiCheck, FiClock, FiX } from 'react-icons/fi';
+import { FiDownload, FiCheck, FiClock, FiX, FiFileText } from 'react-icons/fi';
 import { PaymentStatusBadge } from './ParentUI';
 import { paymentStatus, formatINR } from './parentUtils';
 
@@ -10,7 +10,8 @@ const DOT = {
 };
 
 // Vertical timeline of fee payments with status badges + receipt action
-export const PaymentTimeline = ({ payments, onReceipt }) => (
+// onInvoice(payment) is optional — shows a GST "Invoice" action next to the receipt for Paid fees
+export const PaymentTimeline = ({ payments, onReceipt, onInvoice, invoiceLabel = 'Invoice', invoiceBusyId = null }) => (
     <ol className="relative ui-stagger">
         {payments.map((p, idx) => {
             const status = paymentStatus(p);
@@ -38,9 +39,22 @@ export const PaymentTimeline = ({ payments, onReceipt }) => (
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                             <p className="text-[11px] font-mono text-gray-400 truncate max-w-full">Txn: {p.transactionId || 'N/A'}</p>
                             {status === 'Paid' ? (
-                                <button onClick={() => onReceipt(p)} className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 px-2.5 py-1 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">
-                                    <FiDownload /> Receipt
-                                </button>
+                                <span className="flex flex-wrap items-center gap-1">
+                                    <button onClick={() => onReceipt(p)} className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 px-2.5 py-1 rounded-lg hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">
+                                        <FiDownload /> Receipt
+                                    </button>
+                                    {onInvoice && p._id && (
+                                        <button
+                                            onClick={() => onInvoice(p)}
+                                            disabled={invoiceBusyId === p._id}
+                                            className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-900 dark:text-gray-100 px-2.5 py-1 rounded-lg ring-1 ring-gray-200 dark:ring-white/10 hover:bg-gray-100 dark:hover:bg-white/5 active:scale-95 transition-all disabled:opacity-60"
+                                        >
+                                            {invoiceBusyId === p._id
+                                                ? <span className="w-3 h-3 border-2 border-gray-300 border-t-brand-500 rounded-full animate-spin" />
+                                                : <FiFileText />} {invoiceLabel}
+                                        </button>
+                                    )}
+                                </span>
                             ) : (
                                 <span className="text-[11px] font-semibold text-gray-400">{status === 'Pending' ? 'Receipt after approval' : '—'}</span>
                             )}

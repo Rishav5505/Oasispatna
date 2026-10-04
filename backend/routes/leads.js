@@ -52,7 +52,7 @@ router.post('/', leadLimiter, async (req, res) => {
 });
 
 // Get all leads (Admin only)
-router.get('/', auth, roleAuth('admin'), async (req, res) => {
+router.get('/', auth, roleAuth('admin', 'staff'), async (req, res) => {
   try {
     const leads = await Lead.find().populate('notes.by', 'name').sort({ createdAt: -1 });
     res.json(leads);
@@ -63,7 +63,7 @@ router.get('/', auth, roleAuth('admin'), async (req, res) => {
 });
 
 // Update lead status / add note / set follow-up (Admin only)
-router.patch('/:id', auth, roleAuth('admin'), async (req, res) => {
+router.patch('/:id', auth, roleAuth('admin', 'staff'), async (req, res) => {
   try {
     if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid lead id' });
     const lead = await Lead.findById(req.params.id);
@@ -100,7 +100,7 @@ router.patch('/:id', auth, roleAuth('admin'), async (req, res) => {
 });
 
 // Delete lead (Admin only)
-router.delete('/:id', auth, roleAuth('admin'), async (req, res) => {
+router.delete('/:id', auth, roleAuth('admin', 'staff'), async (req, res) => {
   try {
     if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid lead id' });
     const lead = await Lead.findByIdAndDelete(req.params.id);

@@ -6,7 +6,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, 
 import {
     FiMenu, FiBell, FiSun, FiMoon, FiCalendar, FiCheckCircle, FiCreditCard, FiClock, FiDownload,
     FiTrendingUp, FiAward, FiBookOpen, FiFileText, FiChevronRight, FiLock, FiCamera, FiMail, FiPhone,
-    FiMapPin, FiUsers, FiX, FiHash, FiShield, FiArrowRight, FiUserX, FiPercent, FiLayers, FiMonitor
+    FiMapPin, FiUsers, FiX, FiHash, FiShield, FiArrowRight, FiUserX, FiPercent, FiLayers, FiMonitor,
+    FiMessageSquare, FiSend, FiSliders, FiGlobe
 } from 'react-icons/fi';
 import { FaQrcode, FaUniversity, FaBullhorn } from 'react-icons/fa';
 import oasisLogo from '../assets/oasis_logo.png';
@@ -27,6 +28,18 @@ import { PaymentTimeline } from '../components/parent/FeesWidgets';
 import { NotificationsPanel, NoticeModal, ReportCardModal } from '../components/parent/ParentModals';
 import { GradientBanner, StatCard, AnimatedNumber } from '../components/ui/Motion';
 import { greeting } from '../components/ui/motionUtils';
+import { useI18n } from '../i18n/useI18n';
+import ChatPanel from '../components/common/ChatPanel';
+import LeaveRequests from '../components/common/LeaveRequests';
+import EventCalendar from '../components/common/EventCalendar';
+import UpcomingEventsCard from '../components/common/UpcomingEventsCard';
+import PushToggle from '../components/common/PushToggle';
+import LanguageToggle from '../components/common/LanguageToggle';
+import { useChatUnread } from '../components/common/useChatUnread';
+import InstallmentPlan from '../components/parent/InstallmentPlan';
+import HomeworkTab from '../components/parent/HomeworkTab';
+import InsightsTab from '../components/parent/InsightsTab';
+import { openInvoice } from '../components/parent/invoice';
 
 const ONLINE_PAY_KEY = config.PAYMENT.PROVIDER === 'Razorpay' ? config.PAYMENT.RAZORPAY_KEY_ID : '';
 
@@ -35,6 +48,11 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 const ParentDashboard = () => {
     const { user, logout, updateUser, loading: authLoading } = useContext(AuthContext);
     const { theme, toggleTheme } = useTheme() || {};
+    const { t } = useI18n();
+    // Shared socket.io connection (notifications + live chat); set once connected
+    const [socket, setSocket] = useState(null);
+    const { count: chatUnread } = useChatUnread({ socket });
+    const [invoiceBusyId, setInvoiceBusyId] = useState(null);
     const [profile, setProfile] = useState({});
     const [children, setChildren] = useState([]);
     const [selectedChild, setSelectedChild] = useState(null);
@@ -107,7 +125,7 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return undefined;
         const socket = io(config.SOCKET_URL || config.API_URL.replace('/api', ''), { auth: { token } });
-        socket.on('connect', () => socket.emit('join', token));
+        socket.on('connect', () => { socket.emit('join', token); setSocket(socket); });
         socket.on('notification', (newNotif) => {
             setNotifications(prev => [newNotif, ...prev]);
             if (newNotif?.title) notify(newNotif.title);
@@ -551,6 +569,28 @@ const ParentDashboard = () => {
         win.document.close();
     };
 
+    const handleDownloadInvoice = async (payment) => {
+        if (!payment?._id || invoiceBusyId) return;
+        setInvoiceBusyId(payment._id);
+        try {
+            const result = await openInvoice(payment._id, {
+                logoUrl: new URL(oasisFullLogo, window.location.origin).href,
+                loadingText: t('parent.invoice.preparing'),
+            });
+            if (result === 'popup') notify(t('parent.invoice.popup'));
+        } catch (err) {
+            notify(errorMessage(err, t('parent.invoice.failed')));
+        } finally {
+            setInvoiceBusyId(null);
+        }
+    };
+
+    // "Pay this installment" → open the existing pay flow with the amount prefilled
+    const payInstallment = (amount) => {
+        setPaymentAmount(String(amount));
+        setShowPaymentModal(true);
+    };
+
     const handleDownloadProgressReport = () => {
         if (!currentChild) return notify('Please select a student first');
         const opened = openProgressReport({
@@ -671,16 +711,29 @@ const ParentDashboard = () => {
     const openPayment = () => setShowPaymentModal(true);
 
     const TAB_META = {
-        Overview: { title: 'Overview', crumb: 'Home' },
-        Attendance: { title: 'Attendance', crumb: 'Academics' },
-        Tests: { title: 'Tests & Analysis', crumb: 'Academics' },
-        Performance: { title: 'Report Cards', crumb: 'Academics' },
-        Timetable: { title: 'Timetable', crumb: 'Academics' },
-        Materials: { title: 'Study Materials', crumb: 'Academics' },
-        Fees: { title: 'Fees & Payments', crumb: 'Fees & Updates' },
-        Notices: { title: 'Notice Board', crumb: 'Fees & Updates' },
-        Profile: { title: 'My Profile', crumb: 'Account' },
+        Overview: { title: t('parent.title.overview'), crumb: t('parent.nav.group.home') },
+        Attendance: { title: t('parent.title.attendance'), crumb: t('parent.nav.group.academics') },
+        Tests: { title: t('parent.title.tests'), crumb: t('parent.nav.group.academics') },
+        Performance: { title: t('parent.title.reportCards'), crumb: t('parent.nav.group.academics') },
+        Homework: { title: t('parent.title.homework'), crumb: t('parent.nav.group.academics') },
+        Insights: { title: t('parent.title.insights'), crumb: t('parent.nav.group.academics') },
+        Timetable: { title: t('parent.title.timetable'), crumb: t('parent.nav.group.academics') },
+        Materials: { title: t('parent.title.materials'), crumb: t('parent.nav.group.academics') },
+        Fees: { title: t('parent.title.fees'), crumb: t('parent.nav.group.fees') },
+        Notices: { title: t('parent.title.notices'), crumb: t('parent.nav.group.fees') },
+        Calendar: { title: t('parent.title.calendar'), crumb: t('parent.nav.group.fees') },
+        Chat: { title: t('parent.title.chat'), crumb: t('parent.nav.group.connect') },
+        Leaves: { title: t('parent.title.leaves'), crumb: t('parent.nav.group.connect') },
+        Profile: { title: t('parent.title.profile'), crumb: t('parent.nav.group.account') },
     };
+    const navBadges = { Fees: pendingFees > 0 ? 1 : 0, Notices: activeNoticesCount, Chat: chatUnread };
+    // Selected child first so the leave form defaults to the child being viewed
+    const leaveStudentOptions = currentChild
+        ? [currentChild, ...children.filter(c => c._id !== currentChild._id)].map(c => ({ _id: c._id, name: c.name }))
+        : children.map(c => ({ _id: c._id, name: c.name }));
+    const noChildState = loadingState.children
+        ? <CardsSkeleton count={3} />
+        : <EmptyState icon={FiUserX} title={t('parent.noChildTitle')} hint={t('parent.noChildHint')} />;
 
     const renderReportAction = (variant = 'glass') => (
         <div className={`flex items-stretch rounded-xl overflow-hidden ${variant === 'glass' ? 'bg-white/10 ring-1 ring-white/25 backdrop-blur-md' : 'bg-white dark:bg-ink-800 ring-1 ring-gray-200 dark:ring-white/10'}`}>
@@ -707,7 +760,7 @@ const ParentDashboard = () => {
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-ink-950">
                 <div className="flex flex-col items-center gap-4">
                     <img src={oasisLogo} alt="Oasis" className="w-14 h-14 rounded-2xl bg-white p-1.5 shadow-card animate-pulse" />
-                    <p className="text-sm font-semibold text-gray-500">Loading your dashboard…</p>
+                    <p className="text-sm font-semibold text-gray-500">{t('parent.loadingDashboard')}</p>
                 </div>
             </div>
         );
@@ -725,18 +778,18 @@ const ParentDashboard = () => {
                 userName={profile.name || user?.name}
                 userPhoto={photoUrl(user)}
                 onLogout={logout}
-                badges={{ Fees: pendingFees > 0 ? 1 : 0, Notices: activeNoticesCount }}
+                badges={navBadges}
             />
 
             <main className="flex-1 flex flex-col overflow-hidden min-w-0">
                 {/* Top bar */}
                 <header className="relative z-30 h-[64px] md:h-[72px] shrink-0 ui-glass border-x-0 border-t-0 border-b border-gray-100 dark:border-white/5 flex items-center gap-3 px-3 md:px-8">
-                    <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 shrink-0" aria-label="Open menu">
+                    <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 shrink-0" aria-label={t('parent.nav.openMenu')}>
                         <FiMenu className="text-xl" />
                     </button>
                     <div className="hidden md:block min-w-0 shrink-0">
                         <p className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
-                            Parent portal <FiChevronRight className="text-[10px]" /> {TAB_META[activeTab]?.crumb}
+                            {t('parent.portal')} <FiChevronRight className="text-[10px]" /> {TAB_META[activeTab]?.crumb}
                         </p>
                         <h1 className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">{TAB_META[activeTab]?.title}</h1>
                     </div>
@@ -748,6 +801,8 @@ const ParentDashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-1 md:gap-2 shrink-0">
+                        <LanguageToggle className="hidden sm:inline-flex" />
+                        <PushToggle compact className="hidden sm:inline-flex" />
                         <button
                             onClick={toggleTheme}
                             className="hidden sm:flex p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-brand-600 transition-colors"
@@ -784,7 +839,7 @@ const ParentDashboard = () => {
                             </span>
                             <span className="hidden xl:block text-left">
                                 <span className="block text-xs font-bold text-gray-900 dark:text-white leading-tight">{user?.name || 'Parent'}</span>
-                                <span className="block text-[10px] font-semibold text-gray-400">Guardian</span>
+                                <span className="block text-[10px] font-semibold text-gray-400">{t('parent.guardian')}</span>
                             </span>
                         </button>
                     </div>
@@ -800,11 +855,11 @@ const ParentDashboard = () => {
                             <>
                                 <GradientBanner
                                     title={`${greeting()}, ${firstName} 👋`}
-                                    subtitle={hasChildren ? `${childFirst}'s week at a glance · ${todayStr}` : todayStr}
+                                    subtitle={hasChildren ? `${t('parent.heading.weekGlance', { name: childFirst })} · ${todayStr}` : todayStr}
                                     right={
                                         <div className="flex flex-col gap-2 w-full md:w-auto">
                                             <button onClick={openPayment} disabled={!selectedChild} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-ink-900 font-bold text-sm shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all disabled:opacity-60">
-                                                <FiCreditCard className="text-brand-600" /> {pendingFees > 0 ? `Pay ${formatINR(pendingFees)}` : 'Make a payment'}
+                                                <FiCreditCard className="text-brand-600" /> {pendingFees > 0 ? t('parent.payAmount', { amount: formatINR(pendingFees) }) : t('parent.makePayment')}
                                             </button>
                                             {renderReportAction()}
                                         </div>
@@ -828,8 +883,8 @@ const ParentDashboard = () => {
                                 {!loadingState.children && !hasChildren ? (
                                     <EmptyState
                                         icon={FiUserX}
-                                        title="No student linked to your account yet"
-                                        hint="Please contact the Oasis office to link your ward's profile to this parent account."
+                                        title={t('parent.noChildTitle')}
+                                        hint={t('parent.noChildHint')}
                                     />
                                 ) : (
                                     <>
@@ -859,8 +914,8 @@ const ParentDashboard = () => {
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                             <Panel
                                                 className="lg:col-span-2"
-                                                title="Performance trend"
-                                                subtitle="Score % across published exam marks"
+                                                title={t('parent.heading.performanceTrend')}
+                                                subtitle={t('parent.heading.performanceTrendHint')}
                                                 icon={FiTrendingUp}
                                                 action={<button onClick={() => goTo('Performance')} className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">Report cards <FiArrowRight /></button>}
                                             >
@@ -894,10 +949,10 @@ const ParentDashboard = () => {
                                     {selectedChild && <UpcomingClassesCard key={selectedChild} studentId={selectedChild} />}
                                     <Panel
                                         className={selectedChild ? '' : 'lg:col-span-2'}
-                                        title="Latest notices"
-                                        subtitle="From the institute"
+                                        title={t('parent.heading.latestNotices')}
+                                        subtitle={t('parent.heading.fromInstitute')}
                                         icon={FaBullhorn}
-                                        action={<button onClick={() => goTo('Notices')} className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">View all <FiArrowRight /></button>}
+                                        action={<button onClick={() => goTo('Notices')} className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">{t('parent.viewAll')} <FiArrowRight /></button>}
                                     >
                                         {loadingState.notices ? <ListSkeleton rows={3} /> : notices.length === 0 ? (
                                             <EmptyState icon={FaBullhorn} title="No recent updates" hint="Announcements will appear here." />
@@ -910,6 +965,8 @@ const ParentDashboard = () => {
                                         )}
                                     </Panel>
                                 </div>
+
+                                <UpcomingEventsCard limit={5} onViewAll={() => goTo('Calendar')} />
                             </>
                         )}
 
@@ -919,8 +976,8 @@ const ParentDashboard = () => {
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     <Panel
                                         className="lg:col-span-2"
-                                        title="Fee summary"
-                                        subtitle={currentChild ? `For ${currentChild.name}` : 'Select a student'}
+                                        title={t('parent.heading.feeSummary')}
+                                        subtitle={currentChild ? t('parent.heading.forChild', { name: currentChild.name }) : t('parent.heading.selectStudent')}
                                         icon={FiCreditCard}
                                         action={!loadingState.fees && <DueChip pending={pendingFees} dueDate={fees.dueDate} />}
                                     >
@@ -981,7 +1038,7 @@ const ParentDashboard = () => {
 
                                     <div className="rounded-3xl p-5 md:p-6 bg-brand-dark text-white relative overflow-hidden">
                                         <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-brand-500/20 blur-2xl" />
-                                        <p className="relative text-[11px] font-bold uppercase tracking-[0.16em] text-brand-300 flex items-center gap-2"><FiShield /> How payments work</p>
+                                        <p className="relative text-[11px] font-bold uppercase tracking-[0.16em] text-brand-300 flex items-center gap-2"><FiShield /> {t('parent.heading.howPayments')}</p>
                                         <ol className="relative mt-4 space-y-4">
                                             {[
                                                 { t: 'Pay the institute', d: 'Via UPI or bank transfer (details at the Oasis front office).' },
@@ -1000,7 +1057,16 @@ const ParentDashboard = () => {
                                     </div>
                                 </div>
 
-                                <Panel title="Payment history" subtitle="All payments and their status" icon={FiFileText}>
+                                {selectedChild && (
+                                    <InstallmentPlan
+                                        key={selectedChild}
+                                        studentId={selectedChild}
+                                        onPay={payInstallment}
+                                        refreshKey={`${fees.paidFees || 0}-${payments.length}`}
+                                    />
+                                )}
+
+                                <Panel title={t('parent.heading.paymentHistory')} subtitle={t('parent.heading.paymentHistoryHint')} icon={FiFileText}>
                                     {loadingState.fees ? (
                                         <ListSkeleton rows={3} />
                                     ) : payments.length === 0 ? (
@@ -1011,7 +1077,13 @@ const ParentDashboard = () => {
                                             action={selectedChild && <button onClick={openPayment} className="ui-btn-primary"><FiCreditCard /> Make a payment</button>}
                                         />
                                     ) : (
-                                        <PaymentTimeline payments={payments} onReceipt={handleDownloadReceipt} />
+                                        <PaymentTimeline
+                                            payments={payments}
+                                            onReceipt={handleDownloadReceipt}
+                                            onInvoice={handleDownloadInvoice}
+                                            invoiceLabel={t('parent.invoice.download')}
+                                            invoiceBusyId={invoiceBusyId}
+                                        />
                                     )}
                                 </Panel>
                             </>
@@ -1047,7 +1119,7 @@ const ParentDashboard = () => {
                                     <div className="flex items-center gap-3">
                                         <span className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center"><FiCalendar /></span>
                                         <div>
-                                            <h2 className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">Attendance calendar</h2>
+                                            <h2 className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">{t('parent.heading.attendanceCalendar')}</h2>
                                             <p className="text-xs text-gray-500">Filter by subject</p>
                                         </div>
                                     </div>
@@ -1143,7 +1215,7 @@ const ParentDashboard = () => {
                                     <div className="flex items-center gap-3">
                                         <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white flex items-center justify-center text-lg shadow-brand-soft"><FiAward /></span>
                                         <div>
-                                            <h2 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">Academic result centre</h2>
+                                            <h2 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">{t('parent.heading.resultCentre')}</h2>
                                             <p className="text-sm text-gray-500">Official report cards and monthly progress reports</p>
                                         </div>
                                     </div>
@@ -1187,7 +1259,7 @@ const ParentDashboard = () => {
                                 )}
 
                                 <div>
-                                    <h3 className="text-sm font-extrabold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400 mb-3">Recent assessments</h3>
+                                    <h3 className="text-sm font-extrabold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400 mb-3">{t('parent.heading.recentAssessments')}</h3>
                                     {examSummaries.length > 0 ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ui-stagger">
                                             {examSummaries.map((summary, idx) => {
@@ -1261,7 +1333,7 @@ const ParentDashboard = () => {
 
                         {/* ================= NOTICES ================= */}
                         {activeTab === 'Notices' && (
-                            <Panel title="Notice board" subtitle="Official announcements and circulars" icon={FaBullhorn}
+                            <Panel title={t('parent.heading.noticeBoard')} subtitle="Official announcements and circulars" icon={FaBullhorn}
                                 action={!loadingState.notices && notices.length > 0 && <Chip tone="brand">{notices.length} notice{notices.length > 1 ? 's' : ''}</Chip>}
                             >
                                 {loadingState.notices ? <ListSkeleton rows={4} /> : notices.length === 0 ? (
@@ -1294,7 +1366,74 @@ const ParentDashboard = () => {
                                 ? <TimetableTab key={selectedChild} studentId={selectedChild} childName={currentChild?.name} />
                                 : loadingState.children
                                     ? <CardsSkeleton count={3} />
-                                    : <EmptyState icon={FiCalendar} title="No student linked to your account yet" />
+                                    : <EmptyState icon={FiCalendar} title={t('parent.noChildTitle')} />
+                        )}
+
+                        {/* ================= HOMEWORK ================= */}
+                        {activeTab === 'Homework' && (
+                            selectedChild
+                                ? <HomeworkTab key={selectedChild} studentId={selectedChild} childName={currentChild?.name} />
+                                : noChildState
+                        )}
+
+                        {/* ================= LEARNING INSIGHTS ================= */}
+                        {activeTab === 'Insights' && (
+                            selectedChild ? (
+                                <>
+                                <div className="ui-card p-5 md:p-6 flex items-center gap-3">
+                                    <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white flex items-center justify-center text-lg shadow-brand-soft"><FiTrendingUp /></span>
+                                    <div className="min-w-0">
+                                        <h2 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">{t('parent.ins.title')}</h2>
+                                        <p className="text-sm text-gray-500">{t('parent.ins.subtitle', { name: childFirst })}</p>
+                                    </div>
+                                </div>
+                                    <InsightsTab key={selectedChild} studentId={selectedChild} />
+                                </>
+                            ) : noChildState
+                        )}
+
+                        {/* ================= CALENDAR ================= */}
+                        {activeTab === 'Calendar' && (
+                            <>
+                                <div className="ui-card p-5 md:p-6 flex items-center gap-3">
+                                    <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white flex items-center justify-center text-lg shadow-brand-soft"><FiCalendar /></span>
+                                    <div className="min-w-0">
+                                        <h2 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">{t('parent.cal.title')}</h2>
+                                        <p className="text-sm text-gray-500">{t('parent.cal.subtitle')}</p>
+                                    </div>
+                                </div>
+                                <EventCalendar />
+                            </>
+                        )}
+
+                        {/* ================= CHAT ================= */}
+                        {activeTab === 'Chat' && (
+                            <>
+                                <div className="ui-card p-5 md:p-6 flex items-center gap-3">
+                                    <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white flex items-center justify-center text-lg shadow-brand-soft"><FiMessageSquare /></span>
+                                    <div className="min-w-0">
+                                        <h2 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">{t('parent.chat.title')}</h2>
+                                        <p className="text-sm text-gray-500">{t('parent.chat.subtitle', { name: childFirst })}</p>
+                                    </div>
+                                </div>
+                                <ChatPanel socket={socket} className="h-[calc(100dvh-16rem)] lg:h-[calc(100dvh-15rem)] min-h-[440px]" />
+                            </>
+                        )}
+
+                        {/* ================= LEAVE REQUESTS ================= */}
+                        {activeTab === 'Leaves' && (
+                            hasChildren ? (
+                                <>
+                                <div className="ui-card p-5 md:p-6 flex items-center gap-3">
+                                    <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white flex items-center justify-center text-lg shadow-brand-soft"><FiSend /></span>
+                                    <div className="min-w-0">
+                                        <h2 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">{t('parent.leave.title')}</h2>
+                                        <p className="text-sm text-gray-500">{t('parent.leave.subtitle')}</p>
+                                    </div>
+                                </div>
+                                    <LeaveRequests key={selectedChild || 'none'} mode="request" role="parent" studentOptions={leaveStudentOptions} />
+                                </>
+                            ) : noChildState
                         )}
 
                         {/* ================= PROFILE ================= */}
@@ -1331,7 +1470,7 @@ const ParentDashboard = () => {
                                     </div>
                                 </div>
 
-                                <Panel title="Account details" icon={FiShield}>
+                                <Panel title={t('parent.heading.accountDetails')} icon={FiShield}>
                                     <dl className="divide-y divide-gray-100 dark:divide-white/5">
                                         {[
                                             { icon: FiMail, label: 'Email', value: profile.email },
@@ -1347,8 +1486,33 @@ const ParentDashboard = () => {
                                     </dl>
                                 </Panel>
 
+                                <Panel title={t('parent.settings.title')} icon={FiSliders}>
+                                    <div className="divide-y divide-gray-100 dark:divide-white/5">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <span className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 flex items-center justify-center shrink-0"><FiGlobe /></span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-gray-900 dark:text-white">{t('parent.settings.language')}</p>
+                                                    <p className="text-xs text-gray-500">{t('parent.settings.languageHint')}</p>
+                                                </div>
+                                            </div>
+                                            <LanguageToggle className="self-start sm:self-auto" />
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <span className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 flex items-center justify-center shrink-0"><FiBell /></span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-gray-900 dark:text-white">{t('parent.settings.push')}</p>
+                                                    <p className="text-xs text-gray-500">{t('parent.settings.pushHint')}</p>
+                                                </div>
+                                            </div>
+                                            <PushToggle className="self-start sm:self-auto" />
+                                        </div>
+                                    </div>
+                                </Panel>
+
                                 {children.length > 0 && (
-                                    <Panel title="Linked students" subtitle="Tap to switch the dashboard view" icon={FiUsers}>
+                                    <Panel title={t('parent.heading.linkedStudents')} subtitle="Tap to switch the dashboard view" icon={FiUsers}>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {children.map(student => {
                                                 const active = student._id === selectedChild;
@@ -1384,7 +1548,7 @@ const ParentDashboard = () => {
                 moreOpen={moreOpen}
                 setMoreOpen={setMoreOpen}
                 onLogout={logout}
-                badges={{ Fees: pendingFees > 0 ? 1 : 0, Notices: activeNoticesCount }}
+                badges={navBadges}
             />
 
             {/* ================= PAYMENT MODAL ================= */}
@@ -1404,7 +1568,7 @@ const ParentDashboard = () => {
                             <div className="flex items-center gap-3">
                                 <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white flex items-center justify-center text-lg shadow-brand-soft"><FiCreditCard /></span>
                                 <div>
-                                    <h2 id="pay-title" className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">Pay fees</h2>
+                                    <h2 id="pay-title" className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">{t('parent.heading.payFees')}</h2>
                                     <p className="text-xs text-gray-500">For {currentChild?.name || 'student'} · Due {formatINR(pendingFees)}</p>
                                 </div>
                             </div>

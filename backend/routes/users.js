@@ -13,6 +13,8 @@ const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const sendSMS = require('../utils/sendSMS');
 const { getAccessibleStudent, isObjectId } = require('../utils/access');
+const { HttpError, createStudentAccount, createOrLinkParent, normEmail } = require('../utils/studentAccounts');
+const { notifyUser } = require('../utils/notify');
 
 const safeUser = (u) => {
   if (!u) return u;
@@ -102,7 +104,7 @@ router.put('/:id', auth, roleAuth('admin'), async (req, res) => {
     if (name !== undefined && name !== '') user.name = name;
     if (phone !== undefined && phone !== '') user.phone = phone;
     if (role !== undefined) {
-      if (!['admin', 'teacher', 'student', 'parent'].includes(role)) {
+      if (!['admin', 'teacher', 'student', 'parent', 'staff'].includes(role)) {
         return res.status(400).json({ message: 'Invalid role' });
       }
       user.role = role;
@@ -293,6 +295,12 @@ router.put('/teachers/:id', auth, roleAuth('admin'), async (req, res) => {
       teacher.classes = await resolveIds(classes, Class);
     }
 
+    if (req.body.monthlySalary !== undefined) {
+      const sal = Number(req.body.monthlySalary);
+      if (!Number.isFinite(sal) || sal < 0) return res.status(400).json({ message: 'monthlySalary must be a non-negative number' });
+      teacher.monthlySalary = sal;
+    }
+
     await teacher.save();
     res.json({ message: 'Teacher assignments updated', teacher });
   } catch (err) {
@@ -365,7 +373,7 @@ router.get('/batches', async (req, res) => {
 });
 
 // Get all students (admin only) - for dropdowns etc
-router.get('/students/all', auth, roleAuth('admin'), async (req, res) => {
+router.get('/students/all', auth, roleAuth('admin', 'staff'), async (req, res) => {
   try {
     console.log('Fetching all students for admin dropdown...');
     const students = await Student.find()
@@ -384,67 +392,141 @@ router.get('/students/all', auth, roleAuth('admin'), async (req, res) => {
 
 // Create student (admin): User(role student, mustChangePassword) + Student; emails credentials
 router.post('/students', auth, roleAuth('admin'), async (req, res) => {
-  const { name, phone, password, classId, batchId, fatherName, motherName, totalFee } = req.body;
-  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   try {
-    if (!name || !email || !phone || !classId) {
-      return res.status(400).json({ message: 'Name, email, phone and class are required' });
-    }
-    if (!isObjectId(String(classId)) || (batchId && !isObjectId(String(batchId)))) {
-      return res.status(400).json({ message: 'Invalid class or batch id' });
-    }
-    const cls = await Class.findById(classId);
-    if (!cls) return res.status(400).json({ message: 'Class not found' });
-    if (batchId && !(await Batch.findById(batchId))) return res.status(400).json({ message: 'Batch not found' });
-
-    const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ message: 'User already exists' });
-
-    const tempPassword = password || crypto.randomBytes(6).toString('hex');
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(String(tempPassword), salt);
-
-    const createdUser = await User.create({
-      name,
-      email,
-      phone,
-      password: hashedPassword,
-      role: 'student',
-      mustChangePassword: true,
-    });
-
-    let student;
-    try {
-      student = await Student.create({
-        userId: createdUser._id,
-        name,
-        fatherName,
-        motherName,
-        classId,
-        batchId: batchId || undefined,
-        totalFee: Number(totalFee) || 0,
-        admissionDate: new Date(),
-      });
-    } catch (e) {
-      await User.deleteOne({ _id: createdUser._id }); // roll back the half-created account
-      throw e;
-    }
-
-    const loginUrl = (process.env.FRONTEND_URL || 'http://localhost:5173') + '/login';
-    const msg = 'Welcome to Oasis JEE Classes, ' + name + '!\n\n' +
-      'Your student account has been created.\n' +
-      'Login: ' + loginUrl + '\n' +
-      'Email: ' + email + '\n' +
-      'Temporary password: ' + tempPassword + '\n\n' +
-      'You will be asked to change your password on first login.';
-    sendEmail(email, 'Your Oasis Student Account', msg).catch(e => console.error('Failed to send student credential email:', e.message));
-
+    const { user: createdUser, student } = await createStudentAccount(req.body);
     const populated = await Student.findById(student._id).populate('classId', 'name').populate('batchId', 'name');
     res.status(201).json({ user: safeUser(createdUser), student: populated });
   } catch (err) {
+    if (err instanceof HttpError) return res.status(err.status).json({ message: err.message });
     console.error('Error creating student:', err);
     if (err.code === 11000) return res.status(400).json({ message: 'User already exists' });
     if (err.name === 'ValidationError' || err.name === 'CastError') return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Bulk student import (admin). Classes/batches are resolved by id or name (case-insensitive); never auto-created.
+router.post('/students/bulk', auth, roleAuth('admin'), async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.students) ? req.body.students : null;
+    if (!rows || rows.length === 0) return res.status(400).json({ message: 'students must be a non-empty array' });
+    if (rows.length > 500) return res.status(400).json({ message: 'Maximum 500 rows per import' });
+    const sendEmails = req.body.sendEmails === true || req.body.sendEmails === 'true';
+
+    const [classes, batches] = await Promise.all([Class.find().select('name'), Batch.find().select('name classId')]);
+    const norm = (v) => String(v || '').trim().toLowerCase();
+    const findClass = (r) => {
+      if (r.classId && isObjectId(String(r.classId))) return classes.find(c => String(c._id) === String(r.classId)) || null;
+      const n = norm(r.className || r.class);
+      return n ? classes.find(c => norm(c.name) === n) || null : null;
+    };
+    const findBatch = (r, cls) => {
+      if (r.batchId && isObjectId(String(r.batchId))) return batches.find(b => String(b._id) === String(r.batchId)) || null;
+      const n = norm(r.batchName || r.batch);
+      if (!n) return undefined; // no batch requested
+      const matches = batches.filter(b => norm(b.name) === n);
+      return matches.find(b => b.classId && String(b.classId) === String(cls._id)) || matches[0] || null;
+    };
+
+    const seen = new Set();
+    const skipped = [];
+    let created = 0;
+    let parentsLinked = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i] || {};
+      const row = i + 1;
+      const email = normEmail(r.email);
+      const skip = (reason) => skipped.push({ row, email: email || String(r.email || ''), reason });
+      try {
+        if (!r.name || !email || !r.phone) { skip('name, email and phone are required'); continue; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { skip('Invalid email'); continue; }
+        if (seen.has(email)) { skip('Duplicate email in import'); continue; }
+        seen.add(email);
+        if (await User.exists({ email })) { skip('User already exists'); continue; }
+        const cls = findClass(r);
+        if (!cls) { skip(`Class not found: ${r.className || r.classId || ''}`.trim()); continue; }
+        const batch = findBatch(r, cls);
+        if (batch === null) { skip(`Batch not found: ${r.batchName || r.batchId}`); continue; }
+
+        const { student } = await createStudentAccount({
+          name: String(r.name).trim(),
+          email,
+          phone: String(r.phone).trim(),
+          classId: cls._id,
+          batchId: batch ? batch._id : undefined,
+          fatherName: r.fatherName,
+          motherName: r.motherName,
+          totalFee: r.totalFee,
+        }, { sendEmails, cls });
+        created += 1;
+
+        if (r.parentEmail) {
+          try {
+            const linked = await createOrLinkParent({
+              name: r.fatherName || r.motherName,
+              email: r.parentEmail,
+              phone: r.parentPhone || r.phone,
+              student,
+              sendEmails,
+            });
+            if (linked) parentsLinked += 1;
+          } catch (e) {
+            console.error(`Bulk import row ${row}: parent link failed:`, e.message);
+          }
+        }
+      } catch (e) {
+        skip(e instanceof HttpError ? e.message : (e.code === 11000 ? 'User already exists' : 'Failed to create'));
+        if (!(e instanceof HttpError)) console.error(`Bulk import row ${row} failed:`, e.message);
+      }
+    }
+
+    res.json({ created, skipped, parentsLinked });
+  } catch (err) {
+    console.error('Error in bulk student import:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Staff / receptionist accounts (admin). Delete via DELETE /users/:id.
+router.get('/staff', auth, roleAuth('admin'), async (req, res) => {
+  try {
+    const staff = await User.find({ role: 'staff' }).select('-password -resetToken -resetTokenExpiry').sort({ createdAt: -1 });
+    res.json(staff);
+  } catch (err) {
+    console.error('Error listing staff:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/staff', auth, roleAuth('admin'), async (req, res) => {
+  try {
+    const { name, phone, password } = req.body;
+    const email = normEmail(req.body.email);
+    if (!name || !email || !phone) return res.status(400).json({ message: 'Name, email and phone are required' });
+    if (await User.exists({ email })) return res.status(409).json({ message: 'User already exists' });
+
+    const tempPassword = password || crypto.randomBytes(6).toString('hex');
+    const salt = await bcrypt.genSalt(10);
+    const user = await User.create({
+      name,
+      email,
+      phone,
+      password: await bcrypt.hash(String(tempPassword), salt),
+      role: 'staff',
+      mustChangePassword: !password,
+    });
+
+    const loginUrl = (process.env.FRONTEND_URL || 'http://localhost:5173') + '/login';
+    sendEmail(email, 'Your Oasis Staff Account',
+      `Dear ${name},\n\nA staff account has been created for you at Oasis JEE Classes.\nLogin: ${loginUrl}\nEmail: ${email}\nPassword: ${tempPassword}` +
+      (password ? '' : '\n\nYou will be asked to change your password on first login.'))
+      .catch(e => console.error('Failed to send staff credential email:', e.message));
+
+    res.status(201).json(safeUser(user));
+  } catch (err) {
+    console.error('Error creating staff:', err);
+    if (err.code === 11000) return res.status(409).json({ message: 'User already exists' });
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -571,14 +653,12 @@ router.post('/link-parent', auth, roleAuth('admin'), async (req, res) => {
 
     console.log('Successfully linked Parent and Student');
 
-    // 5. Create Notification for the parent
-    const newNotification = new Notification({
-      recipient: parentId,
+    // 5. Notify the parent (DB + socket + push)
+    await notifyUser(req.io, parentId, {
       title: 'Academic Profile Linked',
       message: `Profile of ${student.name} has been successfully linked to your portal. You can now track attendance and performance details.`,
       type: 'linking'
     });
-    await newNotification.save();
 
     res.json({
       message: 'Connection established successfully',

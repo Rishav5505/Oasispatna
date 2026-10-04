@@ -8,6 +8,8 @@ const Student = require('../models/Student');
 const Subject = require('../models/Subject');
 const { notifyMany } = require('../utils/notify');
 const { uploadSingle, fileUrl } = require('../utils/upload');
+const { awardXp, XP } = require('../utils/xp');
+const { recordMistakes } = require('../utils/mistakes');
 const {
     getAccessibleStudent,
     resolveStudent,
@@ -22,19 +24,37 @@ const NUMERIC_TOLERANCE = 0.01;
 const SUBMIT_GRACE_MS = 2 * 60 * 1000; // allow late network submissions up to 2 min after endTime
 
 const EDITABLE_FIELDS = ['title', 'description', 'questionPaperUrl', 'subjectId', 'classId', 'batchId', 'questions',
-    'duration', 'totalMarks', 'passingMarks', 'negativeMarks', 'startTime', 'endTime', 'status'];
+    'duration', 'totalMarks', 'passingMarks', 'negativeMarks', 'startTime', 'endTime', 'status', 'isMock', 'sections', 'pattern'];
+
+// JEE Main pattern: 3 sections x (20 MCQ +4/-1 + 5 numerical +4/0), 180 min
+const JEE_MAIN = {
+    duration: 180,
+    sectionNames: ['Physics', 'Chemistry', 'Mathematics'],
+    perSection: 25,
+    mcq: { marks: 4, negativeMarks: 1 },
+    numerical: { marks: 4, negativeMarks: 0 },
+};
 
 const pick = (obj, keys) => keys.reduce((acc, k) => { if (obj[k] !== undefined) acc[k] = obj[k]; return acc; }, {});
 
 // Normalise incoming question payloads
-const normalizeQuestions = (questions) => (Array.isArray(questions) ? questions : []).map(q => {
+const normalizeQuestions = (questions, pattern) => (Array.isArray(questions) ? questions : []).map(q => {
     const type = q.type === 'numerical' ? 'numerical' : 'mcq';
+    const jee = pattern === 'jee_main' ? JEE_MAIN[type] : null;
     const out = {
         questionText: q.questionText,
         type,
         options: type === 'mcq' ? (Array.isArray(q.options) ? q.options.map(String) : []) : [],
-        marks: q.marks !== undefined && q.marks !== '' ? Number(q.marks) : 1,
+        marks: q.marks !== undefined && q.marks !== '' && q.marks !== null ? Number(q.marks) : (jee ? jee.marks : 1),
     };
+    if (q.negativeMarks !== undefined && q.negativeMarks !== '' && q.negativeMarks !== null && Number.isFinite(Number(q.negativeMarks))) {
+        out.negativeMarks = Math.abs(Number(q.negativeMarks));
+    } else if (jee) {
+        out.negativeMarks = jee.negativeMarks;
+    }
+    if (q.solution !== undefined && q.solution !== null) out.solution = String(q.solution).slice(0, 20000);
+    if (q.chapter !== undefined && q.chapter !== null) out.chapter = String(q.chapter).slice(0, 200);
+    if (q.bankItemId && isObjectId(String(q.bankItemId))) out.bankItemId = q.bankItemId;
     if (q._id && isObjectId(String(q._id))) out._id = q._id;
     if (type === 'mcq') out.correctOption = Number(q.correctOption);
     else out.correctAnswer = Number(q.correctAnswer);
@@ -42,6 +62,52 @@ const normalizeQuestions = (questions) => (Array.isArray(questions) ? questions 
 });
 
 const sumMarks = (questions) => questions.reduce((acc, q) => acc + (Number(q.marks) || 0), 0);
+
+// Normalise sections [{name, subjectId?, questionIndexes:[Number]}]; returns { sections } or { error }
+function normalizeSections(sections, questionCount) {
+    if (!Array.isArray(sections)) return { sections: [] };
+    const out = [];
+    for (const sec of sections) {
+        if (!sec || !String(sec.name || '').trim()) return { error: 'Each section needs a name' };
+        const idx = (Array.isArray(sec.questionIndexes) ? sec.questionIndexes : []).map(Number);
+        if (idx.some(i => !Number.isInteger(i) || i < 0 || i >= questionCount)) {
+            return { error: 'Section "' + sec.name + '" has an invalid question index' };
+        }
+        const row = { name: String(sec.name).trim().slice(0, 100), questionIndexes: [...new Set(idx)] };
+        if (sec.subjectId && isObjectId(String(sec.subjectId))) row.subjectId = sec.subjectId;
+        out.push(row);
+    }
+    return { sections: out };
+}
+
+// Default JEE Main sections: consecutive blocks (25 each for a 75-question paper) named Physics, Chemistry, Mathematics
+function defaultJeeSections(questionCount) {
+    if (questionCount === 0) return [];
+    const per = questionCount === JEE_MAIN.perSection * 3 ? JEE_MAIN.perSection : Math.ceil(questionCount / 3);
+    return JEE_MAIN.sectionNames.map((name, s) => ({
+        name,
+        questionIndexes: Array.from({ length: per }, (_, i) => s * per + i).filter(i => i < questionCount),
+    })).filter(sec => sec.questionIndexes.length);
+}
+
+// Validate isMock / pattern / sections on a payload (questionsForIndexes = the questions the sections point into)
+function applyMockFields(data, questionsForIndexes) {
+    if (data.pattern !== undefined && !['custom', 'jee_main'].includes(data.pattern)) return 'Invalid pattern';
+    if (data.isMock !== undefined) data.isMock = data.isMock === true || data.isMock === 'true';
+    if (data.sections !== undefined) {
+        const { sections, error } = normalizeSections(data.sections, (questionsForIndexes || []).length);
+        if (error) return error;
+        data.sections = sections;
+    }
+    return null;
+}
+
+// % of submissions with score <= mine (2 decimals)
+const percentileOf = (score, allScores) => {
+    if (!allScores.length) return 0;
+    const le = allScores.filter(x => x <= score).length;
+    return Math.round((le / allScores.length) * 10000) / 100;
+};
 
 // Strip answers from a test for student-facing payloads
 const sanitizeTest = (t) => {
@@ -52,6 +118,7 @@ const sanitizeTest = (t) => {
         type: q.type || 'mcq',
         options: q.options,
         marks: q.marks,
+        negativeMarks: q.negativeMarks,
     }));
     return obj;
 };
@@ -202,35 +269,67 @@ router.post('/submit', auth, async (req, res) => {
         const existing = await TestResult.findOne({ testId: test._id, studentId: student._id });
         if (existing) return res.status(400).json({ message: 'You have already submitted this test' });
 
-        const negative = Number(test.negativeMarks) || 0;
+        const testNegative = Number(test.negativeMarks) || 0;
         let score = 0, correct = 0, wrong = 0, unattempted = 0;
+        const perQuestion = []; // by question index: { delta, max, outcome: 'correct'|'wrong'|'skip' }
+        const wrongItems = [];
 
-        const processedAnswers = test.questions.map(q => {
+        const processedAnswers = test.questions.map((q, qi) => {
             const a = answers.find(x => x && x.questionId != null && String(x.questionId) === String(q._id)) || {};
             const marks = Number(q.marks) || 1;
+            // Per-question negative marks override (falls back to test-level)
+            const negative = q.negativeMarks != null && Number.isFinite(Number(q.negativeMarks)) ? Math.abs(Number(q.negativeMarks)) : testNegative;
+            const track = (outcome, yourAnswer) => {
+                perQuestion[qi] = { delta: outcome === 'correct' ? marks : (outcome === 'wrong' ? -negative : 0), max: marks, outcome };
+                if (outcome === 'wrong') wrongItems.push({ q, qi, yourAnswer });
+            };
 
             if ((q.type || 'mcq') === 'numerical') {
                 const raw = a.numericAnswer !== undefined ? a.numericAnswer : (a.answer !== undefined ? a.answer : a.selectedOption);
                 if (isBlank(raw) || Number.isNaN(Number(raw))) {
                     unattempted++;
+                    track('skip');
                     return { questionId: q._id, isCorrect: false };
                 }
                 const val = Number(raw);
                 const isCorrect = q.correctAnswer != null && Math.abs(val - Number(q.correctAnswer)) <= NUMERIC_TOLERANCE;
                 if (isCorrect) { score += marks; correct++; } else { score -= negative; wrong++; }
+                track(isCorrect ? 'correct' : 'wrong', val);
                 return { questionId: q._id, numericAnswer: val, isCorrect };
             }
 
             const raw = a.selectedOption;
             if (isBlank(raw) || Number.isNaN(Number(raw))) {
                 unattempted++;
+                track('skip');
                 return { questionId: q._id, isCorrect: false };
             }
             const sel = Number(raw);
             const isCorrect = sel === Number(q.correctOption);
             if (isCorrect) { score += marks; correct++; } else { score -= negative; wrong++; }
+            track(isCorrect ? 'correct' : 'wrong', sel);
             return { questionId: q._id, selectedOption: sel, isCorrect };
         });
+
+        // Section-wise scores (mock tests)
+        const sectionScores = (test.sections || []).map(sec => {
+            const row = { name: sec.name, score: 0, max: 0, correct: 0, wrong: 0 };
+            (sec.questionIndexes || []).forEach(i => {
+                const p = perQuestion[i];
+                if (!p) return;
+                row.score += p.delta;
+                row.max += p.max;
+                if (p.outcome === 'correct') row.correct++;
+                if (p.outcome === 'wrong') row.wrong++;
+            });
+            row.score = Math.round(row.score * 100) / 100;
+            return row;
+        });
+        const sectionSubject = (qi) => {
+            const sec = (test.sections || []).find(x => (x.questionIndexes || []).includes(qi));
+            return (sec && sec.subjectId) || test.subjectId;
+        };
+        const xpEarned = correct * XP.TEST_CORRECT;
 
         score = Math.round(score * 100) / 100;
         const timeTaken = Number(req.body.timeTaken);
@@ -244,11 +343,29 @@ router.post('/submit', auth, async (req, res) => {
             correct,
             wrong,
             unattempted,
+            sectionScores,
+            xpEarned,
             timeTaken: Number.isFinite(timeTaken) && timeTaken >= 0 ? Math.round(timeTaken) : undefined
         });
 
         await result.save();
-        res.json({ ...result.toObject(), correct, wrong, unattempted });
+
+        // Percentile among all submissions so far (stored as a snapshot; reads recompute it live)
+        const allScores = (await TestResult.find({ testId: test._id }).select('score')).map(r => r.score);
+        const percentile = percentileOf(score, allScores);
+        result.percentile = percentile;
+        await TestResult.updateOne({ _id: result._id }, { $set: { percentile } });
+
+        // Side effects: Mistake Notebook + XP (helpers never throw)
+        await recordMistakes(student._id, wrongItems.map(({ q, qi, yourAnswer }) => ({
+            question: q.toObject ? q.toObject() : q,
+            yourAnswer,
+            subjectId: sectionSubject(qi),
+            chapter: q.chapter,
+        })), { source: 'test', testId: test._id });
+        if (xpEarned > 0) await awardXp(student._id, xpEarned);
+
+        res.json({ ...result.toObject(), correct, wrong, unattempted, sectionScores, percentile, xpEarned });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
@@ -269,9 +386,12 @@ router.get('/result/:testId/:studentId', auth, async (req, res) => {
         if (!studentResult) return res.status(404).json({ message: 'Result not found' });
 
         const rank = results.findIndex(r => r.studentId.toString() === sid) + 1;
+        const obj = studentResult.toObject();
 
         res.json({
-            ...studentResult.toObject(),
+            ...obj,
+            sectionScores: obj.sectionScores || [],
+            percentile: percentileOf(studentResult.score, results.map(r => r.score)),
             rank,
             totalStudents: results.length
         });
@@ -284,7 +404,16 @@ router.get('/result/:testId/:studentId', auth, async (req, res) => {
 router.post('/', auth, roleAuth('teacher', 'admin'), async (req, res) => {
     try {
         const data = pick(req.body, EDITABLE_FIELDS);
-        data.questions = normalizeQuestions(data.questions);
+        data.questions = normalizeQuestions(data.questions, data.pattern);
+        if (data.pattern === 'jee_main') {
+            if (data.isMock === undefined) data.isMock = true;
+            if (data.duration === undefined || data.duration === '' || data.duration === null) data.duration = JEE_MAIN.duration;
+            if (data.sections === undefined || (Array.isArray(data.sections) && data.sections.length === 0)) {
+                data.sections = defaultJeeSections(data.questions.length);
+            }
+        }
+        const mockErr = applyMockFields(data, data.questions);
+        if (mockErr) return res.status(400).json({ message: mockErr });
         data.status = ['draft', 'active', 'completed'].includes(req.body.status) ? req.body.status : 'active';
         data.negativeMarks = Math.abs(Number(req.body.negativeMarks)) || 0;
         if (data.totalMarks === undefined || data.totalMarks === '' || data.totalMarks === null) {
@@ -316,7 +445,9 @@ router.put('/:id', auth, roleAuth('teacher', 'admin'), async (req, res) => {
 
         const wasActive = test.status === 'active';
         const data = pick(req.body, EDITABLE_FIELDS);
-        if (data.questions !== undefined) data.questions = normalizeQuestions(data.questions);
+        if (data.questions !== undefined) data.questions = normalizeQuestions(data.questions, data.pattern || test.pattern);
+        const mockErr = applyMockFields(data, data.questions !== undefined ? data.questions : test.questions);
+        if (mockErr) return res.status(400).json({ message: mockErr });
         if (data.negativeMarks !== undefined) data.negativeMarks = Math.abs(Number(data.negativeMarks)) || 0;
         if (data.status !== undefined && !['draft', 'active', 'completed'].includes(data.status)) {
             return res.status(400).json({ message: 'Invalid status' });
@@ -442,6 +573,7 @@ router.get('/:id/leaderboard', auth, async (req, res) => {
             .populate('studentId', 'name')
             .sort({ score: -1, submittedAt: 1 });
 
+        const allScores = results.map(r => r.score);
         // Standard competition ranking (ties share a rank)
         let prevScore = null;
         let prevRank = 0;
@@ -455,6 +587,7 @@ router.get('/:id/leaderboard', auth, async (req, res) => {
                 score: r.score,
                 totalMarks: r.totalMarks,
                 percentage: percentage(r.score, r.totalMarks),
+                percentile: percentileOf(r.score, allScores),
                 isMe: !!(me && r.studentId && sameId(r.studentId._id, me._id))
             };
             if (r.timeTaken != null) row.timeTaken = r.timeTaken;

@@ -2,44 +2,54 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     FiGrid, FiVideo, FiPlayCircle, FiClipboard, FiBookOpen, FiCheckSquare, FiBarChart2,
     FiHelpCircle, FiCalendar, FiClock, FiVolume2, FiUser, FiLogOut, FiMenu, FiX, FiSearch,
-    FiBell, FiSun, FiMoon, FiChevronsLeft, FiChevronsRight, FiMoreHorizontal, FiCornerDownLeft, FiChevronDown
+    FiBell, FiSun, FiMoon, FiChevronsLeft, FiChevronsRight, FiMoreHorizontal, FiCornerDownLeft, FiChevronDown,
+    FiDatabase, FiEdit3, FiLayers, FiAlertTriangle, FiMessageSquare, FiFileText, FiFlag
 } from 'react-icons/fi';
 import oasisLogo from '../../assets/oasis_logo.png';
 import oasisFullLogo from '../../assets/oasis_full_logo.png';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Avatar } from './TeacherUI';
 import { timeAgo } from './teacherApi';
+import { useI18n } from '../../i18n/useI18n';
+import LanguageToggle from '../common/LanguageToggle';
+import PushToggle from '../common/PushToggle';
 
 const NAV_GROUPS = [
-    { label: 'Overview', items: [{ id: 'overview', icon: FiGrid, label: 'Dashboard' }] },
+    { k: 'teacher.group.overview', items: [{ id: 'overview', icon: FiGrid, k: 'teacher.nav.overview' }] },
     {
-        label: 'Teaching', items: [
-            { id: 'live-classes', icon: FiVideo, label: 'Live Classes' },
-            { id: 'recorded-classes', icon: FiPlayCircle, label: 'Video Library' },
-            { id: 'online-tests', icon: FiClipboard, label: 'Online Tests' },
-            { id: 'materials', icon: FiBookOpen, label: 'Study Resources' },
+        k: 'teacher.group.teaching', items: [
+            { id: 'live-classes', icon: FiVideo, k: 'teacher.nav.liveClasses' },
+            { id: 'recorded-classes', icon: FiPlayCircle, k: 'teacher.nav.videos' },
+            { id: 'online-tests', icon: FiClipboard, k: 'teacher.nav.tests' },
+            { id: 'question-bank', icon: FiDatabase, k: 'teacher.nav.questionBank' },
+            { id: 'homework', icon: FiEdit3, k: 'teacher.nav.homework' },
+            { id: 'materials', icon: FiBookOpen, k: 'teacher.nav.materials' },
+            { id: 'syllabus', icon: FiLayers, k: 'teacher.nav.syllabus' },
         ]
     },
     {
-        label: 'Classroom', items: [
-            { id: 'attendance', icon: FiCheckSquare, label: 'Attendance' },
-            { id: 'marks', icon: FiBarChart2, label: 'Marks' },
-            { id: 'doubts', icon: FiHelpCircle, label: 'Doubts' },
+        k: 'teacher.group.classroom', items: [
+            { id: 'attendance', icon: FiCheckSquare, k: 'teacher.nav.attendance' },
+            { id: 'marks', icon: FiBarChart2, k: 'teacher.nav.marks' },
+            { id: 'doubts', icon: FiHelpCircle, k: 'teacher.nav.doubts' },
+            { id: 'at-risk', icon: FiAlertTriangle, k: 'teacher.nav.atRisk' },
+            { id: 'messages', icon: FiMessageSquare, k: 'teacher.nav.messages' },
+            { id: 'leaves', icon: FiFileText, k: 'teacher.nav.leaves' },
         ]
     },
     {
-        label: 'Me', items: [
-            { id: 'timetable', icon: FiCalendar, label: 'My Timetable' },
-            { id: 'my-attendance', icon: FiClock, label: 'My Attendance' },
-            { id: 'notices', icon: FiVolume2, label: 'Notices' },
-            { id: 'profile', icon: FiUser, label: 'Profile' },
+        k: 'teacher.group.me', items: [
+            { id: 'timetable', icon: FiCalendar, k: 'teacher.nav.timetable' },
+            { id: 'calendar', icon: FiFlag, k: 'teacher.nav.calendar' },
+            { id: 'my-attendance', icon: FiClock, k: 'teacher.nav.myAttendance' },
+            { id: 'notices', icon: FiVolume2, k: 'teacher.nav.notices' },
+            { id: 'profile', icon: FiUser, k: 'teacher.nav.profile' },
         ]
     },
 ];
 
-const ALL_ITEMS = NAV_GROUPS.flatMap(g => g.items.map(i => ({ ...i, group: g.label })));
-const tabLabel = (id) => ALL_ITEMS.find(i => i.id === id)?.label || 'Dashboard';
-const tabGroup = (id) => ALL_ITEMS.find(i => i.id === id)?.group || 'Overview';
+const ALL_ITEMS = NAV_GROUPS.flatMap(g => g.items.map(i => ({ ...i, groupK: g.k })));
+const findItem = (id) => ALL_ITEMS.find(i => i.id === id) || ALL_ITEMS[0];
 
 const BOTTOM_TABS = ['overview', 'live-classes', 'attendance', 'doubts'];
 
@@ -48,11 +58,14 @@ const BOTTOM_TABS = ['overview', 'live-classes', 'attendance', 'doubts'];
 const CommandPalette = ({ onClose, onNavigate }) => {
     const [query, setQuery] = useState('');
     const [cursor, setCursor] = useState(0);
+    const { t } = useI18n();
 
     const results = useMemo(() => {
         const q = query.trim().toLowerCase();
-        return q ? ALL_ITEMS.filter(i => `${i.label} ${i.group}`.toLowerCase().includes(q)) : ALL_ITEMS;
-    }, [query]);
+        const items = ALL_ITEMS.map(i => ({ ...i, label: t(i.k), group: t(i.groupK) }));
+        // Match the translated label and the English id so search works in both languages
+        return q ? items.filter(i => `${i.label} ${i.group} ${i.id}`.toLowerCase().includes(q)) : items;
+    }, [query, t]);
 
     const go = (item) => { if (item) { onNavigate(item.id); onClose(); } };
     const onKey = (e) => {
@@ -101,13 +114,15 @@ const CommandPalette = ({ onClose, onNavigate }) => {
 };
 
 /* ---------------- Sidebar ---------------- */
-const SidebarNav = ({ activeTab, onNavigate, collapsed, badges }) => (
+const SidebarNav = ({ activeTab, onNavigate, collapsed, badges }) => {
+    const { t } = useI18n();
+    return (
     <nav className="flex-1 overflow-y-auto ui-scrollbar px-3 py-4 space-y-5" aria-label="Teacher navigation">
         {NAV_GROUPS.map(group => (
-            <div key={group.label}>
+            <div key={group.k}>
                 {collapsed
                     ? <div className="mx-auto my-2 h-px w-6 bg-white/10" />
-                    : <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">{group.label}</p>}
+                    : <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">{t(group.k)}</p>}
                 <div className="space-y-1">
                     {group.items.map(item => {
                         const active = activeTab === item.id;
@@ -116,13 +131,13 @@ const SidebarNav = ({ activeTab, onNavigate, collapsed, badges }) => (
                             <button
                                 key={item.id}
                                 type="button"
-                                title={collapsed ? item.label : undefined}
+                                title={collapsed ? t(item.k) : undefined}
                                 aria-current={active ? 'page' : undefined}
                                 onClick={() => onNavigate(item.id)}
                                 className={`ui-nav-item w-full group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${collapsed ? 'justify-center px-0' : ''} ${active ? 'ui-nav-item-active' : 'text-gray-400 hover:text-white hover:bg-white/5 dark:hover:bg-white/5'}`}
                             >
                                 <item.icon className={`text-[1.05rem] shrink-0 transition-transform duration-300 ${active ? '' : 'group-hover:scale-110'}`} />
-                                {!collapsed && <span className="truncate">{item.label}</span>}
+                                {!collapsed && <span className="truncate">{t(item.k)}</span>}
                                 {badge > 0 && (
                                     collapsed
                                         ? <span className="absolute top-2 right-3 w-2 h-2 rounded-full bg-brand-500 ring-2 ring-ink-950" />
@@ -135,7 +150,8 @@ const SidebarNav = ({ activeTab, onNavigate, collapsed, badges }) => (
             </div>
         ))}
     </nav>
-);
+    );
+};
 
 const Sidebar = ({ activeTab, onNavigate, user, onLogout, collapsed, setCollapsed, open, setOpen, badges }) => (
     <>
@@ -279,8 +295,10 @@ const AvatarMenu = ({ user, onNavigate, onLogout }) => {
 /* ---------------- Mobile bottom nav + More sheet ---------------- */
 const MobileNav = ({ activeTab, onNavigate, badges }) => {
     const [moreOpen, setMoreOpen] = useState(false);
+    const { t } = useI18n();
     const items = BOTTOM_TABS.map(id => ALL_ITEMS.find(i => i.id === id));
     const moreActive = !BOTTOM_TABS.includes(activeTab);
+    const moreBadge = Object.entries(badges || {}).some(([id, n]) => n > 0 && !BOTTOM_TABS.includes(id));
     return (
         <>
             <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 ui-glass border-t border-gray-100 dark:border-white/5" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} aria-label="Quick navigation">
@@ -293,13 +311,16 @@ const MobileNav = ({ activeTab, onNavigate, badges }) => {
                                     <item.icon className="text-lg" />
                                     {badges?.[item.id] > 0 && <span className="absolute top-0.5 right-2 w-2 h-2 rounded-full bg-brand-500 ring-2 ring-white" />}
                                 </span>
-                                <span className={`text-[10px] font-bold ${active ? 'text-brand-600' : 'text-gray-400'}`}>{item.id === 'overview' ? 'Home' : item.label.split(' ')[0]}</span>
+                                <span className={`text-[10px] font-bold ${active ? 'text-brand-600' : 'text-gray-400'}`}>{item.id === 'overview' ? t('teacher.nav.home') : t(item.k).split(' ')[0]}</span>
                             </button>
                         );
                     })}
                     <button type="button" onClick={() => setMoreOpen(true)} className="flex flex-col items-center gap-1 py-1.5">
-                        <span className={`w-12 h-8 rounded-full flex items-center justify-center transition-all ${moreActive ? 'bg-brand-gradient text-white shadow-brand-soft' : 'text-gray-400'}`}><FiMoreHorizontal className="text-lg" /></span>
-                        <span className={`text-[10px] font-bold ${moreActive ? 'text-brand-600' : 'text-gray-400'}`}>More</span>
+                        <span className={`relative w-12 h-8 rounded-full flex items-center justify-center transition-all ${moreActive ? 'bg-brand-gradient text-white shadow-brand-soft' : 'text-gray-400'}`}>
+                            <FiMoreHorizontal className="text-lg" />
+                            {moreBadge && <span className="absolute top-0.5 right-2 w-2 h-2 rounded-full bg-brand-500 ring-2 ring-white" />}
+                        </span>
+                        <span className={`text-[10px] font-bold ${moreActive ? 'text-brand-600' : 'text-gray-400'}`}>{t('teacher.nav.more')}</span>
                     </button>
                 </div>
             </nav>
@@ -308,15 +329,18 @@ const MobileNav = ({ activeTab, onNavigate, badges }) => {
                     <div className="absolute bottom-0 inset-x-0 bg-white dark:bg-ink-900 rounded-t-3xl p-5 pb-8 animate-fade-up max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <div className="mx-auto mb-4 w-10 h-1.5 rounded-full bg-gray-200 dark:bg-white/10" />
                         {NAV_GROUPS.map(group => (
-                            <div key={group.label} className="mb-4">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-2">{group.label}</p>
+                            <div key={group.k} className="mb-4">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-2">{t(group.k)}</p>
                                 <div className="grid grid-cols-4 gap-2">
                                     {group.items.map(item => {
                                         const active = activeTab === item.id;
                                         return (
                                             <button key={item.id} type="button" onClick={() => { onNavigate(item.id); setMoreOpen(false); }} className={`flex flex-col items-center gap-1.5 p-2.5 rounded-2xl text-center transition ${active ? 'bg-brand-50 dark:bg-brand-500/10 text-brand-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'}`}>
-                                                <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${active ? 'bg-brand-gradient text-white' : 'bg-gray-100 dark:bg-white/5'}`}><item.icon /></span>
-                                                <span className="text-[10px] font-bold leading-tight">{item.label}</span>
+                                                <span className={`relative w-10 h-10 rounded-xl flex items-center justify-center ${active ? 'bg-brand-gradient text-white' : 'bg-gray-100 dark:bg-white/5'}`}>
+                                                    <item.icon />
+                                                    {badges?.[item.id] > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-500 text-white text-[10px] font-extrabold flex items-center justify-center ring-2 ring-white dark:ring-ink-900">{badges[item.id] > 99 ? '99+' : badges[item.id]}</span>}
+                                                </span>
+                                                <span className="text-[10px] font-bold leading-tight">{t(item.k)}</span>
                                             </button>
                                         );
                                     })}
@@ -337,6 +361,8 @@ const TeacherShell = ({ activeTab, onNavigate, user, onLogout, badges, notificat
     const [collapsed, setCollapsed] = useState(false);
     const [paletteOpen, setPaletteOpen] = useState(false);
     const scrollRef = useRef(null);
+    const { t } = useI18n();
+    const current = findItem(activeTab);
 
     useEffect(() => {
         const onKey = (e) => {
@@ -365,21 +391,23 @@ const TeacherShell = ({ activeTab, onNavigate, user, onLogout, badges, notificat
                     </button>
                     <img src={oasisLogo} alt="" className="lg:hidden w-8 h-8 object-contain" />
                     <div className="min-w-0 flex-1">
-                        <p className="hidden sm:block text-[11px] font-semibold text-gray-400">Teacher <span className="mx-1">/</span> {tabGroup(activeTab)}</p>
-                        <h1 className="text-base md:text-lg font-extrabold tracking-tight truncate">{tabLabel(activeTab)}</h1>
+                        <p className="hidden sm:block text-[11px] font-semibold text-gray-400">Teacher <span className="mx-1">/</span> {t(current.groupK)}</p>
+                        <h1 className="text-base md:text-lg font-extrabold tracking-tight truncate">{t(current.k)}</h1>
                     </div>
 
                     <button
                         type="button"
                         onClick={() => setPaletteOpen(true)}
-                        className="hidden md:flex items-center gap-2 w-64 px-3.5 py-2.5 rounded-xl bg-gray-100/80 dark:bg-white/5 border border-transparent hover:border-brand-200 text-sm text-gray-400 transition"
+                        className="hidden xl:flex items-center gap-2 w-56 px-3.5 py-2.5 rounded-xl bg-gray-100/80 dark:bg-white/5 border border-transparent hover:border-brand-200 text-sm text-gray-400 transition"
                     >
-                        <FiSearch /> <span className="flex-1 text-left">Quick jump…</span>
+                        <FiSearch /> <span className="flex-1 text-left">{t('teacher.nav.quickJump')}</span>
                         <kbd className="text-[10px] font-bold border border-gray-200 dark:border-white/10 rounded-md px-1.5 py-0.5 bg-white dark:bg-ink-800">Ctrl K</kbd>
                     </button>
-                    <button type="button" onClick={() => setPaletteOpen(true)} aria-label="Search" className="md:hidden w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5">
+                    <button type="button" onClick={() => setPaletteOpen(true)} aria-label="Search" className="xl:hidden w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5">
                         <FiSearch className="text-lg" />
                     </button>
+                    <LanguageToggle className="hidden sm:inline-flex" />
+                    <PushToggle compact className="hidden sm:flex" />
                     {toggleTheme && (
                         <button type="button" onClick={toggleTheme} aria-label="Toggle dark mode" className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-white/5 transition">
                             {theme === 'dark' ? <FiSun className="text-lg hover:rotate-45 transition-transform" /> : <FiMoon className="text-lg" />}

@@ -7,9 +7,17 @@ const { getOwnStudent, classScopeFilter, isOwnerOrAdmin, isObjectId } = require(
 
 const router = express.Router();
 
+const CATEGORIES = ['notes', 'formula', 'pyq', 'other'];
+// ?category= filter; legacy docs without a category count as 'notes'
+const categoryFilter = (category) => {
+  if (!category || !CATEGORIES.includes(category)) return null;
+  if (category === 'notes') return { $or: [{ category: 'notes' }, { category: { $exists: false } }, { category: null }] };
+  return { category };
+};
+
 // Upload study material (teacher | admin). Optional classId / batchId limit visibility.
 router.post('/', auth, roleAuth('teacher', 'admin'), uploadSingle('file'), async (req, res) => {
-  const { title, subjectId, classId, batchId } = req.body;
+  const { title, subjectId, classId, batchId, category } = req.body;
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
     if (!title || !subjectId) {
@@ -20,12 +28,17 @@ router.post('/', auth, roleAuth('teacher', 'admin'), uploadSingle('file'), async
       removeUpload(fileUrl(req.file));
       return res.status(400).json({ message: 'Invalid subject, class or batch id' });
     }
+    if (category && !CATEGORIES.includes(category)) {
+      removeUpload(fileUrl(req.file));
+      return res.status(400).json({ message: "category must be 'notes', 'formula', 'pyq' or 'other'" });
+    }
 
     const material = new StudyMaterial({
       title,
       subjectId,
       classId: classId || undefined,
       batchId: batchId || undefined,
+      category: category || 'notes',
       fileUrl: fileUrl(req.file),
       uploadedBy: req.user.id,
     });
@@ -39,7 +52,9 @@ router.post('/', auth, roleAuth('teacher', 'admin'), uploadSingle('file'), async
 // Materials uploaded by me (teacher) / all (admin)
 router.get('/mine', auth, roleAuth('teacher', 'admin'), async (req, res) => {
   try {
-    const query = req.user.role === 'admin' ? {} : { uploadedBy: req.user.id };
+    const base = req.user.role === 'admin' ? {} : { uploadedBy: req.user.id };
+    const cat = categoryFilter(req.query.category);
+    const query = cat ? { $and: [base, cat] } : base;
     const materials = await StudyMaterial.find(query)
       .populate('subjectId', 'name')
       .populate('classId', 'name')
@@ -59,6 +74,8 @@ router.get('/', auth, async (req, res) => {
       const student = await getOwnStudent(req.user);
       query = classScopeFilter(student);
     }
+    const cat = categoryFilter(req.query.category);
+    if (cat) query = { $and: [query, cat] };
     const materials = await StudyMaterial.find(query).populate('subjectId').sort({ createdAt: -1 });
     res.json(materials);
   } catch (err) {

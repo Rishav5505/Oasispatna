@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  FiX, FiHome, FiInfo, FiBookOpen, FiUsers, FiAward, FiImage, FiPhone, FiArrowRight, FiLogIn, FiPhoneCall,
+  FiX, FiHome, FiEdit3, FiInfo, FiBookOpen, FiUsers, FiAward, FiImage, FiPhone, FiArrowRight, FiLogIn, FiPhoneCall,
 } from 'react-icons/fi';
 import oasisBannerLogo from '../assets/oasis_banner_new.png';
 import { getScrollY, subscribeScroll } from './home/scroll';
@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { name: 'Home', path: '/', icon: FiHome },
   { name: 'About', path: '/about', icon: FiInfo },
   { name: 'Courses', path: '/courses', icon: FiBookOpen },
+  { name: 'Admission', path: '/admission', icon: FiEdit3 },
   { name: 'Faculty', path: '/faculty', icon: FiUsers },
   { name: 'Results', path: '/results', icon: FiAward },
   { name: 'Gallery', path: '/gallery', icon: FiImage },
@@ -73,7 +74,7 @@ const Navbar = () => {
                   key={link.path}
                   to={link.path}
                   aria-current={active ? 'page' : undefined}
-                  className={`relative px-2.5 xl:px-4 py-2 rounded-xl text-sm font-semibold transition-colors duration-300 group/nav ${
+                  className={`relative px-2 xl:px-2.5 2xl:px-4 py-2 rounded-xl text-sm whitespace-nowrap font-semibold transition-colors duration-300 group/nav ${
                     active ? 'text-brand-600' : 'text-gray-700 dark:text-gray-200 hover:text-brand-600 hover:bg-brand-50/70 dark:hover:bg-white/5'
                   }`}
                 >
@@ -89,11 +90,11 @@ const Navbar = () => {
           </div>
 
           <div className="hidden lg:flex items-center gap-2 xl:gap-3">
-            <Link to="/login" className="ui-btn-secondary rounded-xl px-3 xl:px-4 py-2.5" aria-label="Student Login">
+            <Link to="/login" className="ui-btn-secondary rounded-xl px-3 xl:px-4 py-2.5 whitespace-nowrap" aria-label="Student Login">
               <FiLogIn /> <span className="hidden xl:inline">Student Login</span>
             </Link>
-            <a href="/#demo-form" className="ui-btn-primary rounded-xl px-5 py-2.5 shadow-brand-glow group">
-              Book Free Demo
+            <a href="/#demo-form" className="ui-btn-primary rounded-xl px-4 xl:px-5 py-2.5 shadow-brand-glow group whitespace-nowrap">
+              <span className="xl:hidden">Free Demo</span><span className="hidden xl:inline">Book Free Demo</span>
               <FiArrowRight className="group-hover:translate-x-0.5 transition-transform" />
             </a>
           </div>

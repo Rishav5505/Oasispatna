@@ -2,36 +2,54 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     FiHome, FiCalendar, FiVideo, FiPlayCircle, FiClipboard, FiHelpCircle, FiCpu, FiBell, FiSearch,
     FiLogOut, FiMenu, FiX, FiMoreHorizontal, FiSun, FiMoon, FiChevronsLeft, FiChevronsRight, FiCornerDownLeft,
+    FiZap, FiBookOpen, FiClock, FiList, FiAward, FiBookmark, FiEdit, FiGrid, FiSend,
 } from 'react-icons/fi';
+import { useI18n } from '../../i18n/useI18n';
+import LanguageToggle from '../common/LanguageToggle';
+import PushToggle from '../common/PushToggle';
 import { FaQrcode } from 'react-icons/fa';
 import { HiOutlineSpeakerphone } from 'react-icons/hi';
 import { useTheme } from '../../contexts/ThemeContext';
 import oasisLogo from '../../assets/oasis_logo.png';
 
+// name/short are English fallbacks; key/shortKey are i18n keys (see i18n/dict/student.*.js)
 const NAV_GROUPS = [
-    { label: 'Home', items: [
-        { id: 'overview', name: 'Dashboard', short: 'Home', icon: FiHome },
-        { id: 'timetable', name: 'Timetable', short: 'Timetable', icon: FiCalendar },
+    { label: 'Home', key: 'student.group.home', items: [
+        { id: 'overview', name: 'Dashboard', key: 'student.nav.dashboard', short: 'Home', shortKey: 'student.short.home', icon: FiHome },
+        { id: 'timetable', name: 'Timetable', key: 'student.nav.timetable', short: 'Timetable', shortKey: 'student.nav.timetable', icon: FiCalendar },
+        { id: 'calendar', name: 'Calendar', key: 'nav.calendar', short: 'Calendar', shortKey: 'nav.calendar', icon: FiGrid },
     ] },
-    { label: 'Learn', items: [
-        { id: 'live', name: 'Live Classes', short: 'Live', icon: FiVideo },
-        { id: 'videos', name: 'Video Library', short: 'Videos', icon: FiPlayCircle },
-        { id: 'tests', name: 'Online Tests', short: 'Tests', icon: FiClipboard },
+    { label: 'Learn', key: 'student.group.learn', items: [
+        { id: 'live', name: 'Live Classes', key: 'student.nav.live', short: 'Live', shortKey: 'student.short.live', icon: FiVideo },
+        { id: 'videos', name: 'Video Library', key: 'student.nav.videos', short: 'Videos', shortKey: 'student.short.videos', icon: FiPlayCircle },
+        { id: 'tests', name: 'Online Tests', key: 'student.nav.tests', short: 'Tests', shortKey: 'student.short.tests', icon: FiClipboard },
+        { id: 'homework', name: 'Homework', key: 'student.nav.homework', short: 'Homework', shortKey: 'student.nav.homework', icon: FiEdit },
     ] },
-    { label: 'Help', items: [
-        { id: 'doubts', name: 'Ask Doubts', short: 'Doubts', icon: FiHelpCircle },
-        { id: 'ai-buddy', name: 'AI Buddy', short: 'AI Buddy', icon: FiCpu },
+    { label: 'Practice', key: 'student.group.practice', items: [
+        { id: 'practice', name: 'Daily Practice', key: 'student.nav.practice', short: 'DPP', shortKey: 'student.short.dpp', icon: FiZap, badge: true },
+        { id: 'mistakes', name: 'Mistake Notebook', key: 'student.nav.mistakes', short: 'Mistakes', shortKey: 'student.short.mistakes', icon: FiBookOpen },
+        { id: 'study', name: 'Study Timer', key: 'student.nav.timer', short: 'Timer', shortKey: 'student.short.timer', icon: FiClock },
+        { id: 'syllabus', name: 'Syllabus', key: 'student.nav.syllabus', short: 'Syllabus', shortKey: 'student.nav.syllabus', icon: FiList },
+        { id: 'leaderboard', name: 'XP & Leaderboard', key: 'student.nav.leaderboard', short: 'XP', shortKey: 'student.short.xp', icon: FiAward },
+        { id: 'bookmarks', name: 'Bookmarks & Formulas', key: 'student.nav.bookmarks', short: 'Saved', shortKey: 'student.short.saved', icon: FiBookmark },
     ] },
-    { label: 'Campus', items: [
-        { id: 'attendance', name: 'Mark Presence', short: 'Scan', icon: FaQrcode },
-        { id: 'notices', name: 'Notices', short: 'Notices', icon: HiOutlineSpeakerphone },
+    { label: 'Help', key: 'student.group.help', items: [
+        { id: 'doubts', name: 'Ask Doubts', key: 'student.nav.askDoubts', short: 'Doubts', shortKey: 'student.nav.doubts', icon: FiHelpCircle },
+        { id: 'ai-buddy', name: 'AI Buddy', key: 'student.nav.aiBuddy', short: 'AI Buddy', shortKey: 'student.nav.aiBuddy', icon: FiCpu },
+    ] },
+    { label: 'Campus', key: 'student.group.campus', items: [
+        { id: 'attendance', name: 'Mark Presence', key: 'student.nav.markPresence', short: 'Scan', shortKey: 'student.short.scan', icon: FaQrcode },
+        { id: 'notices', name: 'Notices', key: 'student.nav.notices', short: 'Notices', shortKey: 'student.nav.notices', icon: HiOutlineSpeakerphone },
+        { id: 'leaves', name: 'Leave Requests', key: 'nav.leaves', short: 'Leave', shortKey: 'student.short.leave', icon: FiSend },
     ] },
 ];
 
 const ALL_ITEMS = NAV_GROUPS.flatMap(g => g.items);
-const BOTTOM_IDS = ['overview', 'timetable', 'tests', 'attendance'];
+const BOTTOM_IDS = ['overview', 'practice', 'tests', 'attendance'];
 
 const navItemFor = (id) => ALL_ITEMS.find(i => i.id === id) || ALL_ITEMS[0];
+// t() returns the key itself when missing -> fall back to the English label
+const tx = (t, key, fallback) => { if (!key) return fallback; const v = t(key); return v === key ? fallback : v; };
 
 export const Avatar = ({ src, name = 'Student', className = 'w-10 h-10', textClass = 'text-sm' }) => {
     const [failedSrc, setFailedSrc] = useState(null);
@@ -45,7 +63,9 @@ export const Avatar = ({ src, name = 'Student', className = 'w-10 h-10', textCla
     );
 };
 
-const SidebarContent = ({ active, onNavigate, collapsed, user, onLogout, onToggleCollapse, onClose }) => (
+const SidebarContent = ({ active, onNavigate, collapsed, user, onLogout, onToggleCollapse, onClose }) => {
+    const { t } = useI18n();
+    return (
     <div className="flex flex-col h-full">
         <div className={`flex items-center gap-3 px-5 pt-6 pb-5 ${collapsed ? 'justify-center px-3' : ''}`}>
             <div className="w-10 h-10 shrink-0 rounded-xl bg-white flex items-center justify-center p-1.5 shadow-brand-glow">
@@ -67,7 +87,7 @@ const SidebarContent = ({ active, onNavigate, collapsed, user, onLogout, onToggl
         <nav className="flex-1 overflow-y-auto ui-scrollbar px-3 pb-4 space-y-5" aria-label="Student navigation">
             {NAV_GROUPS.map(group => (
                 <div key={group.label}>
-                    {!collapsed && <p className="px-4 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-600">{group.label}</p>}
+                    {!collapsed && <p className="px-4 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-600">{tx(t, group.key, group.label)}</p>}
                     <div className="space-y-1">
                         {group.items.map(item => {
                             const Icon = item.icon;
@@ -76,13 +96,13 @@ const SidebarContent = ({ active, onNavigate, collapsed, user, onLogout, onToggl
                                 <button
                                     key={item.id}
                                     onClick={() => onNavigate(item.id)}
-                                    title={collapsed ? item.name : undefined}
+                                    title={collapsed ? tx(t, item.key, item.name) : undefined}
                                     aria-current={isActive ? 'page' : undefined}
                                     className={`group w-full ui-nav-item focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${collapsed ? 'justify-center px-0' : ''} ${isActive ? 'ui-nav-item-active' : '!text-gray-400 hover:!text-white hover:!bg-white/5'}`}
                                 >
                                     <Icon className={`text-lg shrink-0 transition-transform duration-300 ${isActive ? '' : 'group-hover:scale-110'}`} />
-                                    {!collapsed && <span className="truncate">{item.name}</span>}
-                                    {!collapsed && item.id === 'ai-buddy' && (
+                                    {!collapsed && <span className="truncate">{tx(t, item.key, item.name)}</span>}
+                                    {!collapsed && (item.id === 'ai-buddy' || item.badge) && (
                                         <span className={`ml-auto text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-brand-500/15 text-brand-400'}`}>New</span>
                                     )}
                                 </button>
@@ -94,6 +114,12 @@ const SidebarContent = ({ active, onNavigate, collapsed, user, onLogout, onToggl
         </nav>
 
         <div className="p-3 border-t border-white/5">
+            {onClose && (
+                <div className="flex items-center justify-between gap-2 mb-3 px-1">
+                    <LanguageToggle dark />
+                    <PushToggle compact />
+                </div>
+            )}
             {onToggleCollapse && (
                 <button
                     onClick={onToggleCollapse}
@@ -124,22 +150,24 @@ const SidebarContent = ({ active, onNavigate, collapsed, user, onLogout, onToggl
             )}
         </div>
     </div>
-);
+    );
+};
 
 // Ctrl/⌘+K quick jump
 const CommandPalette = ({ open, onClose, onNavigate, extraCommands = [] }) => {
+    const { t } = useI18n();
     const [query, setQuery] = useState('');
     const [cursor, setCursor] = useState(0);
     const inputRef = useRef(null);
 
     const items = useMemo(() => {
         const all = [
-            ...ALL_ITEMS.map(i => ({ key: i.id, label: i.name, hint: 'Go to', icon: i.icon, run: () => onNavigate(i.id) })),
+            ...ALL_ITEMS.map(i => ({ key: i.id, label: tx(t, i.key, i.name), hint: 'Go to', icon: i.icon, run: () => onNavigate(i.id) })),
             ...extraCommands.map(c => ({ key: c.id, label: c.label, hint: 'Action', icon: c.icon, run: c.run })),
         ];
         const q = query.trim().toLowerCase();
         return q ? all.filter(i => i.label.toLowerCase().includes(q)) : all;
-    }, [query, onNavigate, extraCommands]);
+    }, [query, onNavigate, extraCommands, t]);
 
     useEffect(() => {
         if (open) setTimeout(() => inputRef.current?.focus(), 30);
@@ -200,9 +228,13 @@ const CommandPalette = ({ open, onClose, onNavigate, extraCommands = [] }) => {
 };
 
 const MobileBottomNav = ({ active, onNavigate, moreOpen, setMoreOpen }) => {
+    const { t } = useI18n();
     const bottomItems = BOTTOM_IDS.map(navItemFor);
     const activeIdx = moreOpen ? 4 : (BOTTOM_IDS.indexOf(active) === -1 ? 4 : BOTTOM_IDS.indexOf(active));
-    const moreItems = ALL_ITEMS.filter(i => !BOTTOM_IDS.includes(i.id));
+    const moreGroups = NAV_GROUPS
+        .map(g => ({ ...g, items: g.items.filter(i => !BOTTOM_IDS.includes(i.id)) }))
+        .filter(g => g.items.length > 0);
+    const short = (item) => tx(t, item.shortKey, item.short);
 
     return (
         <>
@@ -211,21 +243,32 @@ const MobileBottomNav = ({ active, onNavigate, moreOpen, setMoreOpen }) => {
                     <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setMoreOpen(false)} />
                     <div className="lg:hidden fixed left-3 right-3 z-50 ui-card p-4 animate-fade-up" style={{ bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))' }} role="dialog" aria-label="More sections">
                         <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-white/10 mx-auto mb-4" />
-                        <div className="grid grid-cols-3 gap-2 ui-stagger">
-                            {moreItems.map(item => {
-                                const Icon = item.icon;
-                                const isActive = active === item.id;
-                                return (
-                                    <button
-                                        key={item.id}
-                                        onClick={() => { onNavigate(item.id); setMoreOpen(false); }}
-                                        className={`flex flex-col items-center gap-2 py-3.5 rounded-2xl transition-all active:scale-95 ${isActive ? 'bg-brand-gradient text-white shadow-brand-soft' : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300'}`}
-                                    >
-                                        <Icon className="text-xl" />
-                                        <span className="text-[11px] font-bold">{item.short}</span>
-                                    </button>
-                                );
-                            })}
+                        <div className="max-h-[60vh] overflow-y-auto ui-scrollbar -mx-1 px-1 space-y-4">
+                            {moreGroups.map(group => (
+                                <div key={group.label}>
+                                    <p className="px-1 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">{tx(t, group.key, group.label)}</p>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {group.items.map(item => {
+                                            const Icon = item.icon;
+                                            const isActive = active === item.id;
+                                            return (
+                                                <button
+                                                    key={item.id}
+                                                    onClick={() => { onNavigate(item.id); setMoreOpen(false); }}
+                                                    className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl transition-all active:scale-95 ${isActive ? 'bg-brand-gradient text-white shadow-brand-soft' : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300'}`}
+                                                >
+                                                    <Icon className="text-lg" />
+                                                    <span className="text-[10px] font-bold leading-tight text-center line-clamp-2">{short(item)}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                            <div className="flex items-center justify-between gap-2 pt-1">
+                                <LanguageToggle />
+                                <PushToggle compact />
+                            </div>
                         </div>
                     </div>
                 </>
@@ -252,7 +295,7 @@ const MobileBottomNav = ({ active, onNavigate, moreOpen, setMoreOpen }) => {
                                 className={`relative z-10 flex flex-col items-center gap-0.5 py-1.5 transition-colors duration-300 ${isActive ? 'text-white' : 'text-gray-400'}`}
                             >
                                 <Icon className={`text-lg transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} />
-                                <span className="text-[10px] font-bold">{item.short}</span>
+                                <span className="text-[10px] font-bold">{short(item)}</span>
                             </button>
                         );
                     })}
@@ -262,7 +305,7 @@ const MobileBottomNav = ({ active, onNavigate, moreOpen, setMoreOpen }) => {
                         className={`relative z-10 flex flex-col items-center gap-0.5 py-1.5 transition-colors duration-300 ${activeIdx === 4 ? 'text-white' : 'text-gray-400'}`}
                     >
                         {moreOpen ? <FiX className="text-lg" /> : <FiMoreHorizontal className="text-lg" />}
-                        <span className="text-[10px] font-bold">{activeIdx === 4 && !moreOpen ? navItemFor(active).short : 'More'}</span>
+                        <span className="text-[10px] font-bold">{activeIdx === 4 && !moreOpen ? short(navItemFor(active)) : tx(t, 'nav.more', 'More')}</span>
                     </button>
                 </div>
             </nav>
@@ -271,13 +314,14 @@ const MobileBottomNav = ({ active, onNavigate, moreOpen, setMoreOpen }) => {
 };
 
 // Full dashboard chrome: sidebar (desktop) / drawer + bottom nav (mobile), top bar, command palette
-const StudentShell = ({ active, onNavigate, user, onLogout, hasUnread, onBellClick, extraCommands, children }) => {
+const StudentShell = ({ active, onNavigate, user, onLogout, hasUnread, onBellClick, extraCommands, topBarExtra, children }) => {
     const { theme, toggleTheme } = useTheme() || {};
+    const { t } = useI18n();
+    const currentName = tx(t, navItemFor(active).key, navItemFor(active).name);
     const [collapsed, setCollapsed] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
     const [paletteOpen, setPaletteOpen] = useState(false);
-    const current = navItemFor(active);
 
     useEffect(() => {
         const onKey = (e) => {
@@ -329,20 +373,24 @@ const StudentShell = ({ active, onNavigate, user, onLogout, hasUnread, onBellCli
                             <FiMenu className="text-xl" />
                         </button>
                         <div className="min-w-0 flex-1">
-                            <p className="hidden sm:block text-[11px] font-semibold text-gray-400 uppercase tracking-widest leading-none mb-1">Student &rsaquo; {current.name}</p>
-                            <h1 className="text-base sm:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight truncate leading-tight">{current.name}</h1>
+                            <p className="hidden sm:block text-[11px] font-semibold text-gray-400 uppercase tracking-widest leading-none mb-1">{tx(t, 'student.crumb', 'Student')} &rsaquo; {currentName}</p>
+                            <h1 className="text-base sm:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight truncate leading-tight">{currentName}</h1>
                         </div>
+
+                        {topBarExtra && <div className="hidden sm:flex items-center">{topBarExtra}</div>}
+                        <LanguageToggle className="hidden md:inline-flex" />
+                        <PushToggle compact className="hidden sm:flex" />
 
                         <button
                             onClick={() => setPaletteOpen(true)}
-                            className="hidden md:flex items-center gap-3 w-64 px-3.5 py-2 rounded-xl bg-gray-100/80 dark:bg-white/5 border border-transparent hover:border-brand-200 text-sm text-gray-400 transition-colors"
+                            className="hidden xl:flex items-center gap-3 w-56 px-3.5 py-2 rounded-xl bg-gray-100/80 dark:bg-white/5 border border-transparent hover:border-brand-200 text-sm text-gray-400 transition-colors"
                             aria-label="Open quick search"
                         >
                             <FiSearch />
                             <span className="flex-1 text-left">Quick jump…</span>
                             <kbd className="text-[10px] font-bold border border-gray-200 dark:border-white/10 rounded-md px-1.5 py-0.5">Ctrl K</kbd>
                         </button>
-                        <button onClick={() => setPaletteOpen(true)} className="md:hidden w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5" aria-label="Quick search">
+                        <button onClick={() => setPaletteOpen(true)} className="xl:hidden w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5" aria-label="Quick search">
                             <FiSearch className="text-lg" />
                         </button>
 

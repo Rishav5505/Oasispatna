@@ -146,6 +146,15 @@ app.use('/api/tests', require('./routes/testRoutes'));
 app.use('/api/doubts', require('./routes/doubtRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/ai-buddy', require('./routes/aiRoutes'));
+app.use('/api/practice', require('./routes/practice'));
+app.use('/api/question-bank', require('./routes/questionBank'));
+app.use('/api/homework', require('./routes/homework'));
+app.use('/api/leaves', require('./routes/leaves'));
+app.use('/api/admissions', require('./routes/admissions'));
+app.use('/api/finance', require('./routes/finance'));
+app.use('/api/calendar', require('./routes/calendar'));
+app.use('/api/chat', require('./routes/chat'));
+app.use('/api/push', require('./routes/push'));
 
 // Fallback error handler (e.g. malformed JSON bodies)
 app.use((err, req, res, next) => {
@@ -157,3 +166,10 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5002;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Daily background jobs (fee installment overdue marking + reminders). DISABLE_SCHEDULER=true turns it off.
+try {
+  require('./utils/scheduler').startScheduler({ io });
+} catch (err) {
+  console.error('Failed to start scheduler:', err.message);
+}

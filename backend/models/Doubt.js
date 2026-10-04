@@ -10,6 +10,8 @@ const doubtSchema = new mongoose.Schema({
     replies: [{
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         message: { type: String, required: true },
+        by: { type: String }, // 'AI' for AI-generated replies
+        isAI: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now }
     }],
     createdAt: { type: Date, default: Date.now }

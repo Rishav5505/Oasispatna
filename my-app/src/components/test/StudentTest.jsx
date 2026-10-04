@@ -3,7 +3,7 @@ import axios from 'axios';
 import config from '../../config';
 import {
     FiClock, FiAward, FiChevronRight, FiChevronLeft, FiCheckCircle, FiAlertCircle, FiFileText, FiX, FiXCircle,
-    FiMinusCircle, FiInfo, FiArrowLeft, FiPlay, FiList, FiSend, FiEdit3, FiFlag, FiRotateCcw, FiCheck, FiLock,
+    FiMinusCircle, FiInfo, FiArrowLeft, FiPlay, FiList, FiSend, FiEdit3, FiFlag, FiRotateCcw, FiCheck, FiLock, FiTrendingUp, FiLayers,
 } from 'react-icons/fi';
 import { notify, toast } from '../../utils/notify';
 import { authHeaders, errorMessage, resolveFileUrl } from '../student/helpers';
@@ -11,6 +11,16 @@ import { SkeletonCards, EmptyState, ErrorState, PageHeader } from '../student/St
 import TestLeaderboard from '../student/TestLeaderboard';
 import { ProgressRing } from '../student/Widgets';
 import { AnimatedNumber } from '../ui/Motion';
+import { useI18n } from '../../i18n/useI18n';
+
+// Sections for a mock test: [{name, indexes:[...]}] (only when the test defines them)
+const sectionsOf = (test) => {
+    const qs = test?.questions || [];
+    const secs = Array.isArray(test?.sections) ? test.sections : [];
+    return secs
+        .map(s => ({ name: s.name || 'Section', indexes: (s.questionIndexes || []).filter(i => Number.isInteger(i) && i >= 0 && i < qs.length) }))
+        .filter(s => s.indexes.length > 0);
+};
 
 const isNumerical = (q) => q?.type === 'numerical';
 
@@ -47,7 +57,8 @@ const testWindowState = (test) => {
     return 'open';
 };
 
-const StudentTest = ({ studentId }) => {
+const StudentTest = ({ studentId, onXpChange }) => {
+    const { t: tr } = useI18n();
     const [tests, setTests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -93,9 +104,11 @@ const StudentTest = ({ studentId }) => {
         const res = await axios.get(`${config.API_URL}/tests/result/${test._id}/${studentId}`, { headers: authHeaders() });
         const merged = { ...res.data };
         if (submitResponse) {
-            ['correct', 'wrong', 'unattempted'].forEach(k => {
+            ['correct', 'wrong', 'unattempted', 'xpEarned'].forEach(k => {
                 if (submitResponse[k] != null) merged[k] = submitResponse[k];
             });
+            if (!merged.sectionScores?.length && submitResponse.sectionScores?.length) merged.sectionScores = submitResponse.sectionScores;
+            if (merged.percentile == null && submitResponse.percentile != null) merged.percentile = submitResponse.percentile;
         }
         setResultTest(test);
         setTestResult(withBreakdown(merged, test));
@@ -136,6 +149,10 @@ const StudentTest = ({ studentId }) => {
 
             setActiveTest(null);
             notify('Test submitted successfully!');
+            if (res.data?.xpEarned > 0) {
+                toast.success(tr('student.test.xpToast', { xp: res.data.xpEarned }), { icon: '⚡' });
+                onXpChange?.();
+            }
             try {
                 await loadResult(test, res.data);
             } catch (resultErr) {
@@ -165,7 +182,7 @@ const StudentTest = ({ studentId }) => {
             submittingRef.current = false;
             setSubmitting(false);
         }
-    }, [activeTest, studentId, loadResult, fetchTests]);
+    }, [activeTest, studentId, loadResult, fetchTests, tr, onXpChange]);
 
     // Keep a ref to the latest submit handler so the timer can auto-submit without re-subscribing
     const submitRef = useRef(handleSubmitTest);
@@ -292,6 +309,38 @@ const StudentTest = ({ studentId }) => {
                             </div>
                         </div>
 
+                        {testResult.percentile != null && (
+                            <div className="relative overflow-hidden rounded-2xl bg-brand-gradient text-white p-5 flex items-center gap-4 shadow-brand-soft animate-scale-in">
+                                <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
+                                <div className="relative w-14 h-14 shrink-0 rounded-2xl bg-white/20 flex items-center justify-center text-2xl"><FiTrendingUp /></div>
+                                <div className="relative min-w-0 flex-1">
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">{tr('student.test.percentile')}</p>
+                                    <p className="text-3xl md:text-4xl font-extrabold tracking-tight tabular-nums"><AnimatedNumber value={Number(testResult.percentile) || 0} decimals={2} /></p>
+                                    <p className="text-xs text-white/80">{tr('student.test.percentileHint', { pct: Number(testResult.percentile).toFixed(2) })}</p>
+                                </div>
+                                {testResult.xpEarned > 0 && <span className="relative ui-badge bg-white text-brand-700">+{testResult.xpEarned} XP</span>}
+                            </div>
+                        )}
+
+                        {Array.isArray(testResult.sectionScores) && testResult.sectionScores.length > 0 && (
+                            <div>
+                                <h3 className="text-xs font-extrabold uppercase tracking-widest text-gray-400 mb-3">{tr('student.test.sectionScores')}</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 ui-stagger">
+                                    {testResult.sectionScores.map(sec => {
+                                        const sp = sec.max > 0 ? Math.max(0, Math.round((sec.score / sec.max) * 100)) : 0;
+                                        return (
+                                            <div key={sec.name} className="rounded-2xl border border-gray-100 dark:border-white/10 p-4">
+                                                <p className="text-sm font-extrabold text-gray-900 dark:text-white truncate">{sec.name}</p>
+                                                <p className="text-2xl font-extrabold text-brand-600 dark:text-brand-400 tabular-nums mt-1">{sec.score}<span className="text-sm text-gray-400"> / {sec.max}</span></p>
+                                                <div className="h-2 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden mt-2"><div className="h-full bg-brand-gradient rounded-full transition-all duration-700" style={{ width: `${sp}%` }} /></div>
+                                                <p className="text-[11px] font-semibold text-gray-500 mt-2"><span className="text-emerald-600">{sec.correct} ✓</span> · <span className="text-rose-600">{sec.wrong} ✗</span></p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {resultTest?._id && <TestLeaderboard testId={resultTest._id} />}
 
                         <button
@@ -343,6 +392,13 @@ const StudentTest = ({ studentId }) => {
                         </div>
                     </div>
 
+                    {sectionsOf(t).length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-6">
+                            {sectionsOf(t).map(sec => (
+                                <span key={sec.name} className="ui-badge bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 !py-2 !px-3"><FiLayers /> {sec.name} · {sec.indexes.length} Q</span>
+                            ))}
+                        </div>
+                    )}
                     <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-8">
                         <li className="flex gap-3"><FiInfo className="text-brand-500 mt-0.5 shrink-0" /> {mcqCount} multiple-choice question{mcqCount === 1 ? '' : 's'}{numCount > 0 ? ` and ${numCount} numerical question${numCount === 1 ? '' : 's'} (type your answer as a number)` : ''}.</li>
                         <li className="flex gap-3"><FiInfo className="text-brand-500 mt-0.5 shrink-0" /> The timer starts as soon as you begin and the test auto-submits when time runs out.</li>
@@ -369,6 +425,10 @@ const StudentTest = ({ studentId }) => {
         const markedCount = questions.filter(q => marked.has(q._id)).length;
         const lowTime = timeLeft < 300;
         const isMarked = currentQuestion && marked.has(currentQuestion._id);
+        const sections = sectionsOf(activeTest);
+        const curSec = sections.findIndex(sec => sec.indexes.includes(currentQuestionIndex));
+        const paletteIndexes = sections.length && curSec >= 0 ? sections[curSec].indexes : questions.map((_, i) => i);
+        const qNeg = currentQuestion && currentQuestion.negativeMarks != null ? Number(currentQuestion.negativeMarks) : Number(activeTest.negativeMarks) || 0;
 
         if (!currentQuestion) {
             return <EmptyState icon={<FiAlertCircle />} title="This test has no questions" action={<button onClick={() => setActiveTest(null)} className="ui-btn-dark">Go back</button>} />;
@@ -392,11 +452,12 @@ const StudentTest = ({ studentId }) => {
         const palette = (
             <div className="ui-card p-5">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-extrabold text-gray-900 dark:text-white">Question palette</h3>
-                    <span className="text-xs font-bold text-gray-400">{answeredCount}/{questions.length}</span>
+                    <h3 className="text-sm font-extrabold text-gray-900 dark:text-white truncate">{sections.length && curSec >= 0 ? sections[curSec].name : 'Question palette'}</h3>
+                    <span className="text-xs font-bold text-gray-400">{sections.length && curSec >= 0 ? `${paletteIndexes.filter(i => hasAnswer(answers.find(a => a.questionId === questions[i]._id))).length}/${paletteIndexes.length}` : `${answeredCount}/${questions.length}`}</span>
                 </div>
                 <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-5 gap-2 max-h-72 overflow-y-auto ui-scrollbar p-1">
-                    {questions.map((q, idx) => {
+                    {paletteIndexes.map((idx) => {
+                        const q = questions[idx];
                         const st = statusOf(q, idx);
                         return (
                             <button
@@ -496,6 +557,29 @@ const StudentTest = ({ studentId }) => {
                     </div>
                 </header>
 
+                {sections.length > 0 && (
+                    <div className="max-w-6xl mx-auto px-4 md:px-6 pt-5">
+                        <div className="flex gap-2 overflow-x-auto ui-scrollbar pb-1" role="tablist" aria-label={tr('student.test.sections')}>
+                            {sections.map((sec, si) => {
+                                const done = sec.indexes.filter(i => hasAnswer(answers.find(a => a.questionId === questions[i]._id))).length;
+                                const on = si === curSec;
+                                return (
+                                    <button
+                                        key={sec.name + si}
+                                        role="tab"
+                                        aria-selected={on}
+                                        onClick={() => goTo(sec.indexes[0])}
+                                        className={`shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-extrabold transition-all active:scale-95 ${on ? 'bg-brand-gradient text-white shadow-brand-soft' : 'bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:border-brand-200'}`}
+                                    >
+                                        <FiLayers /> {sec.name}
+                                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-md ${on ? 'bg-white/20' : 'bg-gray-100 dark:bg-white/10'}`}>{done}/{sec.indexes.length}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 pb-16">
                     <div key={currentQuestionIndex} className="ui-card p-6 md:p-10 min-h-[420px] flex flex-col animate-fade-in">
                         <div className="flex flex-wrap items-center gap-2 mb-5">
@@ -504,7 +588,8 @@ const StudentTest = ({ studentId }) => {
                                 {isNumerical(currentQuestion) ? 'Numerical' : 'MCQ'}
                             </span>
                             <span className="ui-badge bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">+{currentQuestion.marks || 1}</span>
-                            {Number(activeTest.negativeMarks) > 0 && <span className="ui-badge bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">−{activeTest.negativeMarks}</span>}
+                            {qNeg > 0 && <span className="ui-badge bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">−{qNeg}</span>}
+                            {curSec >= 0 && <span className="ui-badge bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300">{sections[curSec].name}</span>}
                             {isMarked && <span className="ui-badge bg-amber-100 text-amber-700"><FiFlag /> Marked</span>}
                         </div>
                         <h4 className="text-lg md:text-2xl font-semibold text-gray-900 dark:text-white mb-8 leading-relaxed whitespace-pre-wrap">
@@ -631,7 +716,9 @@ const StudentTest = ({ studentId }) => {
                             <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-brand-500/5 group-hover:bg-brand-500/10 group-hover:scale-125 transition-all duration-500" />
                             <div className="relative flex justify-between items-start mb-4 gap-2">
                                 <span className={`ui-badge ${status.cls}`}>{status.dot && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}{status.text}</span>
-                                {test.subjectId?.name && <span className="ui-badge bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 truncate">{test.subjectId.name}</span>}
+                                {test.isMock ? (
+                                    <span className="ui-badge bg-ink-900 text-white dark:bg-white dark:text-ink-900"><FiLayers /> {test.pattern === 'jee_main' ? 'JEE Main mock' : tr('student.test.mock')}</span>
+                                ) : test.subjectId?.name && <span className="ui-badge bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 truncate">{test.subjectId.name}</span>}
                             </div>
 
                             <h3 className="relative text-lg font-extrabold text-gray-900 dark:text-white mb-1 leading-snug group-hover:text-brand-600 transition-colors line-clamp-2">{test.title}</h3>

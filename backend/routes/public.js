@@ -43,6 +43,19 @@ router.get('/faculty', async (req, res) => {
 });
 
 // Get all batches for homepage
+// Classes for public forms (admission)
+router.get('/classes', async (req, res) => {
+    try {
+        const classes = await Class.find().select('name').lean();
+        const num = (n) => parseInt(String(n).replace(/\D+/g, ''), 10) || 0;
+        classes.sort((a, b) => num(a.name) - num(b.name) || a.name.localeCompare(b.name));
+        res.json(classes);
+    } catch (err) {
+        console.error('Error fetching classes:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 router.get('/batches', async (req, res) => {
     try {
         const batches = await Batch.find()

@@ -1,6 +1,8 @@
 const express = require('express');
 const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
+const roleAuth = require('../middleware/roleAuth');
+const { notifyUser } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -17,22 +19,16 @@ router.get('/', auth, async (req, res) => {
     }
 });
 
-// Create Notification (Internal/Admin)
-router.post('/', auth, async (req, res) => {
+// Create Notification (staff only — students/parents must not be able to message arbitrary users)
+router.post('/', auth, roleAuth('admin', 'teacher', 'staff'), async (req, res) => {
     try {
         const { recipient, title, message, type } = req.body;
-        const notification = new Notification({
-            recipient, title, message, type
-        });
-        await notification.save();
-
-        if (req.io) {
-            req.io.to(recipient).emit('notification', notification);
-        }
-
+        if (!recipient || !title || !message) return res.status(400).json({ message: 'recipient, title and message are required' });
+        const notification = await notifyUser(req.io, recipient, { title, message, type });
+        if (!notification) return res.status(400).json({ message: 'Could not create notification' });
         res.status(201).json(notification);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

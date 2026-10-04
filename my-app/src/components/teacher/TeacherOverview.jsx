@@ -7,6 +7,8 @@ import { GradientBanner, StatCard } from '../ui/Motion';
 import { greeting } from '../ui/motionUtils';
 import { TodayClasses } from './TeacherTimetable';
 import RecentActivity from './RecentActivity';
+import { AtRiskCard } from './AtRisk';
+import UpcomingEventsCard from '../common/UpcomingEventsCard';
 import { slotsForDay, todayName, useTeacherSchedule } from './teacherApi';
 
 const TIPS = [
@@ -176,6 +178,11 @@ const TeacherOverview = ({ user, teacherData, todayAttendance, checkInClass, set
                         </button>
                     ))}
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+                <AtRiskCard onViewAll={() => onNavigate('at-risk')} className="animate-fade-up" />
+                <UpcomingEventsCard limit={5} onViewAll={() => onNavigate('calendar')} className="animate-fade-up" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">

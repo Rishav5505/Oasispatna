@@ -4,7 +4,7 @@ import {
   FiChevronRight, FiMoreHorizontal, FiCornerDownLeft, FiZap, FiSettings,
 } from 'react-icons/fi';
 import { useTheme } from '../../contexts/ThemeContext';
-import { NAV_GROUPS, NAV_ITEMS, PROFILE_ITEM, MOBILE_PRIMARY, navItem } from './adminNav';
+import { DEFAULT_NAV } from './adminNav';
 import { Avatar } from './AdminUI';
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
@@ -41,7 +41,7 @@ const NavButton = ({ item, activeTab, collapsed, badges, onNavigate }) => {
 /* ------------------------------------------------------------------ */
 /* Sidebar (desktop static, mobile drawer)                             */
 /* ------------------------------------------------------------------ */
-export const Sidebar = ({ activeTab, onNavigate, open, onClose, collapsed, onToggleCollapse, badges = {}, user, photoUrl, onLogout, logo, logoMark }) => {
+export const Sidebar = ({ activeTab, onNavigate, open, onClose, collapsed, onToggleCollapse, badges = {}, user, photoUrl, onLogout, logo, logoMark, nav = DEFAULT_NAV }) => {
   return (
     <>
       {open && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden animate-fade-in" onClick={onClose} />}
@@ -49,7 +49,7 @@ export const Sidebar = ({ activeTab, onNavigate, open, onClose, collapsed, onTog
         className={`fixed lg:static inset-y-0 left-0 z-50 flex flex-col bg-ink-950 text-white border-r border-white/5 transition-all duration-300 ease-out
           ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
           w-72 ${collapsed ? 'lg:w-[5.25rem]' : 'lg:w-72'}`}
-        aria-label="Admin navigation"
+        aria-label={`${nav.roleLabel} navigation`}
       >
         {/* glow */}
         <div className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-brand-500/20 blur-3xl" />
@@ -63,7 +63,7 @@ export const Sidebar = ({ activeTab, onNavigate, open, onClose, collapsed, onTog
         </div>
 
         <nav className="relative flex-1 overflow-y-auto ui-scrollbar px-3 py-4 space-y-5">
-          {NAV_GROUPS.map(group => (
+          {nav.groups.map(group => (
             <div key={group.label}>
               <p className={`px-3.5 mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 ${collapsed ? 'lg:hidden' : ''}`}>{group.label}</p>
               {collapsed && <div className="hidden lg:block mx-auto mb-2 w-6 h-px bg-white/10" />}
@@ -85,12 +85,12 @@ export const Sidebar = ({ activeTab, onNavigate, open, onClose, collapsed, onTog
           </button>
           <div className={`flex items-center gap-3 p-2.5 rounded-2xl bg-white/[0.04] border border-white/5 ${collapsed ? 'lg:flex-col lg:p-2' : ''}`}>
             <button type="button" onClick={() => onNavigate('profile')} className="shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400" title="Profile settings">
-              <Avatar name={user?.name || 'Admin'} src={photoUrl} size="md" className="!ring-ink-950" />
+              <Avatar name={user?.name || nav.roleLabel} src={photoUrl} size="md" className="!ring-ink-950" />
             </button>
             <div className={`min-w-0 flex-1 ${collapsed ? 'lg:hidden' : ''}`}>
-              <p className="text-sm font-bold truncate">{user?.name || 'Administrator'}</p>
+              <p className="text-sm font-bold truncate">{user?.name || nav.roleLabel}</p>
               <p className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Admin · online
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> {nav.roleLabel} · online
               </p>
             </div>
             <button
@@ -129,11 +129,11 @@ const usePopover = () => {
 /* ------------------------------------------------------------------ */
 /* Top bar                                                             */
 /* ------------------------------------------------------------------ */
-export const Topbar = ({ activeTab, onOpenSidebar, onOpenPalette, notifications = [], onNavigate, user, photoUrl, onLogout, logoMark }) => {
+export const Topbar = ({ activeTab, onOpenSidebar, onOpenPalette, notifications = [], onNavigate, user, photoUrl, onLogout, logoMark, nav = DEFAULT_NAV, extras = null }) => {
   const theme = useTheme();
   const [bellOpen, setBellOpen, bellRef] = usePopover();
   const [menuOpen, setMenuOpen, menuRef] = usePopover();
-  const current = navItem(activeTab);
+  const current = nav.find(activeTab);
   const unread = notifications.reduce((a, n) => a + (n.count || 0), 0);
 
   return (
@@ -145,7 +145,7 @@ export const Topbar = ({ activeTab, onOpenSidebar, onOpenPalette, notifications 
 
       <div className="min-w-0">
         <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold text-gray-400">
-          <span>Admin</span><FiChevronRight className="text-[10px]" /><span>{current.group}</span>
+          <span>{nav.roleLabel}</span><FiChevronRight className="text-[10px]" /><span>{current.group}</span>
         </nav>
         <h1 className="text-base md:text-lg font-extrabold tracking-tight text-gray-900 dark:text-white truncate leading-tight">{current.label}</h1>
       </div>
@@ -164,6 +164,8 @@ export const Topbar = ({ activeTab, onOpenSidebar, onOpenPalette, notifications 
         <button type="button" onClick={onOpenPalette} className="md:hidden w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-white/5" aria-label="Search">
           <FiSearch className="text-lg" />
         </button>
+
+        {extras}
 
         {theme?.toggleTheme && (
           <button
@@ -224,16 +226,16 @@ export const Topbar = ({ activeTab, onOpenSidebar, onOpenPalette, notifications 
             aria-label="Account menu"
             aria-expanded={menuOpen}
           >
-            <Avatar name={user?.name || 'Admin'} src={photoUrl} size="sm" />
+            <Avatar name={user?.name || nav.roleLabel} src={photoUrl} size="sm" />
             <span className="hidden md:block text-left">
-              <span className="block text-xs font-bold text-gray-900 dark:text-white leading-tight max-w-[8rem] truncate">{user?.name || 'Administrator'}</span>
+              <span className="block text-xs font-bold text-gray-900 dark:text-white leading-tight max-w-[8rem] truncate">{user?.name || nav.roleLabel}</span>
               <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{user?.role}</span>
             </span>
           </button>
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-56 ui-card !rounded-2xl p-1.5 animate-scale-in origin-top-right">
               <button type="button" onClick={() => { setMenuOpen(false); onNavigate('profile'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-brand-50 dark:hover:bg-white/5">
-                <FiSettings /> Profile settings
+                <FiSettings /> {nav.profileItem.label}
               </button>
               <button type="button" onClick={onLogout} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10">
                 <FiLogOut /> Sign out
@@ -249,10 +251,10 @@ export const Topbar = ({ activeTab, onOpenSidebar, onOpenPalette, notifications 
 /* ------------------------------------------------------------------ */
 /* Mobile bottom navigation + "More" sheet                             */
 /* ------------------------------------------------------------------ */
-export const MobileBottomNav = ({ activeTab, onNavigate, badges = {} }) => {
+export const MobileBottomNav = ({ activeTab, onNavigate, badges = {}, nav = DEFAULT_NAV }) => {
   const [more, setMore] = useState(false);
-  const primary = MOBILE_PRIMARY.map(navItem);
-  const inMore = !MOBILE_PRIMARY.includes(activeTab);
+  const primary = nav.mobilePrimary.map(nav.find);
+  const inMore = !nav.mobilePrimary.includes(activeTab);
   const go = (id) => { setMore(false); onNavigate(id); };
 
   return (
@@ -261,7 +263,7 @@ export const MobileBottomNav = ({ activeTab, onNavigate, badges = {} }) => {
         <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setMore(false)}>
           <div className="absolute bottom-0 inset-x-0 ui-card !rounded-b-none !rounded-t-3xl p-4 pb-24 max-h-[75vh] overflow-y-auto animate-fade-up" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto w-10 h-1.5 rounded-full bg-gray-200 dark:bg-white/10 mb-4" />
-            {[...NAV_GROUPS, { label: 'Account', items: [PROFILE_ITEM] }].map(g => (
+            {[...nav.groups, { label: nav.accountLabel, items: [nav.profileItem] }].map(g => (
               <div key={g.label} className="mb-3">
                 <p className="px-1 mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">{g.label}</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -312,7 +314,7 @@ export const MobileBottomNav = ({ activeTab, onNavigate, badges = {} }) => {
 /* ------------------------------------------------------------------ */
 /* Ctrl/⌘+K command palette                                            */
 /* ------------------------------------------------------------------ */
-export const CommandPalette = ({ open, onClose, onNavigate, actions = [] }) => {
+export const CommandPalette = ({ open, onClose, onNavigate, actions = [], nav = DEFAULT_NAV }) => {
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef(null);
@@ -321,11 +323,11 @@ export const CommandPalette = ({ open, onClose, onNavigate, actions = [] }) => {
   const entries = useMemo(() => {
     const all = [
       ...actions.map(a => ({ ...a, kind: 'Quick actions' })),
-      ...NAV_ITEMS.map(i => ({ key: i.id, label: i.label, hint: i.hint, icon: i.icon, group: i.group, kind: 'Go to', run: () => onNavigate(i.id) })),
+      ...nav.items.map(i => ({ key: i.id, label: i.label, hint: i.hint, icon: i.icon, group: i.group, kind: 'Go to', run: () => onNavigate(i.id) })),
     ];
     const q = query.trim().toLowerCase();
     return q ? all.filter(e => `${e.label} ${e.hint || ''} ${e.group || ''}`.toLowerCase().includes(q)) : all;
-  }, [actions, onNavigate, query]);
+  }, [actions, onNavigate, query, nav]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -396,7 +398,7 @@ export const CommandPalette = ({ open, onClose, onNavigate, actions = [] }) => {
         <div className="px-4 py-2.5 border-t border-gray-100 dark:border-white/5 flex items-center gap-4 text-[11px] font-semibold text-gray-400">
           <span><kbd className="font-bold">↑↓</kbd> navigate</span>
           <span><kbd className="font-bold">↵</kbd> open</span>
-          <span className="ml-auto">Oasis Admin</span>
+          <span className="ml-auto">Oasis {nav.roleLabel}</span>
         </div>
       </div>
     </div>
