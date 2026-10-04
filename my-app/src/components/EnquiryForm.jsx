@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import config from '../config';
+import { notify } from '../utils/notify';
 
 const EnquiryForm = () => {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', course: '' });
@@ -8,7 +9,7 @@ const EnquiryForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     await axios.post(`${config.API_URL}/leads`, form);
-    alert('Enquiry submitted');
+    notify('Enquiry submitted');
   };
 
   return (

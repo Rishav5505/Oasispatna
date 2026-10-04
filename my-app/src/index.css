@@ -302,3 +302,81 @@
   max-height: 500px;
   @apply py-6 opacity-100;
 }
+/* ================================================================
+   Oasis UI design system (shared by dashboards + public pages)
+   ================================================================ */
+@layer components {
+  .ui-card {
+    @apply bg-white dark:bg-ink-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-card transition-all duration-300;
+  }
+  .ui-card-hover {
+    @apply hover:shadow-card-hover hover:-translate-y-1 hover:border-brand-100;
+  }
+  .ui-glass {
+    @apply bg-white/70 dark:bg-ink-900/70 backdrop-blur-xl border border-white/60 dark:border-white/10;
+  }
+  .ui-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-brand-gradient shadow-brand-soft
+           transition-all duration-300 hover:shadow-brand-glow hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
+  }
+  .ui-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-ink-800
+           border border-gray-200 dark:border-white/10 transition-all duration-300 hover:border-brand-300 hover:text-brand-600 active:scale-[0.98];
+  }
+  .ui-btn-dark {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-ink-900
+           transition-all duration-300 hover:bg-black hover:-translate-y-0.5 active:scale-[0.98];
+  }
+  .ui-input {
+    @apply w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-ink-800 border border-gray-200 dark:border-white/10 text-sm font-medium
+           placeholder:text-gray-400 transition-all focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 focus:outline-none;
+  }
+  .ui-badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide;
+  }
+  .ui-gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-brand-500 to-brand-700 bg-[length:200%_auto] animate-gradient-x;
+  }
+  .ui-skeleton {
+    @apply rounded-xl bg-gray-100 dark:bg-white/5 animate-shimmer;
+    background-image: linear-gradient(90deg, transparent 0, rgba(255,255,255,0.6) 50%, transparent 100%);
+    background-size: 400px 100%;
+    background-repeat: no-repeat;
+  }
+  .ui-nav-item {
+    @apply relative flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-gray-500 dark:text-gray-400 transition-all duration-300
+           hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-white/5;
+  }
+  .ui-nav-item-active {
+    @apply text-white bg-brand-gradient shadow-brand-soft hover:text-white hover:bg-brand-gradient;
+  }
+}
+
+/* Children fade up one after another: <div className="ui-stagger"> */
+.ui-stagger > * { animation: ui-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.ui-stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.ui-stagger > *:nth-child(2) { animation-delay: 0.10s; }
+.ui-stagger > *:nth-child(3) { animation-delay: 0.16s; }
+.ui-stagger > *:nth-child(4) { animation-delay: 0.22s; }
+.ui-stagger > *:nth-child(5) { animation-delay: 0.28s; }
+.ui-stagger > *:nth-child(6) { animation-delay: 0.34s; }
+.ui-stagger > *:nth-child(n+7) { animation-delay: 0.40s; }
+
+@keyframes ui-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ui-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.ui-scrollbar::-webkit-scrollbar-thumb { background: rgba(243, 112, 33, 0.35); border-radius: 999px; }
+.ui-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

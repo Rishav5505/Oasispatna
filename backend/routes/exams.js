@@ -5,6 +5,9 @@ const auth = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 const Notification = require('../models/Notification');
 const Student = require('../models/Student');
+const sendSMS = require('../utils/sendSMS');
+const { notifyMany } = require('../utils/notify');
+const { getParentUsers } = require('../utils/access');
 
 // Get all exams
 router.get('/', auth, async (req, res) => {
@@ -75,19 +78,21 @@ router.post('/:id/publish', auth, roleAuth('admin'), async (req, res) => {
       type: 'academic'
     }));
 
-    if (notifications.length > 0) {
-      await Notification.insertMany(notifications);
+    // DB notification + socket push to each student
+    await notifyMany(req.io, notifications);
 
-      // Emit socket events if possible
-      if (req.io) {
-        students.forEach(student => {
-          req.io.to(student.userId.toString()).emit('notification', {
-            title: 'Result Published! 🎉',
-            message: `Your results for ${exam.name} have been published.`,
-            type: 'academic'
-          });
-        });
-      }
+    // Parents: in-app notification + SMS/WhatsApp (no-op if Twilio not configured)
+    for (const student of students) {
+      const parents = await getParentUsers(student);
+      await notifyMany(req.io, parents.map(p => ({
+        recipient: p._id,
+        title: 'Result Published! 🎉',
+        message: `Results of ${exam.name} for ${student.name} have been published.`,
+        type: 'academic'
+      })));
+      parents.forEach(p => {
+        if (p.phone) sendSMS(p.phone, `Oasis JEE Classes: Results of ${exam.name} for ${student.name} are now published. Check the Parent Portal.`);
+      });
     }
 
     res.json({ message: 'Results published and notifications sent!', exam });

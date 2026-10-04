@@ -9,6 +9,9 @@ const sendEmail = require('../utils/sendEmail');
 const sendAbsenceEmail = require('../utils/sendAbsenceEmail');
 const sendSMS = require('../utils/sendSMS');
 const jwt = require('jsonwebtoken');
+const JWT_SECRET = require('../utils/jwtSecret');
+const { notifyUser } = require('../utils/notify');
+const { getAccessibleStudent, getParentUsers } = require('../utils/access');
 
 const router = express.Router();
 
@@ -33,6 +36,35 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return R * c; // in metres
 };
 
+// Absence alert: email (student + parents), in-app + socket notification and SMS/WhatsApp to parents
+async function sendAbsentAlerts(req, studentId, subjectId, date, title) {
+  try {
+    const student = await Student.findById(studentId).populate('userId', 'name email phone');
+    if (!student) return;
+    const subject = await require('../models/Subject').findById(subjectId);
+    const subjectName = subject ? subject.name : 'Class';
+    const dateText = new Date(date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const message = `Dear Parent, your child ${student.name} was absent in ${subjectName} on ${dateText}.`;
+
+    const parents = await getParentUsers(student);
+
+    const recipientEmails = [];
+    if (student.userId && student.userId.email) recipientEmails.push(student.userId.email);
+    parents.forEach(p => { if (p.email && !recipientEmails.includes(p.email)) recipientEmails.push(p.email); });
+
+    if (recipientEmails.length > 0) {
+      await sendAbsenceEmail(recipientEmails, { studentName: student.name, subjectName, date });
+    }
+
+    for (const p of parents) {
+      await notifyUser(req.io, p._id, { title, message, type: 'academic' });
+      if (p.phone) sendSMS(p.phone, `Oasis JEE Classes: ${student.name} was marked absent in ${subjectName} on ${dateText}.`);
+    }
+  } catch (err) {
+    console.error('Absent alert error:', err.message);
+  }
+}
+
 // Bulk mark attendance (teacher only)
 router.post('/bulk', auth, roleAuth('teacher'), async (req, res) => {
   const { students, date, subjectId } = req.body;
@@ -48,37 +80,7 @@ router.post('/bulk', auth, roleAuth('teacher'), async (req, res) => {
       );
 
       if (s.status === 'absent') {
-        const student = await Student.findById(s.studentId).populate('userId').populate('parentId');
-        if (student) {
-          const subject = await require('../models/Subject').findById(subjectId);
-          const subjectName = subject ? subject.name : 'Class';
-          const message = `Dear Parent, your child ${student.name} was absent in ${subjectName} on ${new Date(date).toLocaleDateString()}.`;
-
-          // Prepare emails
-          const recipientEmails = [];
-          if (student.userId && student.userId.email) recipientEmails.push(student.userId.email);
-          if (student.parentId && student.parentId.email) recipientEmails.push(student.parentId.email);
-
-          if (recipientEmails.length > 0) {
-            await sendAbsenceEmail(recipientEmails, {
-              studentName: student.name,
-              subjectName: subjectName,
-              date: date
-            });
-          }
-
-          // In-App Notification for Parent
-          if (student.parentId) {
-            const parentId = student.parentId._id || student.parentId;
-            const notification = new Notification({
-              recipient: parentId,
-              title: 'Attendance Alert',
-              message: message,
-              type: 'academic'
-            });
-            await notification.save();
-          }
-        }
+        await sendAbsentAlerts(req, s.studentId, subjectId, date, 'Attendance Alert');
       }
       return attendance;
     });
@@ -106,37 +108,7 @@ router.post('/', auth, roleAuth('teacher'), async (req, res) => {
     );
 
     if (status === 'absent') {
-      const student = await Student.findById(studentId).populate('userId').populate('parentId');
-      if (student) {
-        const subject = await require('../models/Subject').findById(subjectId);
-        const subjectName = subject ? subject.name : 'Class';
-        const message = `Dear Parent, your child ${student.name} was absent in ${subjectName} on ${new Date(date).toLocaleDateString()}.`;
-
-        // Prepare emails (Student & Parent)
-        const recipientEmails = [];
-        if (student.userId && student.userId.email) recipientEmails.push(student.userId.email);
-        if (student.parentId && student.parentId.email) recipientEmails.push(student.parentId.email);
-
-        if (recipientEmails.length > 0) {
-          await sendAbsenceEmail(recipientEmails, {
-            studentName: student.name,
-            subjectName: subjectName,
-            date: date
-          });
-        }
-
-        // New In-App Notification for Parent
-        if (student.parentId) {
-          const parentId = student.parentId._id || student.parentId;
-          const notification = new Notification({
-            recipient: parentId,
-            title: 'Daily Attendance Alert',
-            message: message,
-            type: 'academic'
-          });
-          await notification.save();
-        }
-      }
+      await sendAbsentAlerts(req, studentId, subjectId, date, 'Daily Attendance Alert');
     }
 
     res.json(attendance);
@@ -148,20 +120,9 @@ router.post('/', auth, roleAuth('teacher'), async (req, res) => {
 // Get attendance for student (student/parent/teacher/admin)
 router.get('/student/:studentId', auth, async (req, res) => {
   try {
-    let student = await Student.findById(req.params.studentId);
-    if (!student) {
-      student = await Student.findOne({ userId: req.params.studentId });
-    }
-    if (!student) return res.status(404).json({ message: 'Student not found' });
-
-    if (req.user.role === 'student' && req.user.id !== student.userId.toString()) return res.status(403).json({ message: 'Access denied' });
-    if (req.user.role === 'parent') {
-      // Parents can only access their linked student's data via token
-      if (!req.user.studentId || req.user.studentId !== student._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. Can only view own child\'s data.' });
-      }
-    }
-    // Teacher and admin can view
+    // admin/teacher, the student, or a linked parent (parent link looked up from DB)
+    const student = await getAccessibleStudent(req, res, req.params.studentId);
+    if (!student) return;
 
     const attendance = await Attendance.find({ studentId: student._id })
       .populate('subjectId', 'name')
@@ -183,7 +144,7 @@ router.get('/', auth, roleAuth('admin'), async (req, res) => {
 });
 
 // Get attendance for a class, subject, and date
-router.get('/class/:classId/subject/:subjectId/date/:date', auth, async (req, res) => {
+router.get('/class/:classId/subject/:subjectId/date/:date', auth, roleAuth('teacher', 'admin'), async (req, res) => {
   const { classId, subjectId, date } = req.params;
   try {
     const startOfDay = new Date(date);
@@ -213,7 +174,7 @@ router.post('/qr/generate', auth, roleAuth('teacher'), async (req, res) => {
     // Generate a token that expires in 5 minutes
     const qrToken = jwt.sign(
       { classId, subjectId, teacherId: req.user.id, type: 'attendance_qr' },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '5m' }
     );
 
@@ -232,7 +193,7 @@ router.post('/qr/mark', auth, roleAuth('student'), async (req, res) => {
     // 1. Verify Token
     let decoded;
     try {
-      decoded = jwt.verify(qrToken, process.env.JWT_SECRET);
+      decoded = jwt.verify(qrToken, JWT_SECRET);
     } catch (e) {
       return res.status(401).json({ message: 'QR Code expired or invalid. Scan again.' });
     }
@@ -251,6 +212,9 @@ router.post('/qr/mark', auth, roleAuth('student'), async (req, res) => {
     // 3. Find Student Record
     const student = await Student.findOne({ userId: req.user.id });
     if (!student) return res.status(404).json({ message: 'Student profile not found' });
+    if (decoded.classId && String(student.classId) !== String(decoded.classId)) {
+      return res.status(403).json({ message: 'This QR code is for a different class' });
+    }
 
     // 4. Mark Attendance
     const startOfDay = new Date();

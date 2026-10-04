@@ -6,25 +6,79 @@ const auth = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 const Attendance = require('../models/Attendance');
 const Class = require('../models/Class');
+const { getAccessibleStudent, isObjectId } = require('../utils/access');
 
 const router = express.Router();
 
-// Upload marks (teacher only)
-router.post('/', auth, roleAuth('teacher'), async (req, res) => {
+// Upload marks (teacher/admin) - upserts on (studentId, examId, subjectId)
+router.post('/', auth, roleAuth('teacher', 'admin'), async (req, res) => {
   const { studentId, subjectId, marks, examId, remarks } = req.body;
   try {
-    const mark = new Marks({
-      studentId,
-      subjectId,
-      marks,
-      maxMarks: marks > 100 ? marks : (req.body.maxMarks || 100), // Default to 100 or higher if marks exceed it
-      examId,
-      remarks,
+    if (!isObjectId(String(studentId)) || !isObjectId(String(subjectId)) || !isObjectId(String(examId))) {
+      return res.status(400).json({ message: 'Valid studentId, subjectId and examId are required' });
+    }
+    const value = Number(marks);
+    if (marks === '' || marks === null || marks === undefined || !Number.isFinite(value)) {
+      return res.status(400).json({ message: 'Marks must be a number' });
+    }
+    const update = {
+      marks: value,
+      maxMarks: value > 100 ? value : (Number(req.body.maxMarks) || 100), // Default to 100 or higher if marks exceed it
       markedBy: req.user.id,
-    });
-    await mark.save();
+    };
+    if (remarks !== undefined) update.remarks = remarks;
+
+    const mark = await Marks.findOneAndUpdate(
+      { studentId, examId, subjectId },
+      { $set: update },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
     res.json(mark);
   } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Bulk upload marks (teacher/admin) - body { examId, subjectId, maxMarks, entries:[{studentId, marks}] }
+router.post('/bulk', auth, roleAuth('teacher', 'admin'), async (req, res) => {
+  const { examId, subjectId, entries } = req.body;
+  try {
+    if (!isObjectId(String(examId)) || !isObjectId(String(subjectId))) {
+      return res.status(400).json({ message: 'Valid examId and subjectId are required' });
+    }
+    const maxMarks = Number(req.body.maxMarks) || 100;
+    if (maxMarks <= 0) return res.status(400).json({ message: 'maxMarks must be positive' });
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return res.status(400).json({ message: 'entries must be a non-empty array' });
+    }
+
+    const ops = [];
+    const seen = new Set();
+    for (const e of entries) {
+      if (!e || !isObjectId(String(e.studentId))) return res.status(400).json({ message: 'Each entry needs a valid studentId' });
+      if (e.marks === '' || e.marks === null || e.marks === undefined) continue; // blank = skip
+      const value = Number(e.marks);
+      if (!Number.isFinite(value) || value < 0 || value > maxMarks) {
+        return res.status(400).json({ message: `Invalid marks for student ${e.studentId}: must be between 0 and ${maxMarks}` });
+      }
+      const key = String(e.studentId);
+      if (seen.has(key)) continue; // ignore duplicate rows
+      seen.add(key);
+      const set = { marks: value, maxMarks, markedBy: req.user.id };
+      if (e.remarks !== undefined) set.remarks = e.remarks;
+      ops.push({
+        updateOne: {
+          filter: { studentId: e.studentId, examId, subjectId },
+          update: { $set: set },
+          upsert: true
+        }
+      });
+    }
+
+    if (ops.length > 0) await Marks.bulkWrite(ops, { ordered: false });
+    res.json({ saved: ops.length });
+  } catch (err) {
+    console.error('Bulk marks error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -32,19 +86,9 @@ router.post('/', auth, roleAuth('teacher'), async (req, res) => {
 // Get marks for student
 router.get('/student/:studentId', auth, async (req, res) => {
   try {
-    let student = await Student.findById(req.params.studentId);
-    if (!student) {
-      student = await Student.findOne({ userId: req.params.studentId });
-    }
-    if (!student) return res.status(404).json({ message: 'Student not found' });
-
-    if (req.user.role === 'student' && req.user.id !== student.userId.toString()) return res.status(403).json({ message: 'Access denied' });
-    if (req.user.role === 'parent') {
-      // Parents can only access their linked student's data via token
-      if (!req.user.studentId || req.user.studentId !== student._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. Can only view own child\'s data.' });
-      }
-    }
+    // Ownership: admin/teacher, the student, or a linked parent (looked up from DB)
+    const student = await getAccessibleStudent(req, res, req.params.studentId);
+    if (!student) return;
 
     const marks = await Marks.find({ studentId: student._id }).populate('subjectId', 'name').populate('examId', 'name type isPublished');
 
@@ -88,21 +132,10 @@ router.get('/class/:classId/subject/:subjectId/exam/:examId', auth, roleAuth('te
 // Get consolidated summary for a specific student (for Report Card)
 router.get('/student-summary/:studentId', auth, async (req, res) => {
   try {
-    let student = await Student.findById(req.params.studentId).populate('userId', 'email phone');
-    if (!student) {
-      student = await Student.findOne({ userId: req.params.studentId }).populate('userId', 'email phone');
-    }
-    if (!student) return res.status(404).json({ message: 'Student not found' });
-
-    // Permissions
-    if (req.user.role === 'student' && req.user.id !== student.userId?._id?.toString() && req.user.id !== student.userId?.toString()) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    if (req.user.role === 'parent') {
-      if (!req.user.studentId || req.user.studentId !== student._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. Can only view own child\'s summary.' });
-      }
-    }
+    // Permissions: admin/teacher, the student, or a linked parent (looked up from DB)
+    const accessible = await getAccessibleStudent(req, res, req.params.studentId);
+    if (!accessible) return;
+    const student = await Student.findById(accessible._id).populate('userId', 'email phone');
 
     const classRecord = await Class.findById(student.classId);
     if (!classRecord) return res.status(404).json({ message: 'Class record not found' });

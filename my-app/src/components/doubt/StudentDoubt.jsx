@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import config from '../../config';
-import { FaQuestionCircle, FaPlus, FaImage, FaTimes, FaReply, FaCheckCircle, FaHourglassHalf } from 'react-icons/fa';
+import { toast } from '../../utils/notify';
+import { errorMessage, resolveFileUrl } from '../student/helpers';
+import { SkeletonRows, EmptyState, PageHeader } from '../student/StudentUI';
+import { FiHelpCircle, FiPlus, FiImage, FiX, FiMessageCircle, FiCheckCircle, FiClock, FiUser, FiSend } from 'react-icons/fi';
 
 const StudentDoubt = ({ studentId }) => {
     const [doubts, setDoubts] = useState([]);
@@ -19,6 +22,7 @@ const StudentDoubt = ({ studentId }) => {
             setDoubts(res.data);
         } catch (err) {
             console.error('Error fetching doubts:', err);
+            toast.error(errorMessage(err, 'Failed to load your doubts'));
         } finally {
             setLoading(false);
         }
@@ -43,8 +47,12 @@ const StudentDoubt = ({ studentId }) => {
         }
     }, [studentId, fetchDoubts, fetchSubjects]);
 
+    const [submitting, setSubmitting] = useState(false);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
         const token = sessionStorage.getItem('token');
         const data = new FormData();
         data.append('title', formData.title);
@@ -63,165 +71,190 @@ const StudentDoubt = ({ studentId }) => {
             setIsModalOpen(false);
             setFormData({ title: '', description: '', subjectId: '', image: null });
             fetchDoubts();
+            toast.success('Doubt submitted! Our faculty will reply soon.');
         } catch (err) {
             console.error('Error posting doubt:', err);
+            toast.error(errorMessage(err, 'Failed to submit doubt'));
+        } finally {
+            setSubmitting(false);
         }
     };
 
-    if (loading) return <div className="text-center py-10">Loading doubt board...</div>;
+    if (loading) return (
+        <div className="space-y-6">
+            <div className="ui-skeleton h-12 w-64"></div>
+            <SkeletonRows count={4} />
+        </div>
+    );
+
+    const openCount = doubts.filter(d => d.status === 'open').length;
+    const resolvedCount = doubts.length - openCount;
 
     return (
-        <div className="space-y-8">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-3xl font-black text-gray-900 flex items-center gap-3">
-                        <FaQuestionCircle className="text-orange-500" /> Doubt Board
-                    </h2>
-                    <p className="text-gray-500 font-medium">Get your queries resolved by experts</p>
+        <div className="space-y-6">
+            <PageHeader
+                icon={FiHelpCircle}
+                title="Doubt Board"
+                subtitle="Get your queries resolved by expert faculty"
+                action={(
+                    <button onClick={() => setIsModalOpen(true)} className="ui-btn-primary w-full md:w-auto">
+                        <FiPlus /> Ask a doubt
+                    </button>
+                )}
+            />
+
+            {doubts.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    <span className="ui-badge bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 text-gray-600 dark:text-gray-300 !py-2 !px-3">{doubts.length} total</span>
+                    <span className="ui-badge bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 !py-2 !px-3"><FiClock /> {openCount} awaiting reply</span>
+                    <span className="ui-badge bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 !py-2 !px-3"><FiCheckCircle /> {resolvedCount} resolved</span>
                 </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-600 shadow-xl shadow-gray-200 transition-all flex items-center gap-3"
-                >
-                    <FaPlus /> ASK NEW DOUBT
-                </button>
-            </div>
+            )}
 
-            <div className="space-y-6">
-                {doubts.length > 0 ? doubts.map(doubt => (
-                    <div key={doubt._id} className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-100 hover:shadow-2xl transition-all group overflow-hidden relative">
-                        <div className={`absolute top-0 right-0 w-2 h-full ${doubt.status === 'open' ? 'bg-orange-400' : 'bg-green-400'}`}></div>
-
-                        <div className="flex flex-col lg:flex-row gap-10">
-                            <div className="flex-1">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className="flex items-center gap-3">
-                                        <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-orange-100">
-                                            {doubt.subjectId?.name}
+            <div className="space-y-4 ui-stagger">
+                {doubts.length > 0 ? doubts.map(doubt => {
+                    const isOpen = doubt.status === 'open';
+                    return (
+                        <article key={doubt._id} className="ui-card ui-card-hover group overflow-hidden relative">
+                            <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${isOpen ? 'bg-amber-400' : 'bg-emerald-500'}`} aria-hidden="true" />
+                            <div className="p-5 md:p-7 pl-6 md:pl-8 flex flex-col lg:flex-row gap-6">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                                        {doubt.subjectId?.name && <span className="ui-badge bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{doubt.subjectId.name}</span>}
+                                        <span className={`ui-badge ${isOpen ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}`}>
+                                            {isOpen ? <FiClock /> : <FiCheckCircle />} {doubt.status}
                                         </span>
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                        <span className="text-xs font-semibold text-gray-400 ml-auto">
                                             {new Date(doubt.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                                         </span>
                                     </div>
-                                    <div className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${doubt.status === 'open' ? 'text-orange-500' : 'text-green-500'}`}>
-                                        {doubt.status === 'open' ? <FaHourglassHalf /> : <FaCheckCircle />}
-                                        {doubt.status}
-                                    </div>
+
+                                    <h3 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">{doubt.title}</h3>
+                                    <p className="text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{doubt.description}</p>
+
+                                    {doubt.replies?.length > 0 && (
+                                        <div className="mt-6 space-y-3">
+                                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                                <FiMessageCircle /> Faculty replies ({doubt.replies.length})
+                                            </h4>
+                                            {doubt.replies.map((reply, idx) => (
+                                                <div key={idx} className="flex gap-3">
+                                                    <span className="w-9 h-9 shrink-0 rounded-full bg-brand-gradient text-white flex items-center justify-center text-sm"><FiUser /></span>
+                                                    <div className="flex-1 bg-gray-50 dark:bg-white/5 rounded-2xl rounded-tl-md px-4 py-3">
+                                                        <p className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{reply.message}</p>
+                                                        <p className="text-[11px] font-semibold text-gray-400 mt-2">Replied on {new Date(reply.createdAt).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
-                                <h3 className="text-2xl font-black text-gray-800 mb-4 tracking-tight uppercase">{doubt.title}</h3>
-                                <p className="text-gray-500 font-medium leading-relaxed mb-8">{doubt.description}</p>
-
-                                {doubt.replies.length > 0 && (
-                                    <div className="mt-8 pt-8 border-t border-gray-50 space-y-6">
-                                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                                            <FaReply className="rotate-180" /> Instructor Replies ({doubt.replies.length})
-                                        </h4>
-                                        {doubt.replies.map((reply, idx) => (
-                                            <div key={idx} className="bg-gray-50 p-6 rounded-2xl relative">
-                                                <p className="text-sm font-medium text-gray-700">{reply.message}</p>
-                                                <p className="text-[10px] font-bold text-gray-400 mt-3 text-right">
-                                                    Replied on {new Date(reply.createdAt).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
+                                {doubt.imageUrl && (
+                                    <a href={resolveFileUrl(doubt.imageUrl)} target="_blank" rel="noopener noreferrer" className="lg:w-60 w-full shrink-0 block rounded-2xl overflow-hidden border border-gray-100 dark:border-white/10 group/img" title="Open full image">
+                                        <img
+                                            src={resolveFileUrl(doubt.imageUrl)}
+                                            alt="Doubt reference"
+                                            className="w-full h-44 object-cover group-hover/img:scale-105 transition-transform duration-500"
+                                        />
+                                    </a>
                                 )}
                             </div>
-
-                            {doubt.imageUrl && (
-                                <div className="lg:w-64 w-full shrink-0">
-                                    <img
-                                        src={`${config.API_URL}${doubt.imageUrl}`}
-                                        alt="Doubt reference"
-                                        className="w-full h-48 object-cover rounded-[2rem] border-4 border-gray-50 shadow-inner"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )) : (
-                    <div className="py-24 text-center bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-200">
-                        <FaQuestionCircle className="text-4xl text-gray-200 mx-auto mb-4" />
-                        <h3 className="text-lg font-bold text-gray-800 mb-2">No Doubts Yet</h3>
-                        <p className="text-gray-400 font-medium max-w-xs mx-auto">Got a question? Don't hesitate to ask our experts!</p>
-                    </div>
+                        </article>
+                    );
+                }) : (
+                    <EmptyState
+                        icon={<FiHelpCircle />}
+                        title="No doubts yet"
+                        message="Got a question? Don't hesitate to ask our experts!"
+                        action={<button onClick={() => setIsModalOpen(true)} className="ui-btn-primary"><FiPlus /> Ask your first doubt</button>}
+                    />
                 )}
             </div>
 
             {/* Ask Doubt Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[999]">
-                    <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-                        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Ask Your Doubt</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="bg-white p-3 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all shadow-sm">
-                                <FaTimes />
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[999] animate-fade-in" onClick={() => setIsModalOpen(false)}>
+                    <div className="ui-card w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Ask your doubt">
+                        <div className="px-6 py-5 border-b border-gray-100 dark:border-white/10 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <span className="w-10 h-10 rounded-xl bg-brand-gradient text-white flex items-center justify-center"><FiHelpCircle /></span>
+                                <div>
+                                    <h3 className="text-lg font-extrabold text-gray-900 dark:text-white">Ask your doubt</h3>
+                                    <p className="text-xs text-gray-400">Our faculty usually reply within a day</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-red-500 flex items-center justify-center" aria-label="Close">
+                                <FiX />
                             </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-10 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Subject</label>
-                                    <select
-                                        required
-                                        className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all appearance-none"
-                                        value={formData.subjectId}
-                                        onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
-                                    >
-                                        <option value="">Select Subject</option>
-                                        {subjects.map(sub => <option key={sub._id} value={sub._id}>{sub.name}</option>)}
-                                    </select>
+                        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+                            <div className="p-6 space-y-5 overflow-y-auto ui-scrollbar">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <label className="block">
+                                        <span className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Subject</span>
+                                        <select
+                                            required
+                                            className="ui-input dark:text-white"
+                                            value={formData.subjectId}
+                                            onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
+                                        >
+                                            <option value="">Select subject</option>
+                                            {subjects.map(sub => <option key={sub._id} value={sub._id}>{sub.name}</option>)}
+                                        </select>
+                                    </label>
+                                    <label className="block">
+                                        <span className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Title</span>
+                                        <input
+                                            required
+                                            type="text"
+                                            className="ui-input dark:text-white"
+                                            placeholder="Brief summary..."
+                                            value={formData.title}
+                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        />
+                                    </label>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Title</label>
-                                    <input
+
+                                <label className="block">
+                                    <span className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Detailed description</span>
+                                    <textarea
                                         required
-                                        type="text"
-                                        className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all"
-                                        placeholder="Brief summary..."
-                                        value={formData.title}
-                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        rows="4"
+                                        className="ui-input dark:text-white resize-none"
+                                        placeholder="Explain your doubt in detail..."
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     />
-                                </div>
-                            </div>
+                                </label>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Detailed Description</label>
-                                <textarea
-                                    required
-                                    rows="4"
-                                    className="w-full bg-gray-50 border-none rounded-[2rem] p-6 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all"
-                                    placeholder="Explain your doubt in detail..."
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Reference Image (Optional)</label>
-                                <div className="relative group">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                        onChange={(e) => setFormData({ ...formData, image: e.target.files[0] })}
-                                    />
-                                    <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-8 text-center group-hover:bg-orange-50 group-hover:border-orange-200 transition-all">
-                                        <FaImage className="text-3xl text-gray-300 mx-auto mb-3 group-hover:text-orange-400" />
-                                        <p className="text-xs font-bold text-gray-400 group-hover:text-orange-600">
-                                            {formData.image ? formData.image.name : 'Click or Drag image here'}
-                                        </p>
+                                <div>
+                                    <span className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5">Reference image (optional)</span>
+                                    <div className="relative group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                            aria-label="Upload reference image"
+                                            onChange={(e) => setFormData({ ...formData, image: e.target.files[0] })}
+                                        />
+                                        <div className={`rounded-2xl border-2 border-dashed p-6 text-center transition-all ${formData.image ? 'border-brand-300 bg-brand-50/50 dark:bg-brand-500/5' : 'border-gray-200 dark:border-white/10 group-hover:border-brand-300 group-hover:bg-brand-50/40 dark:group-hover:bg-white/5'}`}>
+                                            <div className="w-12 h-12 mx-auto rounded-full bg-brand-50 dark:bg-brand-500/10 text-brand-500 flex items-center justify-center text-xl mb-2 group-hover:scale-110 transition-transform"><FiImage /></div>
+                                            <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+                                                {formData.image ? formData.image.name : 'Click or drag an image here'}
+                                            </p>
+                                            <p className="text-xs text-gray-400 mt-0.5">A photo of the question helps us answer faster</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <button
-                                type="submit"
-                                className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-600 shadow-xl shadow-gray-200 transition-all mt-4"
-                            >
-                                SUBMIT DOUBT
-                            </button>
+                            <div className="px-6 py-4 border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/5 flex justify-end gap-3">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="ui-btn-secondary">Cancel</button>
+                                <button type="submit" disabled={submitting} className="ui-btn-primary">
+                                    <FiSend /> {submitting ? 'Submitting…' : 'Submit doubt'}
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>

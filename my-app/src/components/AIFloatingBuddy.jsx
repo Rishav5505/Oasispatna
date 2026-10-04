@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { FaRobot, FaTimes, FaPaperPlane, FaMinus, FaExternalLinkAlt } from 'react-icons/fa';
+import { useLocation } from 'react-router-dom';
 import config from '../config';
 
 const AIFloatingBuddy = () => {
@@ -12,6 +13,7 @@ const AIFloatingBuddy = () => {
     ]);
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef(null);
+    const { pathname } = useLocation();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -53,13 +55,16 @@ const AIFloatingBuddy = () => {
         "How to book demo?"
     ];
 
+    // Dashboards have their own AI Buddy tab, and the floating button would cover the mobile nav and exam mode.
+    if (pathname.startsWith('/dashboard')) return null;
+
     if (!isOpen) {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-[9999] group animate-bounce"
+                className="fixed bottom-4 right-3 w-12 h-12 md:bottom-6 md:right-6 md:w-16 md:h-16 bg-gradient-to-br from-orange-500 to-orange-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-[9999] group animate-bounce"
             >
-                <FaRobot className="text-3xl group-hover:rotate-12 transition-transform" />
+                <FaRobot className="text-2xl md:text-3xl group-hover:rotate-12 transition-transform" />
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-900 rounded-full border-2 border-white animate-pulse"></span>
             </button>
         );

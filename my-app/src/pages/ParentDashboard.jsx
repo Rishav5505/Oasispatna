@@ -1,26 +1,40 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
-import { Line, Doughnut } from 'react-chartjs-2';
 import {
-    FaUserGraduate, FaChalkboardTeacher, FaMoneyBillWave, FaBullhorn,
-    FaChartLine, FaRegClock, FaSignOutAlt, FaChevronRight, FaTimesCircle,
-    FaCalendarAlt, FaBook, FaFilePdf, FaArrowUp, FaArrowDown, FaCheckCircle,
-    FaTasks, FaSearch, FaWallet, FaLock, FaBell, FaCreditCard, FaLayerGroup, FaHistory, FaIdCard, FaEnvelopeOpenText, FaPlus,
-    FaTrophy, FaFileAlt, FaPrint
-} from 'react-icons/fa';
+    FiMenu, FiBell, FiSun, FiMoon, FiCalendar, FiCheckCircle, FiCreditCard, FiClock, FiDownload,
+    FiTrendingUp, FiAward, FiBookOpen, FiFileText, FiChevronRight, FiLock, FiCamera, FiMail, FiPhone,
+    FiMapPin, FiUsers, FiX, FiHash, FiShield, FiArrowRight, FiUserX, FiPercent, FiLayers, FiMonitor
+} from 'react-icons/fi';
+import { FaQrcode, FaUniversity, FaBullhorn } from 'react-icons/fa';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
 import receiptBanner from '../assets/receipt_banner.png';
 import config from '../config';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { FaLaptopCode } from 'react-icons/fa';
+import { io } from 'socket.io-client';
+import { notify } from '../utils/notify';
+import TimetableTab from '../components/parent/TimetableTab';
+import TestResultsTab from '../components/parent/TestResultsTab';
+import UpcomingClassesCard from '../components/parent/UpcomingClassesCard';
+import { EmptyState, CardsSkeleton, SkeletonBlock, ListSkeleton, Panel, Chip, AnimatedBar, ProgressRing } from '../components/parent/ParentUI';
+import { resolveFileUrl, paymentStatus, errorMessage, escapeHtml, initials, verdictFor, formatINR, daysUntil } from '../components/parent/parentUtils';
+import { openProgressReport } from '../components/parent/progressReport';
+import { ParentSidebar, MobileBottomNav, ChildSwitcher } from '../components/parent/ParentShell';
+import { HealthCheckRow, AttendanceHeatStrip, PerformanceTrendChart, FeeSnapshotCard, TipCard, DueChip, NoticeCard } from '../components/parent/OverviewWidgets';
+import { PaymentTimeline } from '../components/parent/FeesWidgets';
+import { NotificationsPanel, NoticeModal, ReportCardModal } from '../components/parent/ParentModals';
+import { GradientBanner, StatCard, AnimatedNumber } from '../components/ui/Motion';
+import { greeting } from '../components/ui/motionUtils';
+
+const ONLINE_PAY_KEY = config.PAYMENT.PROVIDER === 'Razorpay' ? config.PAYMENT.RAZORPAY_KEY_ID : '';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler, ArcElement);
 
 const ParentDashboard = () => {
     const { user, logout, updateUser, loading: authLoading } = useContext(AuthContext);
+    const { theme, toggleTheme } = useTheme() || {};
     const [profile, setProfile] = useState({});
     const [children, setChildren] = useState([]);
     const [selectedChild, setSelectedChild] = useState(null);
@@ -35,17 +49,29 @@ const ParentDashboard = () => {
     const [activeTab, setActiveTab] = useState('Overview');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
     const [selectedNotice, setSelectedNotice] = useState(null);
     const [viewingReportCard, setViewingReportCard] = useState(null);
     const [cumulativeSummary, setCumulativeSummary] = useState(null);
-    const [selectedFilterClass, setSelectedFilterClass] = useState('All');
     const [photoFile, setPhotoFile] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', address: '' });
+    const [testAnalysis, setTestAnalysis] = useState(null);
+    const [reportMonth, setReportMonth] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
+    // Per-section loading flags (start true so tabs show skeletons until first load)
+    const [loadingState, setLoadingState] = useState({
+        children: true, attendance: true, marks: true, fees: true, tests: true, analysis: true, materials: true, notices: true
+    });
+    const setLoadingFor = (key, value) => setLoadingState(prev => ({ ...prev, [key]: value }));
 
     // Razorpay Loader
     const loadRazorpay = () => {
+        if (window.Razorpay) return Promise.resolve(true);
         return new Promise((resolve) => {
             const script = document.createElement('script');
             script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -58,9 +84,12 @@ const ParentDashboard = () => {
     // Payment State
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentAmount, setPaymentAmount] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('UPI');
+    const [onlinePayUnavailable, setOnlinePayUnavailable] = useState(!ONLINE_PAY_KEY);
+    const [paymentMethod, setPaymentMethod] = useState(ONLINE_PAY_KEY ? 'Razorpay' : 'UPI');
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [paymentDetails, setPaymentDetails] = useState({ ref: '', bankName: '', remarks: '' });
+    const [justSubmittedManual, setJustSubmittedManual] = useState(false);
+    const selectedChildRef = useRef(null);
 
     useEffect(() => {
         if (user?.id) {
@@ -72,12 +101,39 @@ const ParentDashboard = () => {
         }
     }, [user]);
 
+    // Real-time notifications (server verifies the JWT sent on 'join')
     useEffect(() => {
+        if (!user?.id) return undefined;
+        const token = sessionStorage.getItem('token');
+        if (!token) return undefined;
+        const socket = io(config.SOCKET_URL || config.API_URL.replace('/api', ''), { auth: { token } });
+        socket.on('connect', () => socket.emit('join', token));
+        socket.on('notification', (newNotif) => {
+            setNotifications(prev => [newNotif, ...prev]);
+            if (newNotif?.title) notify(newNotif.title);
+            // Fee approvals/rejections should be reflected immediately
+            if (/fee|payment/i.test(`${newNotif?.title || ''} ${newNotif?.type || ''}`)) {
+                if (selectedChildRef.current) fetchFees(selectedChildRef.current);
+            }
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                new Notification(newNotif.title, { body: newNotif.message });
+            }
+        });
+        return () => {
+            socket.off('notification');
+            socket.disconnect();
+        };
+    }, [user?.id]);
+
+    useEffect(() => {
+        selectedChildRef.current = selectedChild;
         if (selectedChild) {
+            setJustSubmittedManual(false);
             fetchAttendance(selectedChild);
             fetchMarks(selectedChild);
             fetchFees(selectedChild);
             fetchOnlineTestResults(selectedChild);
+            fetchTestAnalysis(selectedChild);
         }
     }, [selectedChild]);
 
@@ -131,10 +187,10 @@ const ParentDashboard = () => {
             setPhotoFile(null);
             setPhotoPreview(null);
             fetchProfile();
-            alert('Profile photo updated successfully!');
+            notify('Profile photo updated successfully!');
         } catch (err) {
             console.error('Error uploading photo:', err);
-            alert('Failed to upload photo: ' + (err.response?.data?.message || err.message));
+            notify('Failed to upload photo: ' + (err.response?.data?.message || err.message));
         } finally {
             setUploadingPhoto(false);
         }
@@ -144,13 +200,24 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
+        setLoadingFor('children', true);
         try {
             const res = await axios.get(`${config.API_URL}/users/parent/students`, { headers });
-            setChildren(res.data);
-            if (res.data.length > 0) setSelectedChild(res.data[0]._id);
+            const list = Array.isArray(res.data) ? res.data : [];
+            setChildren(list);
+            if (list.length > 0) {
+                setSelectedChild(list[0]._id);
+            } else {
+                // Nothing to load for per-child sections
+                setLoadingState(prev => ({ ...prev, attendance: false, marks: false, fees: false, tests: false, analysis: false }));
+            }
         } catch (err) {
             console.error('Error fetching children:', err);
             setChildren([]);
+            setLoadingState(prev => ({ ...prev, attendance: false, marks: false, fees: false, tests: false, analysis: false }));
+            notify(errorMessage(err, 'Failed to load linked students'));
+        } finally {
+            setLoadingFor('children', false);
         }
     };
 
@@ -158,11 +225,16 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
+        setLoadingFor('attendance', true);
         try {
             const res = await axios.get(`${config.API_URL}/attendance/student/${id}`, { headers });
-            setAttendance(res.data);
+            setAttendance(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error('Error fetching attendance:', err);
+            setAttendance([]);
+            notify(errorMessage(err, 'Failed to load attendance'));
+        } finally {
+            setLoadingFor('attendance', false);
         }
     };
 
@@ -170,28 +242,37 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
-        try {
-            const [marksRes, summaryRes] = await Promise.all([
-                axios.get(`${config.API_URL}/marks/student/${id}`, { headers }),
-                axios.get(`${config.API_URL}/marks/student-summary/${id}`, { headers })
-            ]);
-            setMarks(marksRes.data);
-            setCumulativeSummary(summaryRes.data);
-        } catch (err) {
-            console.error('Error fetching marks/summary:', err);
-            setCumulativeSummary(null);
+        setLoadingFor('marks', true);
+        // allSettled: a missing cumulative summary must not hide the per-exam marks
+        const [marksRes, summaryRes] = await Promise.allSettled([
+            axios.get(`${config.API_URL}/marks/student/${id}`, { headers }),
+            axios.get(`${config.API_URL}/marks/student-summary/${id}`, { headers })
+        ]);
+        if (marksRes.status === 'fulfilled') {
+            setMarks(Array.isArray(marksRes.value.data) ? marksRes.value.data : []);
+        } else {
+            console.error('Error fetching marks:', marksRes.reason);
+            setMarks([]);
+            notify(errorMessage(marksRes.reason, 'Failed to load marks'));
         }
+        setCumulativeSummary(summaryRes.status === 'fulfilled' ? summaryRes.value.data : null);
+        setLoadingFor('marks', false);
     };
 
     const fetchFees = async (id) => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
+        setLoadingFor('fees', true);
         try {
             const res = await axios.get(`${config.API_URL}/fees/student/${id}`, { headers });
-            setFees(res.data);
+            setFees(res.data || {});
         } catch (err) {
             console.error('Error fetching fees:', err);
+            setFees({});
+            notify(errorMessage(err, 'Failed to load fee details'));
+        } finally {
+            setLoadingFor('fees', false);
         }
     };
 
@@ -199,12 +280,34 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
+        setLoadingFor('tests', true);
         try {
             const res = await axios.get(`${config.API_URL}/tests/student/${id}`, { headers });
-            // Filter tests to show results or at least attempted ones or all with status
-            setOnlineTestResults(res.data);
+            setOnlineTestResults(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error('Error fetching online tests:', err);
+            setOnlineTestResults([]);
+            notify(errorMessage(err, 'Failed to load online test results'));
+        } finally {
+            setLoadingFor('tests', false);
+        }
+    };
+
+    const fetchTestAnalysis = async (id) => {
+        const token = sessionStorage.getItem('token');
+        if (!token) return;
+        const headers = { Authorization: `Bearer ${token}` };
+        setLoadingFor('analysis', true);
+        try {
+            const res = await axios.get(`${config.API_URL}/tests/student/${id}/analysis`, { headers });
+            setTestAnalysis(res.data || null);
+        } catch (err) {
+            console.error('Error fetching test analysis:', err);
+            setTestAnalysis(null);
+            // 404 just means the analysis endpoint/data isn't available yet
+            if (err.response?.status !== 404) notify(errorMessage(err, 'Failed to load test analysis'));
+        } finally {
+            setLoadingFor('analysis', false);
         }
     };
 
@@ -212,11 +315,15 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
+        setLoadingFor('materials', true);
         try {
             const res = await axios.get(`${config.API_URL}/study-material`, { headers });
-            setMaterials(res.data);
+            setMaterials(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error('Error fetching materials:', err);
+            notify(errorMessage(err, 'Failed to load study materials'));
+        } finally {
+            setLoadingFor('materials', false);
         }
     };
 
@@ -224,11 +331,15 @@ const ParentDashboard = () => {
         const token = sessionStorage.getItem('token');
         if (!token) return;
         const headers = { Authorization: `Bearer ${token}` };
+        setLoadingFor('notices', true);
         try {
             const res = await axios.get(`${config.API_URL}/notices`, { headers });
-            setNotices(res.data);
+            setNotices(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error('Error fetching notices:', err);
+            notify(errorMessage(err, 'Failed to load notices'));
+        } finally {
+            setLoadingFor('notices', false);
         }
     };
 
@@ -244,44 +355,44 @@ const ParentDashboard = () => {
         }
     };
 
+    const disableOnlinePay = () => {
+        setOnlinePayUnavailable(true);
+        setPaymentMethod('UPI');
+        notify('Online payment coming soon — use UPI/Bank transfer');
+    };
+
     const handlePayment = async (e) => {
         e.preventDefault();
-        if (!paymentAmount || paymentAmount <= 0) return alert('Enter valid amount');
+        if (!paymentAmount || Number(paymentAmount) <= 0) return notify('Please enter a valid amount');
 
-        setPaymentLoading(true);
         const token = sessionStorage.getItem('token');
         const headers = { Authorization: `Bearer ${token}` };
 
-        try {
-            if (paymentMethod === 'Razorpay') {
+        if (paymentMethod === 'Razorpay') {
+            if (onlinePayUnavailable || !ONLINE_PAY_KEY) return disableOnlinePay();
+            setPaymentLoading(true);
+            try {
                 // 1. Load Razorpay SDK
-                const res = await loadRazorpay();
-                if (!res) {
-                    alert('Razorpay SDK failed to load. Are you online?');
-                    setPaymentLoading(false);
+                const sdkLoaded = await loadRazorpay();
+                if (!sdkLoaded) {
+                    notify('Razorpay SDK failed to load. Are you online?');
                     return;
                 }
 
-                // 2. Create Order on Backend
+                // 2. Create Order on Backend (503 = gateway not configured on server)
                 const result = await axios.post(`${config.API_URL}/fees/razorpay/create-order`, {
                     amount: paymentAmount,
                     studentId: selectedChild
                 }, { headers });
 
-                if (!result) {
-                    alert("Server error. Are you online?");
-                    setPaymentLoading(false);
-                    return;
-                }
-
                 const { amount, id: order_id, currency } = result.data;
 
-                // 3. Open Razorpay Checktout
+                // 3. Open Razorpay Checkout
                 const options = {
-                    key: config.PAYMENT.RAZORPAY_KEY_ID, // Key ID from config
+                    key: ONLINE_PAY_KEY,
                     amount: amount.toString(),
                     currency: currency,
-                    name: "Oasis Institute",
+                    name: "Oasis JEE Classes",
                     description: "Fee Payment Transaction",
                     image: oasisLogo,
                     order_id: order_id,
@@ -297,14 +408,14 @@ const ParentDashboard = () => {
 
                             await axios.post(`${config.API_URL}/fees/razorpay/verify`, data, { headers });
 
-                            alert('Payment Successful and Verified!');
+                            notify('Payment Successful and Verified!');
                             setShowPaymentModal(false);
                             setPaymentAmount('');
                             setPaymentDetails({ ref: '', bankName: '', remarks: '' });
                             fetchFees(selectedChild);
                         } catch (error) {
                             console.error("Verification Error", error);
-                            alert("Payment successful but verification failed.");
+                            notify("Payment successful but verification failed. Please contact the office with your payment ID.");
                         }
                     },
                     prefill: {
@@ -313,37 +424,53 @@ const ParentDashboard = () => {
                         contact: profile.phone
                     },
                     notes: {
-                        address: "Oasis Institute Corporate Office"
+                        address: "Oasis JEE Classes"
                     },
                     theme: {
-                        color: "#6366f1"
+                        color: "#f37021"
                     }
                 };
 
                 const paymentObject = new window.Razorpay(options);
+                paymentObject.on?.('payment.failed', () => notify('Payment failed. No amount was captured — please try again.'));
                 paymentObject.open();
-                setPaymentLoading(false);
-            } else {
-                // Manual/Offline Payment Request (UPI QR or Bank)
-                await axios.post(`${config.API_URL}/fees/pay`, {
-                    studentId: selectedChild,
-                    amount: paymentAmount,
-                    paymentMethod: paymentMethod,
-                    transactionId: paymentDetails.ref,
-                    remarks: `${paymentDetails.bankName ? 'Source: ' + paymentDetails.bankName : ''} ${paymentDetails.remarks}`
-                }, { headers });
-
-                alert(`${paymentMethod} Transaction Logged Successfully!`);
-                setShowPaymentModal(false);
-                setPaymentAmount('');
-                setPaymentDetails({ ref: '', bankName: '', remarks: '' });
-                fetchFees(selectedChild);
+            } catch (err) {
+                console.error('Payment Error Details:', err.response?.data || err.message);
+                if (err.response?.status === 503) {
+                    disableOnlinePay();
+                } else {
+                    notify(`Payment Error: ${errorMessage(err, 'Could not connect to payment server')}`);
+                }
+            } finally {
                 setPaymentLoading(false);
             }
+            return;
+        }
 
+        // Manual/Offline Payment (UPI or Bank transfer) -> stays 'Pending' until admin approves
+        if (!paymentDetails.ref.trim()) return notify('Please enter the UTR / transaction reference number');
+        setPaymentLoading(true);
+        try {
+            const sourceNote = paymentDetails.bankName ? `Source: ${paymentDetails.bankName}` : '';
+            await axios.post(`${config.API_URL}/fees/pay`, {
+                studentId: selectedChild,
+                amount: paymentAmount,
+                mode: paymentMethod,
+                paymentMethod: paymentMethod,
+                transactionId: paymentDetails.ref.trim(),
+                remarks: `${sourceNote} ${paymentDetails.remarks}`.trim()
+            }, { headers });
+
+            notify(`${paymentMethod} payment submitted — awaiting admin approval`);
+            setJustSubmittedManual(true);
+            setShowPaymentModal(false);
+            setPaymentAmount('');
+            setPaymentDetails({ ref: '', bankName: '', remarks: '' });
+            fetchFees(selectedChild);
         } catch (err) {
             console.error('Payment Error Details:', err.response?.data || err.message);
-            alert(`Payment Error: ${err.response?.data?.message || 'Could not connect to financial server'}`);
+            notify(`Payment Error: ${errorMessage(err, 'Could not connect to financial server')}`);
+        } finally {
             setPaymentLoading(false);
         }
     };
@@ -378,10 +505,12 @@ const ParentDashboard = () => {
 
 
     const handleDownloadReceipt = (payment) => {
+        const receiptNo = payment.transactionId || String(payment._id || '').slice(-8).toUpperCase();
+        const bannerSrc = new URL(receiptBanner, window.location.origin).href;
         const receiptContent = `
             <html>
             <head>
-                <title>Fee Receipt - ${payment.transactionId || 'N/A'}</title>
+                <title>Fee Receipt - ${escapeHtml(receiptNo || 'N/A')}</title>
                 <style>
                     body { font-family: 'Courier New', monospace; padding: 40px; }
                     .receipt-box { border: 2px dashed #333; padding: 20px; max-width: 600px; margin: 0 auto; }
@@ -389,24 +518,27 @@ const ParentDashboard = () => {
                     .details { margin-bottom: 20px; }
                     .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
                     .footer { text-align: center; margin-top: 20px; font-size: 12px; }
+                    .footer button { background: #f37021; color: #fff; border: 0; padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+                    @media print { .footer button { display: none; } body { padding: 0; } }
                 </style>
             </head>
             <body>
-                <div className="receipt-box">
-                    <div className="header">
-                        <img src="${window.location.origin}${receiptBanner}" alt="Oasis Header" style="width: 100%; max-height: 150px; object-fit: contain; margin-bottom: 20px;" />
+                <div class="receipt-box">
+                    <div class="header">
+                        <img src="${bannerSrc}" alt="Oasis Header" style="width: 100%; max-height: 150px; object-fit: contain; margin-bottom: 20px;" />
                         <h2>OASIS JEE CLASSES</h2>
                         <p>Official Payment Receipt</p>
                     </div>
-                    <div className="details">
-                        <div className="row"><span>Date:</span> <span>${new Date(payment.date).toLocaleDateString()}</span></div>
-                        <div className="row"><span>Receipt No:</span> <span>${payment.transactionId || payment._id.slice(-8).toUpperCase()}</span></div>
-                        <div className="row"><span>Student Name:</span> <span>${currentChild?.name || 'Student'}</span></div>
-                        <div className="row"><span>Class:</span> <span>${currentChild?.classId?.name || 'N/A'}</span></div>
+                    <div class="details">
+                        <div class="row"><span>Date:</span> <span>${new Date(payment.date || payment.createdAt).toLocaleDateString()}</span></div>
+                        <div class="row"><span>Receipt No:</span> <span>${escapeHtml(receiptNo)}</span></div>
+                        <div class="row"><span>Student Name:</span> <span>${escapeHtml(currentChild?.name || 'Student')}</span></div>
+                        <div class="row"><span>Class:</span> <span>${escapeHtml(currentChild?.classId?.name || 'N/A')}</span></div>
+                        <div class="row"><span>Mode:</span> <span>${escapeHtml(payment.mode || 'N/A')}</span></div>
                         <hr/>
-                        <div className="row"><span>Amount Paid:</span> <span>₹${payment.amount}</span></div>
+                        <div class="row"><span>Amount Paid:</span> <span>₹${Number(payment.amount || 0).toLocaleString('en-IN')}</span></div>
                     </div>
-                    <div className="footer">
+                    <div class="footer">
                         <button onclick="window.print()">PRINT RECEIPT</button>
                     </div>
                 </div>
@@ -414,18 +546,43 @@ const ParentDashboard = () => {
             </html>
         `;
         const win = window.open('', '', 'width=800,height=600');
+        if (!win) return notify('Please allow pop-ups to download the receipt');
         win.document.write(receiptContent);
         win.document.close();
+    };
+
+    const handleDownloadProgressReport = () => {
+        if (!currentChild) return notify('Please select a student first');
+        const opened = openProgressReport({
+            child: currentChild,
+            month: reportMonth,
+            attendance,
+            marks,
+            tests: onlineTestResults,
+            analysis: testAnalysis,
+            parentName: profile.name || user?.name,
+            logoUrl: new URL(oasisFullLogo, window.location.origin).href
+        });
+        if (!opened) notify('Please allow pop-ups to open the progress report');
     };
 
     // Derived Data
     const currentChild = children.find(c => c._id === selectedChild);
     const pendingFees = fees.pendingFees || 0;
-    const activeNoticesCount = notices.filter(n => n.targetRoles.includes('parent')).length;
+    const activeNoticesCount = notices.filter(n => n.targetRoles?.includes('parent')).length;
     const presentDays = attendance.filter(a => a.status === 'present').length;
     const totalDays = attendance.length;
     const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
-    const avgMarks = marks.length > 0 ? Math.round(marks.reduce((a, b) => a + b.marks, 0) / marks.length) : 0;
+    // Overview card: last 30 days only
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentAttendance = attendance.filter(a => a.date && new Date(a.date) >= thirtyDaysAgo);
+    const recentPresent = recentAttendance.filter(a => a.status === 'present').length;
+    const attendance30Percentage = recentAttendance.length > 0 ? Math.round((recentPresent / recentAttendance.length) * 100) : 0;
+    const payments = fees.payments || [];
+    const pendingPayments = payments.filter(p => paymentStatus(p) === 'Pending');
+    const pendingPaymentsTotal = pendingPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
 
     // Filtered Attendance for Tab
     const filteredAttendance = selectedSubject === 'All'
@@ -438,465 +595,477 @@ const ParentDashboard = () => {
     const filteredPercentage = filteredTotal > 0 ? Math.round((filteredPresent / filteredTotal) * 100) : 0;
     const subjects = ['All', ...new Set(attendance.map(a => a.subjectId?.name).filter(Boolean))];
 
-    // Charts with TEAL Theme
-    const performanceData = {
-        labels: marks.map(m => m.subjectId?.name || m.examId?.name || 'Test'),
-        datasets: [{
-            label: 'Marks %',
-            data: marks.map(m => m.marks),
-            fill: true,
-            borderColor: '#f37021', // Orange-500
-            backgroundColor: 'rgba(243, 112, 33, 0.1)',
-            tension: 0.4
-        }]
+
+    // ---------- Presentation-only derived values ----------
+    const apiOrigin = config.API_URL.replace('/api', '');
+    const photoUrl = (p) => (p?.profilePhoto ? `${apiOrigin}${p.profilePhoto}` : null);
+    const firstName = (profile.name || user?.name || 'Parent').split(' ')[0];
+    const childFirst = currentChild?.name?.split(' ')[0] || 'Your child';
+    const today = new Date();
+    const todayStr = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+    const unreadCount = notifications.filter(n => !n.read).length;
+    const hasChildren = children.length > 0;
+
+    const monthAttendance = attendance.filter(a => {
+        if (!a.date) return false;
+        const d = new Date(a.date);
+        return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    });
+    const monthPct = monthAttendance.length > 0
+        ? Math.round((monthAttendance.filter(a => a.status === 'present').length / monthAttendance.length) * 100)
+        : null;
+    const healthAttendance = recentAttendance.length > 0 ? attendance30Percentage : (totalDays > 0 ? attendancePercentage : null);
+
+    const markPercents = marks.map(m => {
+        const max = Number(m.maxMarks) || 100;
+        return Math.round(((Number(m.marks) || 0) / max) * 1000) / 10;
+    });
+    const avgMarkPct = markPercents.length > 0 ? Math.round(markPercents.reduce((a, b) => a + b, 0) / markPercents.length) : null;
+    const analysisAvg = testAnalysis?.overall?.testsTaken > 0 ? Math.round(testAnalysis.overall.avgPercentage || 0) : null;
+    const healthTests = analysisAvg ?? avgMarkPct;
+
+    const feeTotal = Number(fees.totalFees || 0);
+    const feePaid = Number(fees.paidFees || 0);
+    const feePaidPct = feeTotal > 0 ? Math.min(100, Math.round((feePaid / feeTotal) * 100)) : null;
+    const feeDueDays = daysUntil(fees.dueDate);
+    const feeVerdict = feeTotal <= 0
+        ? verdictFor(null)
+        : pendingFees <= 0
+            ? { label: 'Excellent', tone: 'green', color: '#10b981' }
+            : feeDueDays !== null && feeDueDays < 0
+                ? { label: 'Needs attention', tone: 'red', color: '#f43f5e' }
+                : { label: 'Good', tone: 'amber', color: '#f59e0b' };
+
+    const upcomingTests = onlineTestResults
+        .filter(t => !t.attempted && t.startTime && new Date(t.startTime) >= today)
+        .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+    const nextTest = upcomingTests[0];
+    const openTests = onlineTestResults.filter(t => !t.attempted && (!t.endTime || new Date(t.endTime) >= today)).length;
+    const nextTestLabel = nextTest
+        ? `Next test: ${new Date(nextTest.startTime).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}`
+        : openTests > 0 ? `${openTests} test${openTests > 1 ? 's' : ''} open` : 'No tests scheduled';
+
+    const examSummaries = Object.values(marks.reduce((acc, m) => {
+        const examId = m.examId?._id || 'unknown';
+        if (!acc[examId]) acc[examId] = { exam: m.examId, subjectResults: [], totalObtained: 0, totalMax: 0 };
+        acc[examId].subjectResults.push({
+            subjectId: m.subjectId?._id,
+            subjectName: m.subjectId?.name || 'Subject',
+            obtained: m.marks,
+            maxMarks: m.maxMarks || 100
+        });
+        acc[examId].totalObtained += m.marks;
+        acc[examId].totalMax += (m.maxMarks || 100);
+        return acc;
+    }, {}));
+
+    const openReportCard = (summary) => setViewingReportCard({
+        ...summary,
+        name: currentChild?.name,
+        rollNo: currentChild?.rollNo || 'N/A',
+        fatherName: user.name,
+        percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
+    });
+
+    const goTo = (tab) => { setActiveTab(tab); setIsSidebarOpen(false); setMoreOpen(false); };
+    const openPayment = () => setShowPaymentModal(true);
+
+    const TAB_META = {
+        Overview: { title: 'Overview', crumb: 'Home' },
+        Attendance: { title: 'Attendance', crumb: 'Academics' },
+        Tests: { title: 'Tests & Analysis', crumb: 'Academics' },
+        Performance: { title: 'Report Cards', crumb: 'Academics' },
+        Timetable: { title: 'Timetable', crumb: 'Academics' },
+        Materials: { title: 'Study Materials', crumb: 'Academics' },
+        Fees: { title: 'Fees & Payments', crumb: 'Fees & Updates' },
+        Notices: { title: 'Notice Board', crumb: 'Fees & Updates' },
+        Profile: { title: 'My Profile', crumb: 'Account' },
     };
 
-    const attendanceData = {
-        labels: ['Present', 'Absent'],
-        datasets: [{
-            data: [presentDays, totalDays - presentDays],
-            backgroundColor: ['#10b981', '#f43f5e'], // Emerald-500, Rose-500
-            borderWidth: 0,
-        }]
-    };
+    const renderReportAction = (variant = 'glass') => (
+        <div className={`flex items-stretch rounded-xl overflow-hidden ${variant === 'glass' ? 'bg-white/10 ring-1 ring-white/25 backdrop-blur-md' : 'bg-white dark:bg-ink-800 ring-1 ring-gray-200 dark:ring-white/10'}`}>
+            <input
+                type="month"
+                value={reportMonth}
+                max={new Date().toISOString().slice(0, 7)}
+                onChange={(e) => setReportMonth(e.target.value)}
+                aria-label="Report month"
+                className={`bg-transparent text-xs font-bold px-3 outline-none border-none focus:ring-0 min-w-0 w-32 ${variant === 'glass' ? 'text-white [color-scheme:dark]' : 'text-gray-700 dark:text-gray-200 dark:[color-scheme:dark]'}`}
+            />
+            <button
+                onClick={handleDownloadProgressReport}
+                disabled={!currentChild}
+                className={`px-4 py-2.5 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-colors disabled:opacity-50 ${variant === 'glass' ? 'text-white bg-black/25 hover:bg-black/40' : 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/10 hover:bg-brand-100'}`}
+            >
+                <FiDownload /> Progress report
+            </button>
+        </div>
+    );
 
-    if (authLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-ink-950">
+                <div className="flex flex-col items-center gap-4">
+                    <img src={oasisLogo} alt="Oasis" className="w-14 h-14 rounded-2xl bg-white p-1.5 shadow-card animate-pulse" />
+                    <p className="text-sm font-semibold text-gray-500">Loading your dashboard…</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex h-screen bg-[#F8FAFC] dark:bg-gray-950 overflow-hidden relative font-sans transition-colors duration-300">
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-20 lg:hidden backdrop-blur-sm transition-opacity"
-                    onClick={() => setIsSidebarOpen(false)}
-                ></div>
-            )}
+        <div className="flex h-screen bg-[#f7f7f8] dark:bg-ink-950 overflow-hidden relative font-sans transition-colors duration-300">
+            <ParentSidebar
+                activeTab={activeTab}
+                onSelect={goTo}
+                open={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+                collapsed={sidebarCollapsed}
+                onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+                userName={profile.name || user?.name}
+                userPhoto={photoUrl(user)}
+                onLogout={logout}
+                badges={{ Fees: pendingFees > 0 ? 1 : 0, Notices: activeNoticesCount }}
+            />
 
-            {/* Sidebar - Orange/Black Gradient for Parent Identity */}
-            <aside className={`w-72 bg-gradient-to-b from-black via-gray-900 to-orange-900/20 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 text-white flex-shrink-0 flex flex-col shadow-2xl z-30 fixed h-full transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static`}>
-                <div className="p-6 flex items-center justify-between border-b border-teal-800/50 dark:border-gray-800">
-                    <div className="w-full flex justify-center">
-                        <img src={oasisFullLogo} alt="Oasis Logo" className="h-16 object-contain brightness-110 drop-shadow-lg" />
-                    </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-orange-300 hover:text-white absolute right-4 top-6">
-                        <FaTimesCircle className="text-2xl" />
+            <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+                {/* Top bar */}
+                <header className="relative z-30 h-[64px] md:h-[72px] shrink-0 ui-glass border-x-0 border-t-0 border-b border-gray-100 dark:border-white/5 flex items-center gap-3 px-3 md:px-8">
+                    <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 shrink-0" aria-label="Open menu">
+                        <FiMenu className="text-xl" />
                     </button>
-                </div>
-
-                <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
-                    {[
-                        { id: 'Overview', icon: FaChartLine, label: 'Overview' },
-                        { id: 'Tests', icon: FaLaptopCode, label: 'Online Test Results' },
-                        { id: 'Fees', icon: FaMoneyBillWave, label: 'Pay Fees / History' },
-                        { id: 'Attendance', icon: FaCalendarAlt, label: 'Attendance' },
-                        { id: 'Performance', icon: FaUserGraduate, label: 'Performance' },
-                        { id: 'Materials', icon: FaBook, label: 'Study Materials' },
-                        { id: 'Notices', icon: FaBullhorn, label: 'Notice Board' },
-                        { id: 'Profile', icon: FaIdCard, label: 'My Profile' },
-                    ].map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }}
-                            className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-semibold text-sm ${activeTab === item.id
-                                ? 'bg-orange-600 text-white shadow-orange-900/50 shadow-lg translate-x-1'
-                                : 'hover:bg-orange-800/20 hover:text-white'
-                                }`}
-                        >
-                            <item.icon className={activeTab === item.id ? 'text-white' : 'text-orange-400'} />
-                            {item.label}
-                            {activeTab === item.id && <FaChevronRight className="ml-auto text-[10px]" />}
-                        </button>
-                    ))}
-                </nav>
-
-                <div className="p-6 mt-auto">
-                    <div className="bg-orange-800/20 p-5 rounded-3xl border border-orange-700/30">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-orange-400/20 flex items-center justify-center text-orange-300">
-                                <FaRegClock />
-                            </div>
-                            <div className="text-[11px] font-bold text-orange-200">Session Active</div>
-                        </div>
-                        <button
-                            onClick={logout}
-                            className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-rose-900/40"
-                        >
-                            <FaSignOutAlt /> Sign Out
-                        </button>
+                    <div className="hidden md:block min-w-0 shrink-0">
+                        <p className="text-[11px] font-semibold text-gray-400 flex items-center gap-1">
+                            Parent portal <FiChevronRight className="text-[10px]" /> {TAB_META[activeTab]?.crumb}
+                        </p>
+                        <h1 className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">{TAB_META[activeTab]?.title}</h1>
                     </div>
-                </div>
-            </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden w-full bg-[#F8FAFC] dark:bg-gray-950 transition-colors duration-300">
-                {/* Header */}
-                <header className="h-16 md:h-20 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 md:px-10 shadow-sm z-[60] w-full transition-colors duration-300">
-                    <div className="flex items-center gap-2 md:gap-6 flex-1 max-w-2xl">
-                        <button
-                            onClick={() => setIsSidebarOpen(true)}
-                            className="lg:hidden p-2 bg-gray-50 dark:bg-gray-800 rounded-xl text-orange-600 shrink-0"
-                        >
-                            <FaTasks className="text-xl" />
-                        </button>
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1 shrink-0 lg:hidden">
-                                <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
-                            </div>
-                            <div className="min-w-0">
-                                <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
-                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-orange-800 dark:from-orange-400 dark:to-orange-500">
-                                        Parent Portal
-                                    </span>
-                                </h1>
-                                <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-bold truncate hidden sm:block">Institute Management System</p>
-                            </div>
-                        </div>
-
-                        {children.length > 1 && (
-                            <div className="ml-2 hidden md:block">
-                                <select
-                                    value={selectedChild}
-                                    onChange={(e) => setSelectedChild(e.target.value)}
-                                    className="bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 font-bold text-sm text-orange-600 dark:text-orange-400 focus:ring-0 cursor-pointer outline-none transition-colors"
-                                >
-                                    {children.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-                                </select>
-                            </div>
-                        )}
+                    <div className="flex-1 min-w-0 flex md:justify-center">
+                        {loadingState.children
+                            ? <SkeletonBlock className="h-9 w-40 rounded-full" />
+                            : <ChildSwitcher kids={children} selected={selectedChild} onSelect={setSelectedChild} photoUrl={photoUrl} />}
                     </div>
-                    <div className="flex items-center gap-2 md:gap-8">
-                        {/* Notifications */}
+
+                    <div className="flex items-center gap-1 md:gap-2 shrink-0">
+                        <button
+                            onClick={toggleTheme}
+                            className="hidden sm:flex p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-brand-600 transition-colors"
+                            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                        >
+                            {theme === 'dark' ? <FiSun className="text-lg" /> : <FiMoon className="text-lg" />}
+                        </button>
                         <div className="relative">
                             <button
                                 onClick={toggleNotifications}
-                                className={`p-2 md:p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-colors relative focus:outline-none ${isNotificationsOpen ? 'bg-gray-50 dark:bg-gray-800 text-orange-600 dark:text-orange-400' : 'text-gray-400'}`}
+                                className={`relative p-2.5 rounded-xl transition-colors ${isNotificationsOpen ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
+                                aria-label={`Notifications${unreadCount ? ` (${unreadCount} unread)` : ''}`}
+                                aria-expanded={isNotificationsOpen}
                             >
-                                <FaBell className={`text-lg md:text-xl transition-colors ${isNotificationsOpen ? 'text-orange-500 dark:text-orange-400' : 'text-gray-400'}`} />
-                                {notifications.some(n => !n.read) && (
-                                    <span className="absolute top-1.5 md:top-2 right-1.5 md:right-2.5 w-2 md:w-2.5 h-2 md:h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></span>
+                                <FiBell className="text-lg" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-brand-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-ink-900 animate-glow">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
                                 )}
                             </button>
-
-                            {/* Notification Dropdown */}
                             {isNotificationsOpen && (
-                                <div
-                                    className="fixed inset-x-4 top-20 lg:absolute lg:inset-auto lg:right-[-10px] lg:top-full lg:mt-4 w-auto lg:w-96 bg-white dark:bg-gray-900 rounded-3xl lg:rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 dark:border-gray-700 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <div className="p-4 md:p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50 backdrop-blur-sm">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-black text-gray-800 dark:text-white text-[10px] md:text-xs uppercase tracking-widest">Notifications</h3>
-                                            <span className="bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full">{notifications.length} Total</span>
-                                        </div>
-                                    </div>
-                                    <div className="max-h-[50vh] lg:max-h-80 overflow-y-auto custom-scrollbar">
-                                        {notifications.length > 0 ? (
-                                            <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                                                {notifications.map(n => (
-                                                    <div
-                                                        key={n._id}
-                                                        onClick={() => {
-                                                            setSelectedNotice(n);
-                                                            setIsNotificationsOpen(false);
-                                                        }}
-                                                        className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group ${!n.read ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}
-                                                    >
-                                                        <div className="flex gap-3 md:gap-4">
-                                                            <div className={`mt-1 w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${!n.read ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-                                                                <FaBell className="text-[10px] md:text-xs" />
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className={`text-xs font-bold mb-1 truncate ${!n.read ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
-                                                                    {n.title}
-                                                                </p>
-                                                                <p className="text-[10px] text-gray-500 dark:text-gray-500 leading-relaxed line-clamp-2">
-                                                                    {n.message}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="p-10 text-center flex flex-col items-center justify-center">
-                                                <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-200 dark:text-gray-700 mx-auto mb-4">
-                                                    <FaBell className="text-xl md:text-2xl" />
-                                                </div>
-                                                <p className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">All caught up!</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="p-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 text-center">
-                                        <button
-                                            onClick={() => setIsNotificationsOpen(false)}
-                                            className="w-full py-2.5 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 font-black text-[9px] md:text-[10px] uppercase rounded-xl transition-colors tracking-widest"
-                                        >
-                                            Close Panel
-                                        </button>
-                                    </div>
-                                </div>
+                                <NotificationsPanel
+                                    notifications={notifications}
+                                    onMarkAllRead={handleMarkAllRead}
+                                    onOpen={(n) => { setSelectedNotice(n); setIsNotificationsOpen(false); }}
+                                    onClose={() => setIsNotificationsOpen(false)}
+                                />
                             )}
                         </div>
-
-                        <div className="flex items-center gap-2 md:gap-4 md:px-5 md:py-2.5 md:bg-gray-50 md:dark:bg-gray-800 md:rounded-2xl md:border md:border-dotted md:border-gray-200 md:dark:border-gray-700 cursor-pointer hover:bg-white dark:hover:bg-gray-700 transition-all group">
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs md:text-sm overflow-hidden border border-indigo-200 dark:border-indigo-800 shadow-inner group-hover:scale-105 transition-transform">
-                                {user?.profilePhoto ? (
-                                    <img src={`${config.API_URL.replace('/api', '')}${user.profilePhoto}`} alt="Parent" className="w-full h-full object-cover" />
-                                ) : (
-                                    user?.name?.charAt(0).toUpperCase() || 'P'
-                                )}
-                            </div>
-                            <div className="text-right hidden lg:block">
-                                <p className="text-xs font-bold text-gray-900 dark:text-white leading-none mb-1">{user?.name || 'Parent'}</p>
-                                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Guardian</p>
-                            </div>
-                        </div>
+                        <button onClick={() => goTo('Profile')} className="flex items-center gap-2.5 pl-1 md:pl-2 pr-1 md:pr-3 py-1 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors" aria-label="My profile">
+                            <span className="w-9 h-9 rounded-xl bg-brand-gradient text-white text-xs font-extrabold flex items-center justify-center overflow-hidden shadow-brand-soft">
+                                {photoUrl(user) ? <img src={photoUrl(user)} alt="" className="w-full h-full object-cover" /> : initials(user?.name || 'P')}
+                            </span>
+                            <span className="hidden xl:block text-left">
+                                <span className="block text-xs font-bold text-gray-900 dark:text-white leading-tight">{user?.name || 'Parent'}</span>
+                                <span className="block text-[10px] font-semibold text-gray-400">Guardian</span>
+                            </span>
+                        </button>
                     </div>
                 </header>
 
-                {/* Dashboard Content */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-10 scroll-smooth">
-                    {activeTab === 'Overview' && (
-                        <>
-                            {/* Welcome Banner - Parent Orange Style */}
-                            <div className="relative overflow-hidden rounded-3xl md:rounded-[2.5rem] bg-gradient-to-r from-orange-600 via-orange-500 to-black p-6 md:p-10 shadow-2xl shadow-orange-200/50 mb-6 md:mb-10 text-white">
-                                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/10 blur-3xl rounded-full pointer-events-none"></div>
-                                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-yellow-500/20 blur-3xl rounded-full pointer-events-none"></div>
+                {/* Content */}
+                <div className="relative flex-1 overflow-y-auto ui-scrollbar scroll-smooth">
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-brand-mesh opacity-70 dark:opacity-30" />
+                    <div key={activeTab} className="relative max-w-7xl mx-auto px-4 md:px-8 pt-5 md:pt-8 pb-28 lg:pb-12 space-y-6 animate-fade-up">
 
-                                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-                                    <div>
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">PARENT PORTAL</span>
-                                            <span className="text-indigo-100 text-xs font-bold">{new Date().toDateString()}</span>
+                        {/* ================= OVERVIEW ================= */}
+                        {activeTab === 'Overview' && (
+                            <>
+                                <GradientBanner
+                                    title={`${greeting()}, ${firstName} 👋`}
+                                    subtitle={hasChildren ? `${childFirst}'s week at a glance · ${todayStr}` : todayStr}
+                                    right={
+                                        <div className="flex flex-col gap-2 w-full md:w-auto">
+                                            <button onClick={openPayment} disabled={!selectedChild} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-ink-900 font-bold text-sm shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all disabled:opacity-60">
+                                                <FiCreditCard className="text-brand-600" /> {pendingFees > 0 ? `Pay ${formatINR(pendingFees)}` : 'Make a payment'}
+                                            </button>
+                                            {renderReportAction()}
                                         </div>
-                                        <h1 className="text-3xl md:text-5xl font-[900] tracking-tight mb-2 leading-tight">
-                                            Namaste, <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-200 to-orange-50">{user?.name?.split(' ')[0] || 'Parent'}</span> 👋
-                                        </h1>
-                                        <p className="text-orange-50 font-medium max-w-lg text-xs md:text-sm leading-relaxed opacity-90">
-                                            You are viewing progress for <span className="font-black text-white underline decoration-yellow-400 decoration-2 underline-offset-4">{currentChild?.name || 'Student'}</span>.
-                                            <br />
-                                            Attendance is <span className="font-black text-white">{attendancePercentage}%</span> and academic performance is <span className="font-black text-orange-200">{avgMarks > 0 ? 'Optimal' : 'Tracking'}</span>.
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-3 md:gap-4 w-full md:w-auto">
-                                        <button onClick={() => setActiveTab('Fees')} className="flex-1 md:flex-none bg-white text-orange-700 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs shadow-lg hover:bg-orange-50 transition-all flex items-center justify-center gap-2 group">
-                                            <FaMoneyBillWave className="group-hover:rotate-12 transition-transform" /> PAY FEES
-                                        </button>
-                                        <button onClick={() => window.print()} className="flex-1 md:flex-none bg-black/40 text-white border border-white/20 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black text-[10px] md:text-xs hover:bg-black/60 transition-all backdrop-blur-md">
-                                            D'LOAD REPORT
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                    }
+                                >
+                                    {hasChildren && (
+                                        <div className="flex flex-wrap gap-2">
+                                            <Chip tone="glass" icon={FiCheckCircle}>
+                                                {monthPct === null ? 'No attendance this month' : `${monthPct}% attendance this month`}
+                                            </Chip>
+                                            <Chip tone="glass" icon={FiMonitor}>{nextTestLabel}</Chip>
+                                            <Chip tone="glass" icon={pendingFees > 0 ? FiClock : FiCheckCircle}>
+                                                {pendingFees > 0
+                                                    ? `${formatINR(pendingFees)} due${feeDueDays !== null ? (feeDueDays < 0 ? ' · overdue' : feeDueDays === 0 ? ' today' : ` in ${feeDueDays}d`) : ''}`
+                                                    : 'Fees cleared'}
+                                            </Chip>
+                                        </div>
+                                    )}
+                                </GradientBanner>
 
-                            {/* Stats Cards - Admin Style */}
-                            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-                                {[
-                                    { label: 'Attendance', value: `${attendancePercentage}%`, trend: 'Last 30 Days', icon: FaCalendarAlt, color: 'blue', gradient: 'from-blue-500 to-cyan-500' },
-                                    { label: 'Avg Assessment', value: `${avgMarks}%`, trend: 'Academics', icon: FaChartLine, color: 'indigo', gradient: 'from-indigo-500 to-blue-500' },
-                                    { id: 'fees', label: 'Outstanding Due', value: `₹${pendingFees.toLocaleString()}`, trend: 'Important', icon: FaWallet, color: 'rose', gradient: 'from-rose-500 to-pink-500' },
-                                    { label: 'Notices', value: activeNoticesCount, trend: 'Updates', icon: FaBullhorn, color: 'orange', gradient: 'from-orange-500 to-amber-500' },
-                                ].map((stat, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={() => stat.id === 'fees' && setActiveTab('Fees')}
-                                        className={`p-4 md:p-8 bg-white dark:bg-gray-800 rounded-3xl md:rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.06)] transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 hover:shadow-xl ${stat.id === 'fees' ? 'cursor-pointer' : ''}`}
+                                {!loadingState.children && !hasChildren ? (
+                                    <EmptyState
+                                        icon={FiUserX}
+                                        title="No student linked to your account yet"
+                                        hint="Please contact the Oasis office to link your ward's profile to this parent account."
+                                    />
+                                ) : (
+                                    <>
+                                        <HealthCheckRow
+                                            attendancePct={healthAttendance}
+                                            testPct={healthTests}
+                                            feePct={feePaidPct}
+                                            feeVerdict={feeVerdict}
+                                            attendanceDetail={recentAttendance.length > 0 ? `${recentPresent}/${recentAttendance.length} classes · last 30 days` : totalDays > 0 ? `${presentDays}/${totalDays} classes overall` : 'No classes recorded'}
+                                            testDetail={analysisAvg !== null ? `${testAnalysis.overall.testsTaken} online test${testAnalysis.overall.testsTaken > 1 ? 's' : ''}` : marks.length > 0 ? `${marks.length} published mark${marks.length > 1 ? 's' : ''}` : 'No results yet'}
+                                            feeDetail={feeTotal > 0 ? `${formatINR(feePaid)} of ${formatINR(feeTotal)}` : 'No fee plan yet'}
+                                            loading={loadingState}
+                                            onNavigate={goTo}
+                                        />
+
+                                        {pendingPayments.length > 0 && (
+                                            <button onClick={() => goTo('Fees')} className="w-full text-left p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/20 flex items-center gap-4 hover:shadow-card transition-all">
+                                                <span className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/20 text-amber-600 flex items-center justify-center shrink-0"><FiClock /></span>
+                                                <span className="flex-1 min-w-0">
+                                                    <span className="block text-sm font-bold text-amber-900 dark:text-amber-200">Payment awaiting approval</span>
+                                                    <span className="block text-xs text-amber-800/80 dark:text-amber-300/80">{formatINR(pendingPaymentsTotal)} submitted via UPI/Bank transfer is being verified by the office.</span>
+                                                </span>
+                                                <FiChevronRight className="text-amber-500 shrink-0" />
+                                            </button>
+                                        )}
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                            <Panel
+                                                className="lg:col-span-2"
+                                                title="Performance trend"
+                                                subtitle="Score % across published exam marks"
+                                                icon={FiTrendingUp}
+                                                action={<button onClick={() => goTo('Performance')} className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">Report cards <FiArrowRight /></button>}
+                                            >
+                                                <PerformanceTrendChart
+                                                    labels={marks.map(m => m.subjectId?.name || m.examId?.name || 'Test')}
+                                                    values={markPercents}
+                                                    loading={loadingState.marks}
+                                                    emptyHint="Exam marks will be plotted here once published."
+                                                />
+                                            </Panel>
+                                            <FeeSnapshotCard
+                                                fees={fees}
+                                                pendingApprovalTotal={pendingPaymentsTotal}
+                                                loading={loadingState.fees}
+                                                onPay={openPayment}
+                                                onHistory={() => goTo('Fees')}
+                                                canPay={!!selectedChild}
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                            <div className="lg:col-span-2">
+                                                <AttendanceHeatStrip attendance={attendance} loading={loadingState.attendance} onOpen={() => goTo('Attendance')} />
+                                            </div>
+                                            <TipCard />
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {selectedChild && <UpcomingClassesCard key={selectedChild} studentId={selectedChild} />}
+                                    <Panel
+                                        className={selectedChild ? '' : 'lg:col-span-2'}
+                                        title="Latest notices"
+                                        subtitle="From the institute"
+                                        icon={FaBullhorn}
+                                        action={<button onClick={() => goTo('Notices')} className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">View all <FiArrowRight /></button>}
                                     >
-                                        <div className={`absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br ${stat.gradient} opacity-10 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700 ease-out`}></div>
-                                        <div className="flex items-center justify-between mb-4 md:mb-8 relative">
-                                            <div className={`w-10 h-10 md:w-14 md:h-14 bg-${stat.color}-50 rounded-xl md:rounded-2xl flex items-center justify-center text-${stat.color}-600 text-base md:text-xl shadow-inner`}>
-                                                <stat.icon />
+                                        {loadingState.notices ? <ListSkeleton rows={3} /> : notices.length === 0 ? (
+                                            <EmptyState icon={FaBullhorn} title="No recent updates" hint="Announcements will appear here." />
+                                        ) : (
+                                            <div className="space-y-3 ui-stagger">
+                                                {notices.slice(0, 3).map((notice, idx) => (
+                                                    <NoticeCard key={notice._id || idx} notice={notice} onClick={() => setSelectedNotice(notice)} compact />
+                                                ))}
                                             </div>
-                                            <span className={`hidden sm:block text-${stat.color}-600 text-[10px] font-black bg-${stat.color}-50 px-3 py-1.5 rounded-full border border-${stat.color}-100`}>
-                                                {stat.trend}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-end justify-between relative">
-                                            <div>
-                                                <h3 className="text-xl md:text-4xl font-[900] text-slate-800 dark:text-white mb-1 md:mb-2 tracking-tight">{stat.value}</h3>
-                                                <p className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none">{stat.label}</p>
-                                            </div>
-                                            {stat.id === 'fees' && (
-                                                <button className="p-1.5 md:p-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg md:rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm">
-                                                    <FaMoneyBillWave className="text-xs md:text-base" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div >
-                                ))}
-                            </div >
-
-                            {/* Live Notices Section - Restored */}
-                            < div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm mb-6 mt-6" >
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-xl font-black text-gray-800 flex items-center gap-2">
-                                        <FaBullhorn className="text-orange-500" /> Latest Updates
-                                    </h3>
-                                    <button onClick={() => setActiveTab('Notices')} className="text-xs font-bold text-orange-600 hover:underline">View All</button>
+                                        )}
+                                    </Panel>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {notices.slice(0, 2).map((notice, idx) => (
-                                        <div key={idx} onClick={() => setSelectedNotice(notice)} className="p-4 rounded-2xl bg-orange-50/50 border border-orange-100 hover:bg-orange-50 cursor-pointer transition-colors relative group">
-                                            <div className="flex items-start gap-4">
-                                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-orange-500 shadow-sm font-black text-lg">
-                                                    {idx + 1}
+                            </>
+                        )}
+
+                        {/* ================= FEES ================= */}
+                        {activeTab === 'Fees' && (
+                            <>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <Panel
+                                        className="lg:col-span-2"
+                                        title="Fee summary"
+                                        subtitle={currentChild ? `For ${currentChild.name}` : 'Select a student'}
+                                        icon={FiCreditCard}
+                                        action={!loadingState.fees && <DueChip pending={pendingFees} dueDate={fees.dueDate} />}
+                                    >
+                                        {loadingState.fees ? (
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">{[0, 1, 2].map(i => <SkeletonBlock key={i} className="h-24" />)}</div>
+                                        ) : (
+                                            <>
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 ui-stagger">
+                                                    <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.03]">
+                                                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total fee</p>
+                                                        <p className="mt-1 text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight"><AnimatedNumber value={feeTotal} prefix="₹" /></p>
+                                                    </div>
+                                                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10">
+                                                        <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Paid</p>
+                                                        <p className="mt-1 text-2xl font-extrabold text-emerald-700 dark:text-emerald-300 tracking-tight"><AnimatedNumber value={feePaid} prefix="₹" /></p>
+                                                    </div>
+                                                    <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10">
+                                                        <p className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Pending due</p>
+                                                        <p className="mt-1 text-2xl font-extrabold text-rose-700 dark:text-rose-300 tracking-tight"><AnimatedNumber value={Number(fees.pendingFees || 0)} prefix="₹" /></p>
+                                                        {pendingPaymentsTotal > 0 && (
+                                                            <p className="text-[11px] font-bold text-amber-600 mt-1">{formatINR(pendingPaymentsTotal)} awaiting approval</p>
+                                                        )}
+                                                    </div>
                                                 </div>
+                                                <div className="mt-6">
+                                                    <div className="flex justify-between text-xs font-bold mb-2">
+                                                        <span className="text-gray-600 dark:text-gray-300">Paid vs pending</span>
+                                                        <span className="text-gray-400">{feePaidPct ?? 0}% paid</span>
+                                                    </div>
+                                                    <AnimatedBar value={feePaidPct ?? 0} className="h-3" barClassName={feePaidPct >= 100 ? 'bg-emerald-500' : 'bg-brand-gradient'} />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {(justSubmittedManual || pendingPayments.length > 0) && (
+                                            <div className="mt-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/20 flex items-start gap-3">
+                                                <span className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-500/20 text-amber-600 flex items-center justify-center shrink-0"><FiClock /></span>
                                                 <div>
-                                                    <h4 className="font-bold text-gray-800 text-sm mb-1 group-hover:text-orange-600 transition-colors">{notice.title}</h4>
-                                                    <p className="text-xs text-gray-500 line-clamp-2">{notice.message || notice.content}</p>
-                                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">
-                                                        {new Date(notice.createdAt || Date.now()).toLocaleDateString()}
+                                                    <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Awaiting approval</p>
+                                                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5 leading-relaxed">
+                                                        Your UPI / bank transfer details have been received. The office will verify the transaction and the amount will move to &quot;Paid&quot; once approved, usually within 1 working day. You will be notified when it is approved.
                                                     </p>
                                                 </div>
                                             </div>
-                                            <FaChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </div>
-                                    ))}
-                                    {notices.length === 0 && <p className="text-gray-400 text-sm font-bold italic col-span-2 text-center py-4">No recent updates</p>}
-                                </div>
-                            </div >
+                                        )}
 
-                            {/* Charts Grid - Admin Layout */}
-                            < div className="grid grid-cols-1 lg:grid-cols-3 gap-8" >
-                                <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-[3rem] p-10 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-xl group">
-                                    <div className="flex items-center justify-between mb-8">
-                                        <div>
-                                            <h2 className="text-2xl font-black text-gray-900 dark:text-white leading-tight">Performance Matrix</h2>
-                                            <p className="text-gray-400 dark:text-gray-500 font-bold text-sm">Subject-wise progression</p>
+                                        <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+                                            <button onClick={openPayment} disabled={!selectedChild} className="ui-btn-primary px-6 py-3">
+                                                <FiCreditCard /> {onlinePayUnavailable ? 'Submit UPI / Bank Payment' : 'Pay Online / Direct'}
+                                            </button>
+                                            {onlinePayUnavailable && (
+                                                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                                    <FiLock className="text-brand-500" /> Online payment coming soon — use UPI/Bank transfer
+                                                </p>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div className="h-[350px]">
-                                        <Line data={performanceData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } }} />
-                                    </div>
-                                </div>
+                                    </Panel>
 
-                                <div className="bg-white dark:bg-gray-800 rounded-[3rem] p-10 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-xl flex flex-col items-center justify-center text-center">
-                                    <h2 className="text-xl font-black text-gray-900 dark:text-white mb-8 self-start">Attendance</h2>
-                                    <div className="w-64 h-64 mb-8">
-                                        <Doughnut data={attendanceData} options={{ cutout: '75%', plugins: { legend: { display: false } } }} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 w-full">
-                                        <div>
-                                            <p className="text-2xl font-black text-emerald-500">{presentDays} Days</p>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Present</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-2xl font-black text-rose-500">{totalDays - presentDays} Days</p>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Absent</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div >
-                        </>
-                    )}
-
-                    {/* FEES TAB */}
-                    {
-                        activeTab === 'Fees' && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="bg-white dark:bg-gray-800 rounded-[3rem] p-10 border border-gray-100 dark:border-gray-700 shadow-sm">
-                                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-6">Fee Structure</h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                        <div className="p-6 bg-gray-50 dark:bg-gray-700 rounded-2xl">
-                                            <p className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase">Total Fee</p>
-                                            <p className="text-3xl font-black text-gray-900 dark:text-white">₹{fees.totalFees}</p>
-                                        </div>
-                                        <div className="p-6 bg-emerald-50 rounded-2xl">
-                                            <p className="text-xs font-bold text-emerald-600 uppercase">Paid Amount</p>
-                                            <p className="text-3xl font-black text-emerald-700">₹{fees.paidFees}</p>
-                                        </div>
-                                        <div className="p-6 bg-rose-50 rounded-2xl">
-                                            <p className="text-xs font-bold text-rose-600 uppercase">Pending Due</p>
-                                            <p className="text-3xl font-black text-rose-700">₹{fees.pendingFees}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="mb-8 flex flex-wrap gap-4">
-                                        <button
-                                            onClick={() => setShowPaymentModal(true)}
-                                            className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center gap-2"
-                                        >
-                                            <FaWallet /> Pay Online / Direct
-                                        </button>
-                                    </div>
-
-                                    <div className="mt-10">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4">Payment History</h3>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                                        <th className="pb-3 pl-4">Date</th>
-                                                        <th className="pb-3">Transaction ID</th>
-                                                        <th className="pb-3">Mode</th>
-                                                        <th className="pb-3">Amount</th>
-                                                        <th className="pb-3">Receipt</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                                                    {fees.payments?.map(p => (
-                                                        <tr key={p._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
-                                                            <td className="py-4 pl-4 font-medium text-gray-700 dark:text-gray-300">{new Date(p.date).toLocaleDateString()}</td>
-                                                            <td className="py-4 text-sm text-gray-500 dark:text-gray-400 font-mono">{p.transactionId || 'N/A'}</td>
-                                                            <td className="py-4 text-sm text-gray-500 dark:text-gray-400 capitalize">{p.mode}</td>
-                                                            <td className="py-4 font-bold text-gray-900 dark:text-white">₹{p.amount}</td>
-                                                            <td className="py-4">
-                                                                <button onClick={() => handleDownloadReceipt(p)} className="text-indigo-600 text-xs font-bold hover:underline flex items-center gap-1">
-                                                                    <FaFilePdf /> Receipt
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    }
-
-                    {/* ATTENDANCE TAB - Restored Calendar View */}
-                    {
-                        activeTab === 'Attendance' && (
-                            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                {/* Attendance Summary */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm">
-                                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Total Classes</p>
-                                        <p className="text-3xl font-black text-gray-900 dark:text-white">{filteredTotal}</p>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm">
-                                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Present</p>
-                                        <p className="text-3xl font-black text-emerald-500">{filteredPresent}</p>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm">
-                                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Absent</p>
-                                        <p className="text-3xl font-black text-rose-500">{filteredTotal - filteredPresent}</p>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm">
-                                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Attendance %</p>
-                                        <p className={`text-3xl font-black ${filteredPercentage >= 75 ? 'text-emerald-500' : 'text-rose-500'}`}>{filteredPercentage}%</p>
-                                    </div>
-                                </div>
-
-                                {/* Filter Section */}
-                                <div className="bg-white dark:bg-gray-800 rounded-[2rem] p-6 border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-                                    <h2 className="text-xl font-black text-gray-900 dark:text-white">Academic Calendar</h2>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Filter by Subject:</span>
-                                        <select
-                                            value={selectedSubject}
-                                            onChange={(e) => setSelectedSubject(e.target.value)}
-                                            className="bg-gray-50 dark:bg-gray-700 border-none rounded-xl px-4 py-2 font-bold text-sm text-indigo-600 dark:text-indigo-400 focus:ring-0 cursor-pointer outline-none transition-colors"
-                                        >
-                                            {subjects.map(sub => (
-                                                <option key={sub} value={sub}>{sub}</option>
+                                    <div className="rounded-3xl p-5 md:p-6 bg-brand-dark text-white relative overflow-hidden">
+                                        <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-brand-500/20 blur-2xl" />
+                                        <p className="relative text-[11px] font-bold uppercase tracking-[0.16em] text-brand-300 flex items-center gap-2"><FiShield /> How payments work</p>
+                                        <ol className="relative mt-4 space-y-4">
+                                            {[
+                                                { t: 'Pay the institute', d: 'Via UPI or bank transfer (details at the Oasis front office).' },
+                                                { t: 'Submit the reference', d: 'Enter the UTR / transaction number using the payment button.' },
+                                                { t: 'Office verifies', d: 'Usually within 1 working day — you get notified and a receipt unlocks.' },
+                                            ].map((s, i) => (
+                                                <li key={s.t} className="flex gap-3">
+                                                    <span className="w-7 h-7 rounded-full bg-brand-gradient text-white text-xs font-extrabold flex items-center justify-center shrink-0">{i + 1}</span>
+                                                    <span>
+                                                        <span className="block text-sm font-bold">{s.t}</span>
+                                                        <span className="block text-xs text-white/65 leading-relaxed">{s.d}</span>
+                                                    </span>
+                                                </li>
                                             ))}
-                                        </select>
+                                        </ol>
                                     </div>
                                 </div>
 
-                                {/* Group attendance by month using FILTERED attendance */}
+                                <Panel title="Payment history" subtitle="All payments and their status" icon={FiFileText}>
+                                    {loadingState.fees ? (
+                                        <ListSkeleton rows={3} />
+                                    ) : payments.length === 0 ? (
+                                        <EmptyState
+                                            icon={FiFileText}
+                                            title="No payments recorded yet"
+                                            hint="Payments you make or submit will appear here with their status."
+                                            action={selectedChild && <button onClick={openPayment} className="ui-btn-primary"><FiCreditCard /> Make a payment</button>}
+                                        />
+                                    ) : (
+                                        <PaymentTimeline payments={payments} onReceipt={handleDownloadReceipt} />
+                                    )}
+                                </Panel>
+                            </>
+                        )}
+
+                        {/* ================= ATTENDANCE ================= */}
+                        {activeTab === 'Attendance' && (loadingState.attendance ? (
+                            <>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {[0, 1, 2, 3].map(i => <SkeletonBlock key={i} className="h-28 rounded-3xl" />)}
+                                </div>
+                                <SkeletonBlock className="h-96 rounded-3xl" />
+                            </>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 ui-stagger">
+                                    <StatCard icon={FiLayers} label="Total classes" value={filteredTotal} tone="dark" />
+                                    <StatCard icon={FiCheckCircle} label="Present" value={filteredPresent} tone="green" />
+                                    <StatCard icon={FiX} label="Absent" value={filteredTotal - filteredPresent} tone="red" />
+                                    <StatCard
+                                        icon={FiPercent}
+                                        label="Attendance"
+                                        value={filteredPercentage}
+                                        suffix="%"
+                                        tone={filteredPercentage >= 75 ? 'green' : 'amber'}
+                                        hint={filteredTotal === 0 ? 'No records' : verdictFor(filteredPercentage, { good: 85, ok: 75 }).label}
+                                    />
+                                </div>
+
+                                <AttendanceHeatStrip attendance={attendance} loading={false} onOpen={() => document.getElementById('attendance-calendar')?.scrollIntoView({ behavior: 'smooth' })} />
+
+                                <div id="attendance-calendar" className="ui-card p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <span className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center"><FiCalendar /></span>
+                                        <div>
+                                            <h2 className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">Attendance calendar</h2>
+                                            <p className="text-xs text-gray-500">Filter by subject</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1" role="tablist" aria-label="Filter by subject">
+                                        {subjects.map(sub => (
+                                            <button
+                                                key={sub}
+                                                role="tab"
+                                                aria-selected={selectedSubject === sub}
+                                                onClick={() => setSelectedSubject(sub)}
+                                                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${selectedSubject === sub ? 'bg-ink-900 text-white dark:bg-white dark:text-ink-900 shadow-card' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-brand-50 hover:text-brand-700'}`}
+                                            >
+                                                {sub}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {Object.entries(
                                     filteredAttendance.reduce((acc, curr) => {
                                         const date = new Date(curr.date);
@@ -911,853 +1080,470 @@ const ParentDashboard = () => {
                                     const mIdx = monthDate.getMonth();
                                     const daysInMonth = new Date(yName, mIdx + 1, 0).getDate();
                                     const firstDay = new Date(yName, mIdx, 1).getDay();
+                                    const mPresent = monthDays.filter(d => d.status === 'present').length;
+                                    const mAbsent = monthDays.filter(d => d.status === 'absent').length;
+                                    const mPct = mPresent + mAbsent > 0 ? Math.round((mPresent / (mPresent + mAbsent)) * 100) : 0;
 
                                     return (
-                                        <div key={monthYear} className="bg-white dark:bg-gray-800 rounded-[3rem] p-10 border border-gray-100 dark:border-gray-700 shadow-sm relative overflow-hidden group">
-                                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-indigo-500/10 transition-colors"></div>
-
-                                            <div className="flex items-center justify-between mb-8 relative z-10">
+                                        <section key={monthYear} className="ui-card p-5 md:p-7">
+                                            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                                                 <div>
-                                                    <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{monthYear}</h2>
-                                                    <div className="flex gap-4 mt-2">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
-                                                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">PRESENT: {monthDays.filter(d => d.status === 'present').length}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <div className="w-2.5 h-2.5 bg-rose-500 rounded-full"></div>
-                                                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">ABSENT: {monthDays.filter(d => d.status === 'absent').length}</span>
-                                                        </div>
+                                                    <h3 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">{monthYear}</h3>
+                                                    <div className="flex gap-4 mt-1 text-xs font-semibold text-gray-500">
+                                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-emerald-500 rounded-full" /> Present {mPresent}</span>
+                                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 bg-rose-500 rounded-full" /> Absent {mAbsent}</span>
                                                     </div>
                                                 </div>
-                                                <div className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-800">
-                                                    Log Detail
-                                                </div>
+                                                <ProgressRing value={mPct} size={56} stroke={6} color={verdictFor(mPct, { good: 85, ok: 75 }).color}>
+                                                    <span className="text-xs font-extrabold text-gray-900 dark:text-white">{mPct}%</span>
+                                                </ProgressRing>
                                             </div>
 
-                                            <div className="grid grid-cols-7 gap-3 relative z-10">
-                                                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
-                                                    <div key={day} className="text-center text-[10px] font-black text-gray-300 dark:text-gray-600 py-2 uppercase tracking-widest">{day}</div>
+                                            <div className="grid grid-cols-7 gap-1.5 md:gap-2.5">
+                                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                                    <div key={day} className="text-center text-[10px] md:text-[11px] font-bold text-gray-400 py-1 uppercase tracking-wider">{day}</div>
                                                 ))}
-
-                                                {/* Empty days before first of month */}
                                                 {Array.from({ length: firstDay }).map((_, i) => (
-                                                    <div key={`empty-${i}`} className="h-12 md:h-16"></div>
+                                                    <div key={`empty-${i}`} className="h-10 md:h-14"></div>
                                                 ))}
-
-                                                {/* Days of the month */}
                                                 {Array.from({ length: daysInMonth }).map((_, i) => {
                                                     const dNum = i + 1;
                                                     const attendanceRecord = monthDays.find(ad => new Date(ad.date).getDate() === dNum);
                                                     const isPresent = attendanceRecord?.status === 'present';
                                                     const isAbsent = attendanceRecord?.status === 'absent';
-
                                                     return (
                                                         <div
                                                             key={dNum}
-                                                            className={`h-12 md:h-16 rounded-2xl flex flex-col items-center justify-center relative transition-all border shadow-sm
-                                                            ${isPresent ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-100 scale-105 z-10 font-bold' :
-                                                                    isAbsent ? 'bg-rose-500 text-white border-rose-400 shadow-rose-100 scale-105 z-10 font-bold' :
-                                                                        'bg-gray-50 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500 border-gray-100 dark:border-gray-700'}`}
+                                                            title={isPresent ? 'Present' : isAbsent ? 'Absent' : 'No record'}
+                                                            className={`h-10 md:h-14 rounded-xl flex items-center justify-center text-xs md:text-sm font-bold transition-transform hover:scale-105
+                                                                ${isPresent ? 'bg-emerald-500 text-white shadow-[0_6px_16px_-6px_rgba(16,185,129,0.6)]'
+                                                                    : isAbsent ? 'bg-rose-500 text-white shadow-[0_6px_16px_-6px_rgba(244,63,94,0.6)]'
+                                                                        : 'bg-gray-50 dark:bg-white/[0.03] text-gray-400 dark:text-gray-500'}`}
                                                         >
-                                                            <span className="text-sm md:text-lg">{dNum}</span>
-                                                            {attendanceRecord && (
-                                                                <div className="absolute bottom-1 w-1 h-1 bg-white/50 rounded-full"></div>
-                                                            )}
+                                                            {dNum}
                                                         </div>
                                                     );
                                                 })}
                                             </div>
-                                        </div>
+                                        </section>
                                     );
                                 })}
 
                                 {filteredAttendance.length === 0 && (
-                                    <div className="p-20 text-center bg-gray-50 dark:bg-gray-800 rounded-[3rem] border border-dashed border-gray-200 dark:border-gray-700">
-                                        <FaCalendarAlt className="text-4xl text-gray-200 dark:text-gray-700 mx-auto mb-4" />
-                                        <p className="text-gray-400 dark:text-gray-500 font-bold">No attendance records found for {selectedSubject}.</p>
-                                    </div>
+                                    <EmptyState icon={FiCalendar} title={`No attendance records found for ${selectedSubject}.`} hint="Records appear here as soon as teachers mark attendance." />
                                 )}
-                            </div>
-                        )}
+                            </>
+                        ))}
 
-                    {/* PERFORMANCE TAB */}
-                    {activeTab === 'Performance' && (
-                        <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                            <div className="bg-white dark:bg-gray-800 rounded-[3rem] p-10 border border-gray-100 dark:border-gray-700 shadow-sm relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
-                                <div className="flex items-center justify-between mb-10 relative z-10">
-                                    <div>
-                                        <h2 className="text-3xl font-black text-gray-900 dark:text-white leading-tight">Academic Result Center</h2>
-                                        <p className="text-gray-400 font-bold text-sm mt-1 uppercase tracking-widest">Official progress reports & certificates</p>
-                                    </div>
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 p-4 rounded-2xl">
-                                        <FaTrophy className="text-2xl" />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-
-                                    {/* Final Cumulative Card with Mobile Optimization */}
-                                    {cumulativeSummary && cumulativeSummary.isPublished && (
-                                        <div className="col-span-full mb-8">
-                                            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
-                                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
-
-                                                {/* Mobile Optimized Layout */}
-                                                <div className="md:hidden relative z-10">
-                                                    <div className="flex items-center justify-between mb-6">
-                                                        <span className="px-3 py-1 bg-white/20 text-white rounded-lg text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">Final Result</span>
-                                                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white backdrop-blur-md">
-                                                            <FaTrophy />
-                                                        </div>
-                                                    </div>
-
-                                                    <h3 className="text-2xl font-black text-white mb-1">Cumulative Record</h3>
-                                                    <p className="text-emerald-100 text-xs font-bold uppercase tracking-widest mb-8">Academic Session 2025-26</p>
-
-                                                    <div className="flex items-end justify-between mb-8">
-                                                        <div>
-                                                            <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest mb-1">Aggregate Score</p>
-                                                            <p className="text-4xl font-black text-white leading-none">{cumulativeSummary.percentage}%</p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest mb-1">Rank</p>
-                                                            <p className="text-xl font-black text-white leading-none">Top 10%</p>
-                                                        </div>
-                                                    </div>
-
-                                                    <button
-                                                        onClick={() => setViewingReportCard({
-                                                            ...cumulativeSummary,
-                                                            exam: { name: 'Final Cumulative Result', type: 'Consolidated' },
-                                                            name: currentChild?.name,
-                                                            fatherName: user.name
-                                                        })}
-                                                        className="w-full py-4 bg-white text-emerald-800 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                                                    >
-                                                        View Full Transcript
-                                                    </button>
-                                                </div>
-
-                                                {/* Desktop Layout */}
-                                                <div className="hidden md:flex relative z-10 items-center justify-between gap-10">
-                                                    <div className="flex items-start gap-8">
-                                                        <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center text-white backdrop-blur-md border border-white/20 shadow-2xl shrink-0">
-                                                            <FaTrophy className="text-5xl" />
-                                                        </div>
-                                                        <div>
-                                                            <div className="flex items-center gap-3 mb-2">
-                                                                <span className="px-3 py-1 bg-emerald-500/30 text-emerald-50 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-400/30">Official Record</span>
-                                                                <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/10">2025-26</span>
-                                                            </div>
-                                                            <h3 className="text-4xl font-black text-white mb-2 tracking-tight">Final Cumulative Record</h3>
-                                                            <p className="text-emerald-100 text-sm font-medium max-w-md leading-relaxed">
-                                                                Overall academic performance summary including all unit tests, monthly assessments, and attendance records.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-8">
-                                                        <div className="text-right">
-                                                            <p className="text-5xl font-black text-white tracking-tighter mb-1">{cumulativeSummary.percentage}%</p>
-                                                            <p className="text-emerald-200 text-xs font-black uppercase tracking-widest">Aggregate Score</p>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => setViewingReportCard({
-                                                                ...cumulativeSummary,
-                                                                exam: { name: 'Final Cumulative Result', type: 'Consolidated' },
-                                                                name: currentChild?.name,
-                                                                fatherName: user.name
-                                                            })}
-                                                            className="h-16 px-8 bg-white text-emerald-800 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all shadow-xl active:scale-95 flex items-center gap-3"
-                                                        >
-                                                            <FaPrint className="text-lg" /> View Transcript
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
+                        {/* ================= PERFORMANCE / REPORT CARDS ================= */}
+                        {activeTab === 'Performance' && loadingState.marks && <CardsSkeleton count={3} height="h-56" />}
+                        {activeTab === 'Performance' && !loadingState.marks && (
+                            <>
+                                <div className="ui-card p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white flex items-center justify-center text-lg shadow-brand-soft"><FiAward /></span>
+                                        <div>
+                                            <h2 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">Academic result centre</h2>
+                                            <p className="text-sm text-gray-500">Official report cards and monthly progress reports</p>
                                         </div>
-                                    )}
-
-                                    {/* Exam Cards Grid */}
-                                    <div className="col-span-full">
-                                        <div className="flex items-center gap-4 mb-6">
-                                            <div className="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
-                                            <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Recent Assessments</span>
-                                            <div className="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
-                                        </div>
-
-                                        {marks.length > 0 ? (
-                                            <>
-                                                {/* Mobile View: Compact List */}
-                                                <div className="md:hidden space-y-4">
-                                                    {Object.values(marks.reduce((acc, m) => {
-                                                        const examId = m.examId?._id || 'unknown';
-                                                        if (!acc[examId]) acc[examId] = {
-                                                            exam: m.examId,
-                                                            totalObtained: 0,
-                                                            totalMax: 0
-                                                        };
-                                                        acc[examId].totalObtained += m.marks;
-                                                        acc[examId].totalMax += (m.maxMarks || 100);
-                                                        return acc;
-                                                    }, {})).map((summary, idx) => (
-                                                        <div key={idx} className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-4">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-                                                                        {((summary.totalObtained / summary.totalMax) * 100).toFixed(0)}%
-                                                                    </div>
-                                                                    <div>
-                                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">{summary.exam?.name}</h4>
-                                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{summary.exam?.type}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => setViewingReportCard({
-                                                                    ...summary,
-                                                                    name: currentChild?.name,
-                                                                    rollNo: currentChild?.rollNo || 'N/A',
-                                                                    fatherName: user.name,
-                                                                    percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
-                                                                })}
-                                                                className="w-full py-2.5 bg-gray-900 dark:bg-gray-700 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest"
-                                                            >
-                                                                View Report
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                {/* Desktop View: Grid Cards */}
-                                                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                    {Object.values(marks.reduce((acc, m) => {
-                                                        const examId = m.examId?._id || 'unknown';
-                                                        if (!acc[examId]) acc[examId] = {
-                                                            exam: m.examId,
-                                                            subjectResults: [],
-                                                            totalObtained: 0,
-                                                            totalMax: 0
-                                                        };
-                                                        acc[examId].subjectResults.push({
-                                                            subjectId: m.subjectId?._id,
-                                                            subjectName: m.subjectId?.name || 'Subject',
-                                                            obtained: m.marks,
-                                                            maxMarks: m.maxMarks || 100
-                                                        });
-                                                        acc[examId].totalObtained += m.marks;
-                                                        acc[examId].totalMax += (m.maxMarks || 100);
-                                                        return acc;
-                                                    }, {})).map(summary => (
-                                                        <div key={summary.exam?._id} className="p-8 bg-gray-50/50 dark:bg-gray-700/30 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 hover:shadow-xl hover:-translate-y-1 transition-all group/card">
-                                                            <div className="flex items-start justify-between mb-6">
-                                                                <div className="w-14 h-14 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm group-hover/card:bg-emerald-600 group-hover/card:text-white transition-all">
-                                                                    <FaFileAlt className="text-2xl" />
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{summary.exam?.type || 'Standard'}</p>
-                                                                    <p className="text-xs font-bold text-emerald-600">{((summary.totalObtained / summary.totalMax) * 100).toFixed(1)}% Score</p>
-                                                                </div>
-                                                            </div>
-                                                            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2 leading-tight">{summary.exam?.name || 'Academic Assessment'}</h3>
-                                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-8 font-medium">Verified result for {currentChild?.name.split(' ')[0]}.</p>
-                                                            <button
-                                                                onClick={() => setViewingReportCard({
-                                                                    ...summary,
-                                                                    name: currentChild?.name,
-                                                                    rollNo: currentChild?.rollNo || 'N/A',
-                                                                    fatherName: user.name, // Parent's name
-                                                                    percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
-                                                                })}
-                                                                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-100 dark:shadow-none"
-                                                            >
-                                                                View Report Card
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="col-span-full py-20 text-center">
-                                                <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center text-gray-200 dark:text-gray-700 mx-auto mb-4">
-                                                    <FaBook className="text-4xl" />
-                                                </div>
-                                                <p className="text-gray-400 font-bold">No academic reports available yet.</p>
-                                            </div>
-                                        )}
                                     </div>
+                                    {renderReportAction('light')}
                                 </div>
-                            </div>
-                        </div>
-                    )}
 
-                    {/* MATERIALS TAB */}
-                    {activeTab === 'Materials' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {materials.map(m => (
-                                <div key={m._id} className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all group">
-                                    <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-2xl mb-6 shadow-inner group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                                        <FaBook />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 truncate">{m.title}</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">Study material provided for students.</p>
-                                    <a
-                                        href={`${config.API_URL.replace('/api', '')}/${m.fileUrl}`}
-                                        download
-                                        className="inline-flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-wider hover:underline"
-                                    >
-                                        <FaFilePdf /> Download Resource
-                                    </a>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* NOTICES TAB */}
-                    {activeTab === 'Notices' && (
-                        <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <h2 className="text-2xl font-black text-gray-900 leading-tight">Notice Board</h2>
-                                    <p className="text-gray-400 font-bold text-sm">Official announcements and circulars</p>
-                                </div>
-                                <div className="bg-orange-50 text-orange-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                                    <FaBullhorn /> Broadcasts
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                {notices.map((notice) => (
-                                    <div
-                                        key={notice._id}
-                                        onClick={() => setSelectedNotice(notice)}
-                                        className="group p-6 rounded-[2rem] border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-lg transition-all cursor-pointer relative overflow-hidden"
-                                    >
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-orange-500/10 transition-colors"></div>
-                                        <div className="relative z-10 flex flex-col md:flex-row gap-6 items-start md:items-center">
-                                            <div className="w-16 h-16 bg-white rounded-2xl flex flex-col items-center justify-center border border-gray-100 shadow-sm shrink-0">
-                                                <span className="text-xl font-black text-orange-500">{new Date(notice.createdAt || Date.now()).getDate()}</span>
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase">{new Date(notice.createdAt || Date.now()).toLocaleString('default', { month: 'short' })}</span>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-md text-[9px] font-black uppercase tracking-widest">Notice</span>
-                                                    {notice.targetRoles?.map(r => (
-                                                        <span key={r} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md text-[9px] font-bold uppercase tracking-widest">{r}</span>
-                                                    ))}
+                                {cumulativeSummary && cumulativeSummary.isPublished && (
+                                    <div className="relative overflow-hidden rounded-3xl bg-brand-sunset text-white p-6 md:p-8 shadow-brand-glow">
+                                        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
+                                        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                            <div className="flex items-start gap-5">
+                                                <div className="hidden sm:flex w-16 h-16 rounded-2xl bg-white/15 ring-1 ring-white/25 items-center justify-center text-3xl shrink-0"><FiAward /></div>
+                                                <div>
+                                                    <div className="flex flex-wrap gap-2 mb-2">
+                                                        <span className="ui-badge bg-white/15 ring-1 ring-white/25 text-white">Official record</span>
+                                                        <span className="ui-badge bg-black/20 text-white">2025-26</span>
+                                                    </div>
+                                                    <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight">Final cumulative record</h3>
+                                                    <p className="text-white/80 text-sm mt-1 max-w-md">Overall academic performance summary including all unit tests, monthly assessments, and attendance records.</p>
                                                 </div>
-                                                <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-indigo-600 transition-colors">{notice.title}</h3>
-                                                <p className="text-sm text-gray-500 line-clamp-2">{notice.message || notice.content}</p>
                                             </div>
-                                            <div className="self-end md:self-center">
-                                                <button className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-300 group-hover:text-indigo-600 group-hover:border-indigo-100 transition-all">
-                                                    <FaChevronRight />
+                                            <div className="flex items-center justify-between md:justify-end gap-6">
+                                                <div className="md:text-right">
+                                                    <p className="text-4xl md:text-5xl font-extrabold tracking-tight"><AnimatedNumber value={Number(cumulativeSummary.percentage)} decimals={Number.isInteger(Number(cumulativeSummary.percentage)) ? 0 : 1} suffix="%" /></p>
+                                                    <p className="text-white/70 text-xs font-bold uppercase tracking-widest">Aggregate score</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setViewingReportCard({
+                                                        ...cumulativeSummary,
+                                                        exam: { name: 'Final Cumulative Result', type: 'Consolidated' },
+                                                        name: currentChild?.name,
+                                                        fatherName: user.name
+                                                    })}
+                                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-ink-900 font-bold text-sm shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all"
+                                                >
+                                                    <FiFileText className="text-brand-600" /> View transcript
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                                {notices.length === 0 && (
-                                    <div className="text-center py-20 opacity-50">
-                                        <FaBullhorn className="text-6xl text-gray-300 mx-auto mb-4" />
-                                        <p className="font-bold text-gray-400">No active notices available</p>
+                                )}
+
+                                <div>
+                                    <h3 className="text-sm font-extrabold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400 mb-3">Recent assessments</h3>
+                                    {examSummaries.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ui-stagger">
+                                            {examSummaries.map((summary, idx) => {
+                                                const pct = summary.totalMax > 0 ? (summary.totalObtained / summary.totalMax) * 100 : 0;
+                                                const v = verdictFor(pct, { good: 75, ok: 50 });
+                                                return (
+                                                    <div key={summary.exam?._id || idx} className="ui-card ui-card-hover p-5 flex flex-col">
+                                                        <div className="flex items-start gap-4">
+                                                            <ProgressRing value={pct} size={64} stroke={6} color={v.color}>
+                                                                <span className="text-sm font-extrabold text-gray-900 dark:text-white">{pct.toFixed(0)}%</span>
+                                                            </ProgressRing>
+                                                            <div className="min-w-0 flex-1">
+                                                                <span className="ui-badge bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300">{summary.exam?.type || 'Standard'}</span>
+                                                                <h4 className="mt-1.5 font-extrabold text-gray-900 dark:text-white leading-snug line-clamp-2">{summary.exam?.name || 'Academic Assessment'}</h4>
+                                                                <p className="text-xs text-gray-500 mt-0.5">{summary.totalObtained} / {summary.totalMax} marks</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-4 space-y-2">
+                                                            {summary.subjectResults.slice(0, 3).map((s, i) => (
+                                                                <div key={s.subjectId || i}>
+                                                                    <div className="flex justify-between text-[11px] font-semibold text-gray-500 mb-1">
+                                                                        <span className="truncate">{s.subjectName}</span><span>{s.obtained}/{s.maxMarks}</span>
+                                                                    </div>
+                                                                    <AnimatedBar value={(s.obtained / (s.maxMarks || 100)) * 100} className="h-1.5" />
+                                                                </div>
+                                                            ))}
+                                                            {summary.subjectResults.length > 3 && <p className="text-[11px] text-gray-400 font-semibold">+{summary.subjectResults.length - 3} more subjects</p>}
+                                                        </div>
+                                                        <button onClick={() => openReportCard(summary)} className="ui-btn-dark mt-5 w-full">
+                                                            <FiFileText /> View report card
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <EmptyState icon={FiBookOpen} title="No academic reports available yet." hint="Report cards appear here once exam marks are published." />
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        {/* ================= MATERIALS ================= */}
+                        {activeTab === 'Materials' && (
+                            loadingState.materials ? <CardsSkeleton count={6} /> : materials.length === 0 ? (
+                                <EmptyState icon={FiBookOpen} title="No study materials shared yet" hint="Notes and PDFs uploaded by teachers for your ward's class will appear here." />
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ui-stagger">
+                                    {materials.map(m => (
+                                        <div key={m._id} className="ui-card ui-card-hover group p-5 flex flex-col">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <span className="w-11 h-11 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center text-lg group-hover:bg-brand-gradient group-hover:text-white group-hover:rotate-6 transition-all duration-300"><FiFileText /></span>
+                                                {m.subjectId?.name && <span className="ui-badge bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300">{m.subjectId.name}</span>}
+                                            </div>
+                                            <h3 className="mt-4 font-extrabold text-gray-900 dark:text-white truncate">{m.title}</h3>
+                                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2 flex-1">{m.description || 'Study material provided for students.'}</p>
+                                            <a
+                                                href={resolveFileUrl(m.fileUrl)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                download
+                                                className="ui-btn-secondary mt-4 w-full"
+                                            >
+                                                <FiDownload /> Download resource
+                                            </a>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        )}
+
+                        {/* ================= NOTICES ================= */}
+                        {activeTab === 'Notices' && (
+                            <Panel title="Notice board" subtitle="Official announcements and circulars" icon={FaBullhorn}
+                                action={!loadingState.notices && notices.length > 0 && <Chip tone="brand">{notices.length} notice{notices.length > 1 ? 's' : ''}</Chip>}
+                            >
+                                {loadingState.notices ? <ListSkeleton rows={4} /> : notices.length === 0 ? (
+                                    <EmptyState icon={FaBullhorn} title="No active notices available" hint="Institute announcements and circulars will appear here." />
+                                ) : (
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 ui-stagger">
+                                        {notices.map(notice => (
+                                            <NoticeCard key={notice._id} notice={notice} onClick={() => setSelectedNotice(notice)} />
+                                        ))}
                                     </div>
                                 )}
-                            </div>
-                        </div>
-                    )}
+                            </Panel>
+                        )}
 
-                    {activeTab === 'Tests' && (
-                        <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <h2 className="text-2xl font-black text-gray-900 leading-tight">Online Test Results</h2>
-                                    <p className="text-gray-400 font-bold text-sm">Performance in digital assessments</p>
-                                </div>
-                                <div className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                                    <FaLaptopCode /> Digital Report
-                                </div>
-                            </div>
+                        {/* ================= TESTS ================= */}
+                        {activeTab === 'Tests' && (
+                            <TestResultsTab
+                                key={selectedChild || 'none'}
+                                tests={onlineTestResults}
+                                loading={loadingState.tests}
+                                childName={currentChild?.name}
+                                analysis={testAnalysis}
+                                analysisLoading={loadingState.analysis}
+                            />
+                        )}
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                            <th className="pb-4 pl-4">Test Title</th>
-                                            <th className="pb-4">Subject</th>
-                                            <th className="pb-4">Date</th>
-                                            <th className="pb-4">Status</th>
-                                            <th className="pb-4 text-right pr-4">Score / Marks</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50 text-sm">
-                                        {onlineTestResults.map((test) => (
-                                            <tr key={test._id} className="group hover:bg-gray-50/50 transition-colors">
-                                                <td className="py-4 pl-4 font-bold text-gray-800">
-                                                    {test.title}
-                                                </td>
-                                                <td className="py-4 font-bold text-gray-500">
-                                                    {test.subjectId?.name || 'General'}
-                                                </td>
-                                                <td className="py-4 font-medium text-gray-400 text-xs uppercase tracking-widest">
-                                                    {new Date(test.createdAt).toLocaleDateString()}
-                                                </td>
-                                                <td className="py-4">
-                                                    {test.attempted ? (
-                                                        <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                                            Completed
-                                                        </span>
-                                                    ) : (
-                                                        <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                                            Missed / Pending
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="py-4 text-right pr-4">
-                                                    {test.attempted ? (
-                                                        <span className="font-black text-indigo-600 text-base">
-                                                            {test.score} <span className="text-gray-300 text-xs">/ {test.totalMarks}</span>
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-gray-300 font-bold">-</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {onlineTestResults.length === 0 && (
-                                            <tr>
-                                                <td colSpan="5" className="text-center py-10 text-gray-400 font-bold italic">
-                                                    No online tests found for this student.
-                                                </td>
-                                            </tr>
+                        {/* ================= TIMETABLE ================= */}
+                        {activeTab === 'Timetable' && (
+                            selectedChild
+                                ? <TimetableTab key={selectedChild} studentId={selectedChild} childName={currentChild?.name} />
+                                : loadingState.children
+                                    ? <CardsSkeleton count={3} />
+                                    : <EmptyState icon={FiCalendar} title="No student linked to your account yet" />
+                        )}
+
+                        {/* ================= PROFILE ================= */}
+                        {activeTab === 'Profile' && (
+                            <div className="max-w-3xl mx-auto space-y-6">
+                                <div className="ui-card overflow-hidden">
+                                    <div className="h-28 md:h-32 bg-brand-sunset relative">
+                                        <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+                                    </div>
+                                    <div className="px-5 md:px-8 pb-6 -mt-12 md:-mt-14 flex flex-col sm:flex-row sm:items-end gap-4">
+                                        <div className="relative group w-24 h-24 md:w-28 md:h-28 rounded-3xl ring-4 ring-white dark:ring-ink-900 bg-brand-gradient text-white text-3xl font-extrabold flex items-center justify-center overflow-hidden shadow-card shrink-0">
+                                            {photoPreview ? (
+                                                <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
+                                            ) : profile.profilePhoto ? (
+                                                <img src={`${apiOrigin}${profile.profilePhoto}`} className="w-full h-full object-cover" alt="Profile" />
+                                            ) : initials(profile.name || 'P')}
+                                            <label className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 focus-within:opacity-100 flex flex-col items-center justify-center gap-1 text-xs font-bold transition-opacity cursor-pointer">
+                                                <FiCamera className="text-xl" /> Change
+                                                <input type="file" className="sr-only" onChange={handlePhotoChange} accept="image/*" aria-label="Upload profile photo" />
+                                            </label>
+                                        </div>
+                                        <div className="flex-1 min-w-0 sm:pb-1">
+                                            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight truncate">{profile.name}</h2>
+                                            <p className="text-sm font-semibold text-brand-600 dark:text-brand-400">Registered guardian</p>
+                                        </div>
+                                        {photoPreview && (
+                                            <div className="flex gap-2 animate-fade-up">
+                                                <button onClick={handleQuickPhotoUpload} disabled={uploadingPhoto} className="ui-btn-primary">
+                                                    {uploadingPhoto ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <FiCheckCircle />} Save photo
+                                                </button>
+                                                <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="ui-btn-secondary">Cancel</button>
+                                            </div>
                                         )}
-                                    </tbody>
-                                </table>
+                                    </div>
+                                </div>
+
+                                <Panel title="Account details" icon={FiShield}>
+                                    <dl className="divide-y divide-gray-100 dark:divide-white/5">
+                                        {[
+                                            { icon: FiMail, label: 'Email', value: profile.email },
+                                            { icon: FiPhone, label: 'Phone', value: profile.phone },
+                                            { icon: FiMapPin, label: 'Address', value: profile.address || 'Not Provided' },
+                                        ].map(row => (
+                                            <div key={row.label} className="flex items-center gap-4 py-3.5">
+                                                <span className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-500 flex items-center justify-center shrink-0"><row.icon /></span>
+                                                <dt className="text-xs font-bold uppercase tracking-wider text-gray-400 w-20 shrink-0">{row.label}</dt>
+                                                <dd className="text-sm font-semibold text-gray-800 dark:text-gray-200 break-all min-w-0">{row.value || '—'}</dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+                                </Panel>
+
+                                {children.length > 0 && (
+                                    <Panel title="Linked students" subtitle="Tap to switch the dashboard view" icon={FiUsers}>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {children.map(student => {
+                                                const active = student._id === selectedChild;
+                                                return (
+                                                    <button
+                                                        key={student._id}
+                                                        onClick={() => setSelectedChild(student._id)}
+                                                        className={`flex items-center gap-3 p-3.5 rounded-2xl text-left transition-all ${active ? 'ring-2 ring-brand-500 bg-brand-50/60 dark:bg-brand-500/10' : 'ring-1 ring-gray-100 dark:ring-white/5 hover:ring-brand-200'}`}
+                                                    >
+                                                        <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white font-extrabold flex items-center justify-center overflow-hidden shrink-0">
+                                                            {photoUrl(student) ? <img src={photoUrl(student)} alt="" className="w-full h-full object-cover" /> : initials(student.name)}
+                                                        </span>
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block text-sm font-bold text-gray-900 dark:text-white truncate">{student.name}</span>
+                                                            <span className="flex items-center gap-1 text-[11px] font-semibold text-gray-400"><FiHash /> {student._id.slice(-6)}</span>
+                                                        </span>
+                                                        {active && <span className="ui-badge bg-brand-500 text-white">Viewing</span>}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </Panel>
+                                )}
                             </div>
-                        </div>
-                    )}
-
-
+                        )}
+                    </div>
                 </div>
-            </main >
+            </main>
 
-            {/* Payment Modal Overlay - Complex */}
-            {
-                showPaymentModal && (
+            <MobileBottomNav
+                activeTab={activeTab}
+                onSelect={goTo}
+                moreOpen={moreOpen}
+                setMoreOpen={setMoreOpen}
+                onLogout={logout}
+                badges={{ Fees: pendingFees > 0 ? 1 : 0, Notices: activeNoticesCount }}
+            />
+
+            {/* ================= PAYMENT MODAL ================= */}
+            {showPaymentModal && (
+                <div
+                    onClick={() => !paymentLoading && setShowPaymentModal(false)}
+                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+                >
                     <div
-                        onClick={() => !paymentLoading && setShowPaymentModal(false)}
-                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
+                        onClick={e => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="pay-title"
+                        className="ui-card w-full sm:max-w-lg rounded-b-none sm:rounded-3xl overflow-hidden flex flex-col max-h-[92vh] animate-scale-in"
                     >
-                        <div
-                            onClick={e => e.stopPropagation()}
-                            className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-100 dark:border-gray-700"
-                        >
-                            <div className="p-6 md:p-8 pb-4 flex justify-between items-center bg-white dark:bg-gray-800 border-b border-slate-50 dark:border-gray-700">
-                                <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white tracking-tight">Financial Authorization</h2>
-                                <button onClick={() => setShowPaymentModal(false)} className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-gray-700 text-slate-400 dark:text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-all flex items-center justify-center"><FaTimesCircle className="text-xl" /></button>
+                        <div className="px-6 py-5 flex justify-between items-start gap-4 border-b border-gray-100 dark:border-white/5">
+                            <div className="flex items-center gap-3">
+                                <span className="w-11 h-11 rounded-xl bg-brand-gradient text-white flex items-center justify-center text-lg shadow-brand-soft"><FiCreditCard /></span>
+                                <div>
+                                    <h2 id="pay-title" className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">Pay fees</h2>
+                                    <p className="text-xs text-gray-500">For {currentChild?.name || 'student'} · Due {formatINR(pendingFees)}</p>
+                                </div>
                             </div>
+                            <button onClick={() => !paymentLoading && setShowPaymentModal(false)} className="p-2 rounded-xl text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors" aria-label="Close payment">
+                                <FiX className="text-lg" />
+                            </button>
+                        </div>
 
-                            <div className="flex-1 overflow-y-auto p-6 md:p-8 pt-6 custom-scrollbar">
-                                <form onSubmit={handlePayment} className="space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest ml-1">Configure Amount (INR)</label>
-                                        <div className="relative">
-                                            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-slate-300 dark:text-gray-600">₹</span>
+                        <form onSubmit={handlePayment} className="flex-1 flex flex-col min-h-0">
+                            <div className="flex-1 overflow-y-auto ui-scrollbar p-6 space-y-6">
+                                <div className="space-y-2">
+                                    <label htmlFor="pay-amount" className="text-xs font-bold text-gray-500 uppercase tracking-wider">Amount (INR)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-extrabold text-gray-300">₹</span>
+                                        <input
+                                            id="pay-amount"
+                                            type="number"
+                                            min="1"
+                                            value={paymentAmount}
+                                            onChange={(e) => setPaymentAmount(e.target.value)}
+                                            className="ui-input pl-11 py-4 text-2xl font-extrabold text-gray-900 dark:text-white"
+                                            required
+                                        />
+                                    </div>
+                                    {pendingFees > 0 && (
+                                        <button type="button" onClick={() => setPaymentAmount(String(pendingFees))} className="ui-badge bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 normal-case hover:bg-brand-100 transition-colors">
+                                            Pay full due ({formatINR(pendingFees)})
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment method</p>
+                                    <div className="grid grid-cols-3 gap-2.5" role="radiogroup" aria-label="Payment method">
+                                        {[
+                                            { id: 'Razorpay', label: 'Online', icon: FiCreditCard, disabled: onlinePayUnavailable },
+                                            { id: 'UPI', label: 'UPI', icon: FaQrcode },
+                                            { id: 'Bank Transfer', label: 'Bank', icon: FaUniversity },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={paymentMethod === opt.id}
+                                                disabled={opt.disabled}
+                                                onClick={() => setPaymentMethod(opt.id)}
+                                                title={opt.disabled ? 'Online payment coming soon' : undefined}
+                                                className={`p-3 rounded-2xl border-2 flex flex-col items-center gap-1.5 text-xs font-bold transition-all ${opt.disabled
+                                                    ? 'border-dashed border-gray-200 dark:border-white/10 text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                                                    : paymentMethod === opt.id
+                                                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 shadow-brand-soft'
+                                                        : 'border-gray-100 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:border-brand-200 active:scale-95'}`}
+                                            >
+                                                <opt.icon className="text-lg" />
+                                                {opt.label}
+                                                {opt.disabled && <span className="text-[9px] uppercase tracking-widest">Soon</span>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {onlinePayUnavailable && (
+                                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Online payment coming soon — use UPI/Bank transfer</p>
+                                    )}
+                                </div>
+
+                                {paymentMethod === 'Razorpay' && !onlinePayUnavailable ? (
+                                    <div className="p-4 rounded-2xl bg-brand-50 dark:bg-brand-500/10 ring-1 ring-brand-100 dark:ring-brand-500/20 flex items-center gap-4">
+                                        <span className="w-12 h-12 rounded-xl bg-white dark:bg-ink-800 text-brand-600 flex items-center justify-center text-xl shrink-0"><FiLock /></span>
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">Secure online payment</h4>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">Pay via UPI, Cards, or Netbanking using the Razorpay gateway. Confirmed instantly.</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-100 dark:ring-amber-500/20 text-xs font-medium text-amber-900 dark:text-amber-200 leading-relaxed">
+                                            Pay to the institute&apos;s {paymentMethod === 'UPI' ? 'UPI ID / QR code' : 'bank account'} (available at the Oasis front office), then enter the transaction reference below. The payment will show as <b>Awaiting approval</b> until the office verifies it.
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label htmlFor="pay-ref" className="text-xs font-bold text-gray-500 uppercase tracking-wider">{paymentMethod === 'UPI' ? 'UPI Transaction / UTR No.' : 'Bank Reference / UTR No.'} *</label>
                                             <input
-                                                type="number"
-                                                value={paymentAmount}
-                                                onChange={(e) => setPaymentAmount(e.target.value)}
-                                                className="w-full pl-12 pr-6 py-5 bg-slate-50 dark:bg-gray-700 rounded-2xl border-none font-black text-2xl text-slate-800 dark:text-white shadow-inner focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all"
+                                                id="pay-ref"
+                                                type="text"
+                                                value={paymentDetails.ref}
+                                                onChange={(e) => setPaymentDetails(d => ({ ...d, ref: e.target.value }))}
+                                                placeholder="e.g. 412345678901"
+                                                className="ui-input font-semibold"
                                                 required
                                             />
                                         </div>
-                                    </div>
-
-                                    <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-[2rem] border border-indigo-100 dark:border-indigo-800/50 flex items-center gap-6">
-                                        <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-2xl shadow-sm">
-                                            <FaCreditCard />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 dark:text-white text-sm">Secure Online Payment</h4>
-                                            <p className="text-[10px] text-slate-500 dark:text-gray-400 font-medium">Pay via UPI, Cards, or Netbanking using Razorpay gateway.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="p-4 bg-slate-50 dark:bg-gray-700 rounded-2xl flex items-center gap-3">
-                                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                                            <p className="text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest">Gateway: Razorpay (Standard Protocol)</p>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={paymentLoading || !paymentAmount}
-                                        className={`w-full py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${paymentLoading ? 'bg-slate-100 dark:bg-gray-700 text-slate-400 dark:text-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 dark:shadow-none hover:-translate-y-1'}`}
-                                    >
-                                        {paymentLoading ? (
-                                            <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                                        ) : (
-                                            <>
-                                                <FaLock /> INITIALIZE SECURE PAYMENT
-                                            </>
-                                        )}
-                                    </button>
-                                    {!paymentLoading && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPaymentModal(false)}
-                                            className="w-full py-4 text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest hover:text-slate-600 dark:hover:text-slate-300 transition-all"
-                                        >
-                                            Return to Dashboard
-                                        </button>
-                                    )}
-                                    <p className="text-[9px] text-center text-slate-300 dark:text-gray-600 font-bold uppercase tracking-widest italic pt-2">Encrypted Secure Payment Gateway</p>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Notice Detail Modal */}
-            {
-                selectedNotice && (
-                    <div
-                        onClick={() => setSelectedNotice(null)}
-                        className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
-                    >
-                        <div
-                            onClick={e => e.stopPropagation()}
-                            className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 dark:border-gray-700 animate-in slide-in-from-bottom-6 duration-500"
-                        >
-                            <div className="p-6 md:p-8 border-b border-slate-100 dark:border-gray-700 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                                <div className="relative z-10 flex items-start justify-between gap-4">
-                                    <div className="flex items-start gap-4 flex-1">
-                                        <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-xl shrink-0 shadow-lg">
-                                            <FaBullhorn />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="px-3 py-1 bg-indigo-600 text-white rounded-full text-[8px] font-black uppercase tracking-widest">Broadcast Notice</span>
-                                            </div>
-                                            <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white tracking-tight">{selectedNotice.title}</h2>
-                                            {selectedNotice.createdAt && (
-                                                <p className="text-[9px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest mt-2">
-                                                    Published: {new Date(selectedNotice.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setSelectedNotice(null)}
-                                        className="w-10 h-10 rounded-xl bg-white/80 dark:bg-gray-700 backdrop-blur-sm text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-white dark:hover:bg-gray-600 transition-all flex items-center justify-center shrink-0"
-                                    >
-                                        <FaTimesCircle className="text-xl" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="p-6 md:p-10 max-h-[60vh] overflow-y-auto">
-                                {/* Message Content */}
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <FaEnvelopeOpenText className="text-indigo-600 dark:text-indigo-400" />
-                                        Notice Details
-                                    </h3>
-                                    <div className="bg-slate-50 dark:bg-gray-700/50 rounded-2xl p-6 border border-slate-100 dark:border-gray-700">
-                                        <p className="text-base text-slate-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                            {selectedNotice.message || selectedNotice.content || selectedNotice.description || 'No message content available.'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {selectedNotice.targetRoles && selectedNotice.targetRoles.length > 0 && (
-                                    <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800/50">
-                                        <p className="text-[9px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-2">Intended Recipients</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedNotice.targetRoles.map((role, i) => (
-                                                <span key={i} className="px-3 py-1 bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-700 rounded-lg text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tight">
-                                                    {role}
-                                                </span>
-                                            ))}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <input
+                                                type="text"
+                                                value={paymentDetails.bankName}
+                                                onChange={(e) => setPaymentDetails(d => ({ ...d, bankName: e.target.value }))}
+                                                placeholder={paymentMethod === 'UPI' ? 'UPI app (optional)' : 'Bank name (optional)'}
+                                                aria-label={paymentMethod === 'UPI' ? 'UPI app' : 'Bank name'}
+                                                className="ui-input"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={paymentDetails.remarks}
+                                                onChange={(e) => setPaymentDetails(d => ({ ...d, remarks: e.target.value }))}
+                                                placeholder="Remarks (optional)"
+                                                aria-label="Remarks"
+                                                className="ui-input"
+                                            />
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="p-6 md:p-8 border-t border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-800/50">
-                                <button
-                                    onClick={() => setSelectedNotice(null)}
-                                    className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-all active:scale-95"
-                                >
-                                    Close Notice
+                            <div className="p-4 sm:p-5 border-t border-gray-100 dark:border-white/5 bg-gray-50/70 dark:bg-white/[0.02] flex flex-col-reverse sm:flex-row gap-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5">
+                                {!paymentLoading && (
+                                    <button type="button" onClick={() => setShowPaymentModal(false)} className="ui-btn-secondary sm:flex-1">
+                                        Cancel
+                                    </button>
+                                )}
+                                <button type="submit" disabled={paymentLoading || !paymentAmount} className="ui-btn-primary sm:flex-[2] py-3">
+                                    {paymentLoading ? (
+                                        <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    ) : paymentMethod === 'Razorpay' && !onlinePayUnavailable ? (
+                                        <><FiLock /> Pay securely</>
+                                    ) : (
+                                        <><FiCheckCircle /> Submit for approval</>
+                                    )}
                                 </button>
                             </div>
-                        </div>
-                    </div>
-                )}
-
-            {activeTab === 'Profile' && (
-                <div className="flex justify-center w-full min-h-full pb-10">
-                    <div className="w-full max-w-2xl animate-in fade-in duration-500">
-                        <div className="bg-white dark:bg-gray-900 rounded-[3rem] p-12 border border-gray-100 dark:border-gray-800 shadow-sm">
-                            <div className="flex flex-col items-center mb-10">
-                                <div className="w-32 h-32 rounded-[2.5rem] bg-teal-50 dark:bg-teal-900/20 border-4 border-white dark:border-gray-800 shadow-xl flex items-center justify-center text-4xl text-teal-600 dark:text-teal-400 font-black mb-6 relative group overflow-hidden">
-                                    {photoPreview ? (
-                                        <img src={photoPreview} className="w-full h-full object-cover" alt="Preview" />
-                                    ) : profile.profilePhoto ? (
-                                        <img src={`${config.API_URL.replace('/api', '')}${profile.profilePhoto}`} className="w-full h-full object-cover" alt="Profile" />
-                                    ) : profile.name?.charAt(0)}
-                                    <label className="absolute inset-0 bg-teal-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all cursor-pointer">
-                                        <FaPlus className="text-white" />
-                                        <input type="file" className="hidden" onChange={handlePhotoChange} accept="image/*" />
-                                    </label>
-                                </div>
-                                {photoPreview && (
-                                    <div className="flex gap-2 mb-4 animate-in slide-in-from-top duration-300">
-                                        <button
-                                            onClick={handleQuickPhotoUpload}
-                                            disabled={uploadingPhoto}
-                                            className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2"
-                                        >
-                                            {uploadingPhoto ? <FaHistory className="animate-spin" /> : <FaCheckCircle />} SAVE PHOTO
-                                        </button>
-                                        <button
-                                            onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
-                                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
-                                        >
-                                            CANCEL
-                                        </button>
-                                    </div>
-                                )}
-                                <h2 className="text-3xl font-black text-gray-900 dark:text-white">{profile.name}</h2>
-                                <p className="text-teal-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-1">Registered Guardian</p>
-                            </div>
-
-                            <div className="space-y-6">
-                                <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-3xl space-y-4">
-                                    <div className="flex justify-between items-center px-2">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Details</span>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Email</span>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200 break-all text-right ml-4">{profile.email}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Phone</span>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{profile.phone}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Address</span>
-                                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{profile.address || 'Not Provided'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {children.length > 0 && (
-                                    <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-3xl">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 px-2">Linked Students</p>
-                                        <div className="grid grid-cols-1 gap-3">
-                                            {children.map(student => (
-                                                <div key={student._id} className="flex items-center gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
-                                                    <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                                                        {student.name.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-black text-gray-800 dark:text-white">{student.name}</p>
-                                                        <p className="text-[9px] font-bold text-gray-400 uppercase">ID: {student._id.slice(-6)}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             )}
-            {/* Report Card Premium Modal */}
+
+            {selectedNotice && <NoticeModal notice={selectedNotice} onClose={() => setSelectedNotice(null)} />}
+
             {viewingReportCard && (
-                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2rem] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none print:static">
-                        {/* Tool Bar - Hidden in Print */}
-                        <div className="px-8 py-4 bg-gray-50 border-b flex justify-between items-center shrink-0 print:hidden">
-                            <div className="flex items-center gap-3">
-                                <FaTrophy className="text-yellow-500" />
-                                <h3 className="font-black text-gray-700 text-sm">Official Academic Report</h3>
-                            </div>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => window.print()}
-                                    className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2"
-                                >
-                                    <FaPrint /> PRINT RECORD
-                                </button>
-                                <button
-                                    onClick={() => setViewingReportCard(null)}
-                                    className="p-2.5 bg-white text-gray-400 hover:text-red-500 rounded-xl border border-gray-200 transition-all shadow-sm"
-                                >
-                                    <FaTimesCircle className="text-lg" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Printable Body */}
-                        <div className="flex-1 overflow-y-auto p-10 md:p-16 print:overflow-visible print:p-0">
-                            <div className="border-4 border-emerald-600 p-1 relative min-h-[1000px]">
-                                <div className="border border-emerald-200 p-8 h-full bg-white relative">
-                                    {/* Brand Header */}
-                                    <div className="flex justify-between items-start mb-12 border-b-2 border-emerald-600 pb-8">
-                                        <div>
-                                            <img src={oasisFullLogo} alt="Logo" className="h-16 mb-4 filter contrast-125" />
-                                            <p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.3em]">Excellence in JEE/NEET Coaching</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <h1 className="text-4xl font-black text-emerald-900 mb-1">REPORT CARD</h1>
-                                            <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">{viewingReportCard.exam?.name} - 2026</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Student Info Grid */}
-                                    <div className="grid grid-cols-2 gap-y-10 mb-16 bg-gray-50/50 p-10 rounded-3xl border border-gray-100">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Student Name</label>
-                                                <p className="text-2xl font-black text-emerald-900 underline underline-offset-4 decoration-emerald-200">{viewingReportCard.name}</p>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Roll Number</label>
-                                                <p className="text-lg font-bold text-gray-700">{viewingReportCard.rollNo}</p>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-4 text-right">
-                                            <div>
-                                                <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Father's Name</label>
-                                                <p className="text-lg font-bold text-gray-700">{viewingReportCard.fatherName || 'Not Provided'}</p>
-                                            </div>
-                                            <div className="flex justify-end gap-10">
-                                                <div>
-                                                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Class</label>
-                                                    <p className="text-lg font-bold text-emerald-600">Standard IX</p>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block mb-1">Section</label>
-                                                    <p className="text-lg font-bold text-emerald-600">Oasis-A1</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Marks Table */}
-                                    <div className="mb-16">
-                                        <table className="w-full border-collapse">
-                                            <thead>
-                                                <tr className="bg-emerald-600 text-white">
-                                                    <th className="px-6 py-4 text-left font-black text-xs uppercase tracking-widest">Subject</th>
-                                                    {viewingReportCard.exam?.type === 'Consolidated' ? (
-                                                        <>
-                                                            <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Unit (20%)</th>
-                                                            <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Monthly (30%)</th>
-                                                            <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Final (50%)</th>
-                                                            <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Total</th>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <th className="px-6 py-4 text-center font-black text-xs uppercase tracking-widest">Full Marks</th>
-                                                            <th className="px-6 py-4 text-center font-black text-xs uppercase tracking-widest">Obtained Marks</th>
-                                                        </>
-                                                    )}
-                                                    <th className="px-6 py-4 text-right font-black text-xs uppercase tracking-widest">Status / Grade</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y-2 divide-gray-100">
-                                                {viewingReportCard.subjectResults.map(sub => (
-                                                    <tr key={sub.subjectId} className="hover:bg-emerald-50/20 transition-colors">
-                                                        <td className="px-6 py-5 font-bold text-gray-800">{sub.subjectName}</td>
-                                                        {viewingReportCard.exam?.type === 'Consolidated' ? (
-                                                            <>
-                                                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.unit || 0}</td>
-                                                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.monthly || 0}</td>
-                                                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.final || 0}</td>
-                                                                <td className="px-4 py-5 text-center font-black text-emerald-600 text-lg">{sub.total || 0}</td>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <td className="px-6 py-5 text-center font-bold text-gray-500">{sub.maxMarks || 100}</td>
-                                                                <td className="px-6 py-5 text-center font-black text-emerald-600 text-lg">{sub.obtained || 0}</td>
-                                                            </>
-                                                        )}
-                                                        <td className="px-6 py-5 text-right">
-                                                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.4 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                                {((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.9 ? 'A+' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.8 ? 'A' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.7 ? 'B+' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.6 ? 'B' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.4 ? 'C' : 'FAIL'}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                            <tfoot>
-                                                <tr className="bg-emerald-50/50">
-                                                    <th className="px-6 py-6 text-left font-black text-emerald-900 border-t-2 border-emerald-600">OVERALL ASSESSMENT</th>
-                                                    {viewingReportCard.exam?.type === 'Consolidated' && (
-                                                        <>
-                                                            <th className="border-t-2 border-emerald-600"></th>
-                                                            <th className="border-t-2 border-emerald-600"></th>
-                                                            <th className="border-t-2 border-emerald-600"></th>
-                                                        </>
-                                                    )}
-                                                    <th className="px-6 py-6 text-center font-black text-emerald-900 border-t-2 border-emerald-600">{viewingReportCard.totalMax}</th>
-                                                    <th className="px-6 py-6 text-center font-black text-emerald-600 text-2xl border-t-2 border-emerald-600">{viewingReportCard.totalObtained}</th>
-                                                    <th className="px-6 py-6 text-right font-black text-emerald-900 border-t-2 border-emerald-600">{viewingReportCard.percentage}%</th>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-
-                                    {/* Performance Summary */}
-                                    <div className="grid grid-cols-2 gap-6 mb-20 text-center">
-                                        <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-emerald-100 transition-all">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Attendance</label>
-                                            <p className="text-3xl font-black text-gray-800">{viewingReportCard.attendancePercentage || attendancePercentage}%</p>
-                                        </div>
-                                        <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-emerald-100 transition-all">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Conduct</label>
-                                            <p className="text-3xl font-black text-emerald-600">{viewingReportCard.conduct || 'EXCELLENT'}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Footer Signatures */}
-                                    <div className="mt-auto flex justify-between items-end pb-12 pt-12 border-t border-gray-100">
-                                        <div className="text-center w-48">
-                                            <div className="h-1 bg-gray-200 mb-2"></div>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Class Teacher</p>
-                                        </div>
-                                        <div className="text-center">
-                                            <div className="flex flex-col items-center">
-                                                <div className="w-16 h-1 bg-emerald-600 mb-2"></div>
-                                                <img src={oasisLogo} alt="Seal" className="w-12 h-12 opacity-20 filter grayscale mb-2" />
-                                                <p className="text-[10px] font-black text-emerald-900 uppercase tracking-[0.2em]">Institute Seal</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-center w-48">
-                                            <div className="h-1 bg-gray-200 mb-2 font-handwriting italic text-gray-400 text-xs">Principal Signature</div>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Authorized Signature</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ReportCardModal card={viewingReportCard} onClose={() => setViewingReportCard(null)} fallbackAttendance={attendancePercentage} />
             )}
         </div>
     );
 };
 
 export default ParentDashboard;
-

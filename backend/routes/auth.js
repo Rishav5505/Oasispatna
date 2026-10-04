@@ -1,34 +1,50 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const path = require('path');
-const crypto = require('crypto');
 const Student = require('../models/Student');
 const User = require('../models/User');
 const Teacher = require('../models/Teacher');
-const sendEmail = require('../utils/sendEmail');
 const sendSMS = require('../utils/sendSMS');
 const auth = require('../middleware/auth');
-const { createAndSaveOtp, verifyOtp } = require('../utils/otp');
+const {
+  createAndSaveOtp,
+  verifyOtp,
+  markSignupEmailVerified,
+  isSignupEmailVerified,
+  consumeSignupVerification,
+} = require('../utils/otp');
 const sendOtp = require('../utils/sendOtp');
-const multer = require('multer');
+const { uploadSingle, fileUrl } = require('../utils/upload');
+const { rateLimit, cooldown } = require('../utils/rateLimit');
+const { istDateString, addDays } = require('../utils/time');
+const JWT_SECRET = require('../utils/jwtSecret');
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads'));
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  },
-});
+const TOKEN_TTL = '1d';
+const OTP_COOLDOWN_MS = 60 * 1000;
 
-const upload = multer({ storage });
+// Per-IP limits on OTP-sending endpoints (in addition to per-email 60s cooldown)
+const otpSendLimiter = rateLimit({ name: 'otp-send', windowMs: 15 * 60 * 1000, max: 10, message: 'Too many OTP requests. Please try again later.' });
+const otpVerifyLimiter = rateLimit({ name: 'otp-verify', windowMs: 15 * 60 * 1000, max: 30, message: 'Too many attempts. Please try again later.' });
+const loginLimiter = rateLimit({ name: 'login', windowMs: 15 * 60 * 1000, max: 30, message: 'Too many login attempts. Please try again later.' });
+
+const normEmail = (email) => (typeof email === 'string' ? email.trim().toLowerCase() : '');
+
+// Returns true (and sends 429) if this email asked for an OTP in the last 60s
+const emailOnCooldown = (res, email) => {
+  const wait = cooldown(`otp:${email}`, OTP_COOLDOWN_MS);
+  if (wait > 0) {
+    res.status(429).json({ message: `Please wait ${wait} seconds before requesting another OTP` });
+    return true;
+  }
+  return false;
+};
 
 // Register
-router.post('/register', upload.single('profilePhoto'), async (req, res) => {
-  const { name, email, phone, address, password, role } = req.body;
+router.post('/register', uploadSingle('profilePhoto'), async (req, res) => {
+  const { name, phone, address, password, role } = req.body;
+  const email = normEmail(req.body.email);
   try {
     // Security: Block admin and teacher roles from public signup
     if (role === 'admin' || role === 'teacher') {
@@ -40,15 +56,23 @@ router.post('/register', upload.single('profilePhoto'), async (req, res) => {
       return res.status(400).json({ message: 'Invalid role selected' });
     }
 
-    let user = await User.findOne({ email: email.toLowerCase() });
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({ message: 'Name, email, phone and password are required' });
+    }
+
+    let user = await User.findOne({ email });
     if (user) return res.status(400).json({ message: 'User already exists' });
+
+    // Email must have passed /verify-signup-otp within the last 30 minutes
+    if (!(await isSignupEmailVerified(email))) {
+      return res.status(400).json({ message: 'Please verify your email with the OTP before registering' });
+    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    user = new User({ name, email: email.toLowerCase(), phone, address, password: hashedPassword, role, profilePhoto: req.file ? `/uploads/${req.file.filename}` : undefined });
+    user = new User({ name, email, phone, address, password: hashedPassword, role, profilePhoto: fileUrl(req.file) });
     await user.save();
-    console.log('User registered:', email.toLowerCase(), role);
 
     // If role is student, create a corresponding Student record
     if (role === 'student') {
@@ -57,36 +81,36 @@ router.post('/register', upload.single('profilePhoto'), async (req, res) => {
         name: user.name,
         fatherName: req.body.fatherName,
         motherName: req.body.motherName,
-        dob: req.body.dob,
+        dob: req.body.dob || undefined,
         admissionDate: new Date(),
       });
       await student.save();
-      console.log('Student record created for user:', user._id);
     }
-    console.log('User registered:', email.toLowerCase(), role);
+    await consumeSignupVerification(email);
+    console.log('User registered:', email, role);
 
     const payload = { user: { id: user.id, role: user.role } };
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL });
 
     res.json({ token });
   } catch (err) {
     console.log('Registration error:', err);
+    if (err.code === 11000) return res.status(400).json({ message: 'User already exists' });
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Login
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+router.post('/login', loginLimiter, async (req, res) => {
+  const { password } = req.body;
+  const email = normEmail(req.body.email);
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      console.log('User not found for email:', email.toLowerCase());
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
+    if (!email || !password) return res.status(400).json({ message: 'Invalid credentials' });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log('Login attempt for', email.toLowerCase(), 'password match:', isMatch);
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
     const payload = { user: { id: user.id, role: user.role } };
@@ -102,7 +126,7 @@ router.post('/login', async (req, res) => {
         payload.user.classIds = teacher.classes;
       }
     }
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL });
 
     res.json({ token, role: user.role, mustChangePassword: user.mustChangePassword, id: user.id, profilePhoto: user.profilePhoto });
   } catch (err) {
@@ -111,17 +135,26 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Forgot Password - Send OTP
-router.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
+// Forgot Password - Send OTP (always 200 to avoid revealing which emails exist)
+router.post('/forgot-password', otpSendLimiter, async (req, res) => {
+  const email = normEmail(req.body.email);
+  const genericResponse = { message: 'If an account exists, an OTP has been sent' };
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+    if (emailOnCooldown(res, email)) return;
 
-    const otp = await createAndSaveOtp(user._id);
-    await sendOtp(user.email, otp);
+    const user = await User.findOne({ email });
+    if (!user) return res.json(genericResponse);
 
-    res.json({ message: 'OTP sent to your email' });
+    try {
+      const otp = await createAndSaveOtp(user._id);
+      await sendOtp(user.email, otp);
+    } catch (e) {
+      if (e.status === 429) return res.status(429).json({ message: e.message });
+      throw e;
+    }
+
+    res.json(genericResponse);
   } catch (err) {
     console.error('Forgot Password Error:', err.message);
     res.status(500).json({ message: 'Server error' });
@@ -129,17 +162,22 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // Reset Password with OTP
-router.post('/reset-password', async (req, res) => {
-  const { email, otp, newPassword } = req.body;
+router.post('/reset-password', otpVerifyLimiter, async (req, res) => {
+  const { otp, newPassword } = req.body;
+  const email = normEmail(req.body.email);
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!newPassword) {
+      return res.status(400).json({ message: 'New password is required' });
+    }
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Invalid or expired OTP' });
 
     const isVerified = await verifyOtp(user._id, otp);
     if (!isVerified) return res.status(400).json({ message: 'Invalid or expired OTP' });
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
+    user.mustChangePassword = false;
     await user.save();
 
     res.json({ message: 'Password reset successful' });
@@ -150,39 +188,57 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // Send OTP (to email or phone)
-router.post('/send-otp', async (req, res) => {
-  const { email, phone } = req.body;
+router.post('/send-otp', otpSendLimiter, async (req, res) => {
+  const { phone } = req.body;
+  const email = normEmail(req.body.email);
   try {
     let user;
     if (email) user = await User.findOne({ email });
     if (!user && phone) user = await User.findOne({ phone });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const otp = await createAndSaveOtp(user._id);
+    if (emailOnCooldown(res, user.email)) return;
+
+    let otp;
+    try {
+      otp = await createAndSaveOtp(user._id);
+    } catch (e) {
+      if (e.status === 429) return res.status(429).json({ message: e.message });
+      throw e;
+    }
 
     if (email) {
       await sendOtp(user.email, otp);
     }
     if (phone) {
-      sendSMS(user.phone, `Your OTP is: ${otp}. It expires in 5 minutes.`);
+      sendSMS(user.phone, `Your Oasis OTP is: ${otp}. It expires in 5 minutes.`);
     }
 
     res.json({ message: 'OTP sent' });
   } catch (err) {
+    console.error('Send OTP error:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Send OTP for Signup (email verification before register)
-router.post('/send-signup-otp', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ message: 'Email is required' });
+router.post('/send-signup-otp', otpSendLimiter, async (req, res) => {
+  const email = normEmail(req.body.email);
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'A valid email is required' });
 
   try {
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'Email already registered' });
 
-    const otp = await createAndSaveOtp(email);
+    if (emailOnCooldown(res, email)) return;
+
+    let otp;
+    try {
+      otp = await createAndSaveOtp(email);
+    } catch (e) {
+      if (e.status === 429) return res.status(429).json({ message: e.message });
+      throw e;
+    }
     await sendOtp(email, otp);
 
     res.json({ message: 'OTP sent to your email' });
@@ -193,12 +249,15 @@ router.post('/send-signup-otp', async (req, res) => {
 });
 
 // Verify OTP for Signup
-router.post('/verify-signup-otp', async (req, res) => {
-  const { email, otp } = req.body;
+router.post('/verify-signup-otp', otpVerifyLimiter, async (req, res) => {
+  const { otp } = req.body;
+  const email = normEmail(req.body.email);
   try {
+    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
     const ok = await verifyOtp(email, otp);
     if (!ok) return res.status(400).json({ message: 'Invalid or expired OTP' });
 
+    await markSignupEmailVerified(email);
     res.json({ verified: true });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -206,8 +265,9 @@ router.post('/verify-signup-otp', async (req, res) => {
 });
 
 // Verify OTP
-router.post('/verify-otp', async (req, res) => {
-  const { email, phone, otp } = req.body;
+router.post('/verify-otp', otpVerifyLimiter, async (req, res) => {
+  const { phone, otp } = req.body;
+  const email = normEmail(req.body.email);
   try {
     let user;
     if (email) user = await User.findOne({ email });
@@ -227,12 +287,15 @@ router.post('/verify-otp', async (req, res) => {
 router.put('/change-password', auth, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   try {
+    if (!newPassword) {
+      return res.status(400).json({ message: 'New password is required' });
+    }
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // If mustChangePassword, skip current password check
     if (!user.mustChangePassword) {
-      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      const isMatch = await bcrypt.compare(currentPassword || '', user.password);
       if (!isMatch) return res.status(400).json({ message: 'Current password incorrect' });
     }
 
@@ -247,26 +310,40 @@ router.put('/change-password', auth, async (req, res) => {
   }
 });
 
-// Get current user profile
+// Get current user profile (+ updates the daily activity streak, IST calendar days)
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id).select('-password -resetToken -resetTokenExpiry');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(user);
+
+    const today = istDateString();
+    const prev = user.streak || {};
+    let streak = {
+      current: prev.current || 0,
+      best: prev.best || 0,
+      lastActiveDate: prev.lastActiveDate || null,
+    };
+
+    if (streak.lastActiveDate !== today) {
+      streak.current = streak.lastActiveDate === addDays(today, -1) ? streak.current + 1 : 1;
+      streak.best = Math.max(streak.best, streak.current);
+      streak.lastActiveDate = today;
+      await User.updateOne({ _id: user._id }, { $set: { streak } });
+    }
+
+    const obj = user.toObject();
+    obj.streak = streak;
+    res.json(obj);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Update profile
-router.put('/me', auth, upload.single('profilePhoto'), async (req, res) => {
+router.put('/me', auth, uploadSingle('profilePhoto'), async (req, res) => {
   try {
-    console.log('Updating user profile for userId:', req.user.id);
-    console.log('User data received:', req.body);
-    console.log('File received:', req.file);
-
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -277,7 +354,7 @@ router.put('/me', auth, upload.single('profilePhoto'), async (req, res) => {
 
     // Handle email update with uniqueness check
     if (email) {
-      const emailLower = email.toLowerCase();
+      const emailLower = normEmail(email);
       if (emailLower !== user.email) {
         const existingUser = await User.findOne({ email: emailLower });
         if (existingUser) {
@@ -288,16 +365,15 @@ router.put('/me', auth, upload.single('profilePhoto'), async (req, res) => {
     }
 
     if (req.file) {
-      user.profilePhoto = `/uploads/${req.file.filename}`;
-      console.log('Profile photo saving to DB:', user.profilePhoto);
-    } else {
-      console.log('No file received in request for profile update');
+      user.profilePhoto = fileUrl(req.file);
     }
 
-    const savedUser = await user.save();
-    console.log('User saved successfully. ProfilePhoto in DB:', savedUser.profilePhoto);
-    console.log('User updated successfully:', user._id);
-    res.json({ message: 'Profile updated', user: { ...user.toObject(), password: undefined } });
+    await user.save();
+    const out = user.toObject();
+    delete out.password;
+    delete out.resetToken;
+    delete out.resetTokenExpiry;
+    res.json({ message: 'Profile updated', user: out });
   } catch (err) {
     console.error('Error updating user profile:', err);
 

@@ -13,6 +13,12 @@ const userSchema = new mongoose.Schema({
   mustChangePassword: { type: Boolean, default: false },
   resetToken: { type: String },
   resetTokenExpiry: { type: Date },
+  // Daily activity streak (IST calendar days), updated by GET /auth/me
+  streak: {
+    current: { type: Number, default: 0 },
+    best: { type: Number, default: 0 },
+    lastActiveDate: { type: String }, // 'YYYY-MM-DD' (IST)
+  },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

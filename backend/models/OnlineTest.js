@@ -9,13 +9,18 @@ const onlineTestSchema = new mongoose.Schema({
     batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch' },
     questions: [{
         questionText: { type: String }, // Not required if using question paper
+        type: { type: String, enum: ['mcq', 'numerical'], default: 'mcq' },
         options: [{ type: String }],
-        correctOption: { type: Number, required: true }, // Index 0-3
+        // Index 0-3 for MCQ questions
+        correctOption: { type: Number, required: function () { return this.type !== 'numerical'; } },
+        // Numeric answer for 'numerical' questions (tolerance ±0.01)
+        correctAnswer: { type: Number },
         marks: { type: Number, default: 1 }
     }],
     duration: { type: Number, required: true }, // in minutes
     totalMarks: { type: Number, required: true },
     passingMarks: { type: Number },
+    negativeMarks: { type: Number, default: 0 }, // marks deducted per wrong answer
     startTime: { type: Date },
     endTime: { type: Date },
     status: { type: String, enum: ['draft', 'active', 'completed'], default: 'draft' },

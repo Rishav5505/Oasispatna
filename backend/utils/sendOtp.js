@@ -113,6 +113,15 @@ const sendOtp = async (email, otp) => {
     } catch (error) {
         const errorMessage = error.response?.body?.message || error.message;
         console.error('❌ Brevo API Error:', errorMessage);
+
+        // Local testing only: print the OTP instead of failing. Never set this flag in production.
+        if (process.env.OTP_CONSOLE_FALLBACK === 'true') {
+            console.log('\n==============================');
+            console.log(`🔑 DEV OTP for ${email}: ${otp}`);
+            console.log('==============================\n');
+            return { devFallback: true };
+        }
+
         throw new Error(errorMessage);
     }
 };

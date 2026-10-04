@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
-import { FaUser, FaCalendarAlt, FaBook, FaBullhorn, FaDownload, FaMoneyBillWave, FaClipboardList, FaGraduationCap, FaEdit, FaSave, FaTimes, FaCamera, FaBell, FaChartLine, FaClock, FaStar, FaCheckCircle, FaChevronRight, FaSignOutAlt, FaTrophy, FaFileAlt, FaPrint, FaTimesCircle } from 'react-icons/fa';
-import oasisLogo from '../assets/oasis_logo.png';
-import oasisFullLogo from '../assets/oasis_full_logo.png';
+import {
+  FiActivity, FiBarChart2, FiCreditCard, FiZap, FiPieChart, FiClock, FiTarget, FiBookOpen, FiLayers,
+  FiCamera, FiCheck, FiX, FiEdit2, FiBell, FiLogOut,
+} from 'react-icons/fi';
 import receiptBanner from '../assets/receipt_banner.png';
 import config from '../config';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
 import { io } from 'socket.io-client';
 import StudentLiveClass from '../components/live/StudentLiveClass';
 import StudentVideo from '../components/video/StudentVideo';
@@ -15,7 +15,18 @@ import StudentTest from '../components/test/StudentTest';
 import StudentDoubt from '../components/doubt/StudentDoubt';
 import AIStudyBuddy from '../components/ai/AIStudyBuddy';
 import QRScanner from '../components/attendance/QRScanner';
-import { FaVideo, FaPlayCircle, FaFlask, FaQuestionCircle, FaHome, FaRobot, FaQrcode } from 'react-icons/fa';
+import { notify, toast } from '../utils/notify';
+import Timetable, { TodayClasses } from '../components/student/Timetable';
+import PerformanceAnalysis from '../components/student/PerformanceAnalysis';
+import StreakBadge from '../components/student/StreakBadge';
+import NoticesList from '../components/student/NoticesList';
+import StudentShell from '../components/student/StudentShell';
+import { ProgressRing, BannerChip, CountdownTiles, TipOfTheDay, AchievementBadges, CardHeader, TabPanel } from '../components/student/Widgets';
+import { ProfileCard, AttendanceCard, AcademicReports, MarksChart, FeesCard, AnnouncementsCard, MaterialsCard, DigitalIdCard } from '../components/student/OverviewParts';
+import { SelectionModal, NotificationDrawer, NoticeModal, ReportCardModal } from '../components/student/StudentModals';
+import { errorMessage, todayName, findCurrentAndNext, formatTime12 } from '../components/student/helpers';
+import { StatCard, GradientBanner } from '../components/ui/Motion';
+import { greeting } from '../components/ui/motionUtils';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -58,6 +69,12 @@ const StudentDashboard = () => {
   // Countdown Timer Logic
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [nextExam, setNextExam] = useState(null);
+
+  // Timetable
+  const [schedule, setSchedule] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [scheduleError, setScheduleError] = useState('');
+  const [testBest, setTestBest] = useState(0);
 
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -105,8 +122,10 @@ const StudentDashboard = () => {
       fetchAllData();
 
       // Socket.io for Real-time Notifications
-      const socket = io(config.API_URL.replace('/api', ''));
-      socket.emit('join', user.id);
+      // Server verifies the JWT (handshake auth or 'join' event) and joins room = our user id
+      const token = sessionStorage.getItem('token');
+      const socket = io(config.API_URL.replace('/api', ''), { auth: { token } });
+      socket.on('connect', () => socket.emit('join', token));
 
       socket.on('notification', (newNotif) => {
         setNotifications(prev => [newNotif, ...prev]);
@@ -122,6 +141,33 @@ const StudentDashboard = () => {
       };
     }
   }, [user]);
+
+  const fetchSchedule = async (studentDocId) => {
+    if (!studentDocId) {
+      setSchedule([]);
+      setScheduleLoading(false);
+      return;
+    }
+    setScheduleLoading(true);
+    setScheduleError('');
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await axios.get(`${config.API_URL}/schedule/student/${studentDocId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setSchedule(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      if (err.response?.status === 404) {
+        // No batch assigned / no timetable yet - show the empty state, not an error
+        setSchedule([]);
+      } else {
+        console.error('Error fetching schedule:', err);
+        setScheduleError(errorMessage(err, 'Failed to load timetable'));
+      }
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -148,7 +194,7 @@ const StudentDashboard = () => {
         console.error('Error fetching user profile:', err);
         // If auth fails (401) or user not found (404 - e.g. deleted), logout
         if (err.response?.status === 401 || err.response?.status === 404) {
-          alert('Session expired or user not found. Please login again.');
+          notify('Session expired or user not found. Please login again.');
           sessionStorage.removeItem('token');
           window.location.href = '/login';
           return;
@@ -186,7 +232,18 @@ const StudentDashboard = () => {
         requests.push(axios.get(`${config.API_URL}/exams/class/${studentData.classId._id}`, { headers }));
       }
 
+      fetchSchedule(studentData?._id);
+
       const results = await Promise.allSettled(requests);
+
+      // Surface failures (ignore 404s, which just mean "no data yet")
+      const sectionNames = ['attendance', 'marks', 'fees', 'study material', 'notices', 'notifications', 'report summary', 'exams'];
+      const failed = results
+        .map((r, i) => (r.status === 'rejected' && r.reason?.response?.status !== 404 ? sectionNames[i] : null))
+        .filter(Boolean);
+      if (failed.length > 0) {
+        toast.error(`Couldn't load ${failed.join(', ')}. Please refresh to try again.`, { id: 'dashboard-load-error' });
+      }
 
       // Helper to get data or empty
       const getData = (index, defaultVal = []) => results[index].status === 'fulfilled' ? results[index].value.data : defaultVal;
@@ -270,10 +327,10 @@ const StudentDashboard = () => {
         });
       }
       fetchAllData();
-      alert('Profile photo updated successfully!');
+      notify('Profile photo updated successfully!');
     } catch (err) {
       console.error('Error uploading photo:', err);
-      alert('Failed to upload photo: ' + (err.response?.data?.message || err.message));
+      notify('Failed to upload photo: ' + (err.response?.data?.message || err.message));
     } finally {
       setUploadingPhoto(false);
     }
@@ -293,7 +350,7 @@ const StudentDashboard = () => {
       console.log('Token from sessionStorage:', token);
 
       if (!token) {
-        alert('You are not logged in. Please login again.');
+        notify('You are not logged in. Please login again.');
         return;
       }
 
@@ -342,10 +399,10 @@ const StudentDashboard = () => {
         });
       }
       fetchAllData(); // Refresh data
-      alert('Profile updated successfully! All data saved to MongoDB.');
+      notify('Profile updated successfully! All data saved to MongoDB.');
     } catch (err) {
       console.error('Error updating profile:', err);
-      alert('Failed to update profile: ' + (err.response?.data?.message || err.message));
+      notify('Failed to update profile: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -363,9 +420,9 @@ const StudentDashboard = () => {
       }
 
       fetchAllData();
-      alert('Class selected successfully!');
-    } catch (err) {
-      alert('Failed to select class');
+      notify('Class selected successfully!');
+    } catch {
+      notify('Failed to select class');
     }
   };
 
@@ -377,9 +434,9 @@ const StudentDashboard = () => {
       });
       setShowBatchModal(false);
       fetchAllData();
-      alert('Batch selected successfully!');
-    } catch (err) {
-      alert('Failed to select batch');
+      notify('Batch selected successfully!');
+    } catch {
+      notify('Failed to select batch');
     }
   };
 
@@ -403,21 +460,6 @@ const StudentDashboard = () => {
   const filteredPercentage = filteredTotal > 0 ? Math.round((filteredPresent / filteredTotal) * 100) : 0;
   const subjects = ['All', ...new Set(attendance.map(a => a.subjectId?.name).filter(Boolean))];
 
-  const renderCalendar = () => {
-    const days = [];
-    for (let i = 0; i < 30; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dayAttendance = attendance.find(a => new Date(a.date).toDateString() === date.toDateString());
-      days.push({
-        date: date.getDate(),
-        month: date.getMonth(),
-        status: dayAttendance ? dayAttendance.status : 'none'
-      });
-    }
-    return days.reverse();
-  };
-
   const getCompletionDeadline = () => {
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + 7); // 7 days from now
@@ -439,25 +481,25 @@ const StudentDashboard = () => {
             </style>
         </head>
         <body>
-            <div className="receipt-box">
-                <div className="header">
+            <div class="receipt-box">
+                <div class="header">
                     <img src="${window.location.origin}${receiptBanner}" alt="Oasis Header" style="width: 100%; max-height: 150px; object-fit: contain; margin-bottom: 20px;" />
                     <h2>OASIS JEE CLASSES</h2>
                     <p>Official Payment Receipt</p>
                 </div>
-                <div className="details">
-                    <div className="row"><span>Date:</span> <span>${new Date(payment.date).toLocaleDateString()}</span></div>
-                    <div className="row"><span>Receipt No:</span> <span>${payment.transactionId || payment._id.slice(-8).toUpperCase()}</span></div>
-                    <div className="row"><span>Student Name:</span> <span>${student.name || profile.name}</span></div>
-                    <div className="row"><span>Class:</span> <span>${student.classId?.name || 'N/A'}</span></div>
+                <div class="details">
+                    <div class="row"><span>Date:</span> <span>${new Date(payment.date).toLocaleDateString()}</span></div>
+                    <div class="row"><span>Receipt No:</span> <span>${payment.transactionId || payment._id.slice(-8).toUpperCase()}</span></div>
+                    <div class="row"><span>Student Name:</span> <span>${student.name || profile.name}</span></div>
+                    <div class="row"><span>Class:</span> <span>${student.classId?.name || 'N/A'}</span></div>
                     <hr/>
-                    <div className="row"><span>Payment Type:</span> <span>${payment.type}</span></div>
-                    <div className="row"><span>Amount Paid:</span> <span>₹${payment.amount}</span></div>
-                    <div className="row"><span>Payment Mode:</span> <span>Online/Cash</span></div>
+                    <div class="row"><span>Payment Type:</span> <span>${payment.type}</span></div>
+                    <div class="row"><span>Amount Paid:</span> <span>₹${payment.amount}</span></div>
+                    <div class="row"><span>Payment Mode:</span> <span>Online/Cash</span></div>
                     <hr/>
-                    <div className="row" style="font-weight: bold; font-size: 18px;"><span>TOTAL:</span> <span>₹${payment.amount}</span></div>
+                    <div class="row" style="font-weight: bold; font-size: 18px;"><span>TOTAL:</span> <span>₹${payment.amount}</span></div>
                 </div>
-                <div className="footer">
+                <div class="footer">
                     <p>This is a computer-generated receipt.</p>
                     <button onclick="window.print()">PRINT RECEIPT</button>
                 </div>
@@ -470,1484 +512,379 @@ const StudentDashboard = () => {
     win.document.close();
   };
 
+  // Average of per-subject percentages (marks / maxMarks * 100)
+  const averageMarksPercentage = marks.length > 0
+    ? Math.round(marks.reduce((sum, m) => sum + ((Number(m.marks) || 0) / (Number(m.maxMarks) || 100)) * 100, 0) / marks.length)
+    : 0;
+
+  const sortedNotices = [...notices].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
   const getProfileCompletion = () => {
     const fields = [editForm.name, editForm.fatherName, editForm.motherName, editForm.dob, editForm.phone, editForm.email, editForm.admissionDate];
     const completed = fields.filter(field => field && field.trim() !== '').length;
     return Math.round((completed / fields.length) * 100);
   };
 
+  const firstName = (user?.name || profile?.name || 'Student').split(' ')[0];
+  const photoPath = user?.profilePhoto || profile?.profilePhoto;
+  const photoUrl = photoPath ? `${config.API_URL.replace('/api', '')}${photoPath}` : '';
+  const hasUnread = notifications.some(n => !n.read) || notices.some(n => new Date(n.createdAt) > new Date(Date.now() - 86400000));
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/login';
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#fffaf5] to-orange-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-orange-600 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading your dashboard...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-ink-950 bg-brand-mesh" aria-busy="true">
+        <div className="hidden lg:block fixed inset-y-0 left-0 w-72 bg-ink-950" />
+        <div className="lg:pl-72">
+          <div className="h-16 ui-glass border-b border-gray-100 dark:border-white/5" />
+          <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-[1400px] mx-auto space-y-6">
+            <div className="ui-skeleton h-44 md:h-48 !rounded-3xl" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => <div key={i} className="ui-skeleton h-28 !rounded-3xl" />)}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {[...Array(3)].map((_, i) => <div key={i} className="ui-skeleton h-72 !rounded-3xl" />)}
+            </div>
+            <p className="text-center text-sm text-gray-400 font-medium">Loading your dashboard…</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // ---- derived, presentational values ----
+  const attendancePct = calculateAttendancePercentage();
+  const profileCompletion = getProfileCompletion();
+  const streak = profile?.streak;
+  const streakCurrent = Number(streak?.current) || 0;
+  const streakBest = Math.max(Number(streak?.best) || 0, streakCurrent);
+  const totalFees = Number(fees.totalFees) || 0;
+  const pendingFees = Number(fees.pendingFees) || 0;
+  const feesPaidPct = totalFees > 0 ? Math.round(((Number(fees.paidFees) || 0) / totalFees) * 100) : 0;
+  const marksTop = marks.reduce((max, m) => Math.max(max, ((Number(m.marks) || 0) / (Number(m.maxMarks) || 100)) * 100), 0);
+  const topScore = Math.max(marksTop, testBest, Number(cumulativeSummary?.isPublished ? cumulativeSummary.percentage : 0) || 0);
 
-  // Render
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fffaf5] to-orange-50 dark:from-gray-950 dark:to-orange-900/10 transition-colors duration-300">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-2 md:space-x-4">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1 shrink-0">
-                <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-lg md:text-2xl font-black tracking-tight leading-tight">
-                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-orange-800 dark:from-orange-400 dark:to-orange-500">
-                    Student Portal
-                  </span>
-                </h1>
-                <p className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-bold truncate">Welcome, {(user?.name || 'Student').split(' ')[0]}</p>
+  const now = new Date();
+  const todaySlots = schedule.filter(s => s.day === todayName(now));
+  const { currentId, nextId } = findCurrentAndNext(todaySlots, now);
+  const currentSlot = todaySlots.find(s => s._id === currentId);
+  const nextSlot = todaySlots.find(s => s._id === nextId);
+
+  const examIsToday = nextExam && new Date(nextExam.date).toDateString() === now.toDateString();
+  const examEvents = examIsToday ? [{
+    key: 'exam',
+    time: new Date(nextExam.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    title: nextExam.name,
+    subtitle: 'Exam today — all the best!',
+  }] : [];
+
+  const handlePrintId = () => {
+    const printContent = document.getElementById('digital-id-card').innerHTML;
+    const win = window.open('', '', 'width=400,height=600');
+    win.document.write('<html><head><title>Student ID Card</title></head><body style="padding: 20px; display: flex; justify-content: center;">' + printContent + '</body></html>');
+    win.document.close();
+    win.print();
+  };
+
+  const extraCommands = [
+    { id: 'cmd-profile', label: 'Edit my profile', icon: FiEdit2, run: () => { setActiveView('overview'); setEditMode(true); } },
+    { id: 'cmd-notif', label: 'Open notifications', icon: FiBell, run: () => setShowNotifications(true) },
+    { id: 'cmd-class', label: 'Change class', icon: FiBookOpen, run: () => setShowClassModal(true) },
+    { id: 'cmd-batch', label: 'Change batch', icon: FiLayers, run: () => setShowBatchModal(true) },
+    { id: 'cmd-logout', label: 'Log out', icon: FiLogOut, run: handleLogout },
+  ];
+
+  const studentId = student._id || user.id;
+
+  const overview = (
+    <div className="space-y-6">
+      {/* Greeting banner */}
+      <GradientBanner
+        title={`${greeting()}, ${firstName} 🚀`}
+        subtitle={`${now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} · Ready to level up today?`}
+        right={(
+          <div className="relative group mx-auto md:mx-0 w-fit">
+            <div className="w-24 h-24 md:w-28 md:h-28 rounded-full p-1 bg-white/25 backdrop-blur-md shadow-2xl">
+              <div className="w-full h-full rounded-full overflow-hidden bg-white/10 flex items-center justify-center border-2 border-white/60">
+                {uploadingPhoto ? (
+                  <div className="animate-spin rounded-full h-8 w-8 border-4 border-white border-t-transparent" />
+                ) : photoPreview ? (
+                  <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                ) : photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt="Profile"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Student')}&background=f37021&color=fff&bold=true`;
+                    }}
+                  />
+                ) : (
+                  <span className="text-4xl font-extrabold">{firstName.charAt(0).toUpperCase()}</span>
+                )}
               </div>
             </div>
-            <div className="flex items-center space-x-1 md:space-x-4">
+            {photoFile ? (
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-1.5 md:p-2 text-gray-400 hover:text-orange-600 transition-colors bg-white rounded-xl border border-transparent hover:border-gray-100"
+                onClick={handleQuickPhotoUpload}
+                disabled={uploadingPhoto}
+                className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg border-2 border-white transition-transform hover:scale-110"
+                aria-label="Save photo"
+                title="Save photo"
               >
-                <FaBell className="text-lg md:text-xl" />
-                {(notifications.some(n => !n.read) || notices.some(n => new Date(n.createdAt) > new Date(Date.now() - 86400000))) && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
-                )}
+                <FiCheck className="text-lg" />
               </button>
-              <div className="flex items-center space-x-1 md:space-x-3">
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-orange-500 to-orange-700 rounded-full flex items-center justify-center text-white text-xs md:text-base font-semibold overflow-hidden shadow-inner border border-white/20">
-                  {user?.profilePhoto || profile?.profilePhoto ? (
-                    <img
-                      src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Student')}&background=random&color=fff&bold=true`;
-                      }}
-                    />
-                  ) : (
-                    (user?.name || 'S').charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div className="hidden lg:block">
-                  <p className="font-medium text-gray-900 dark:text-white leading-none mb-1">{user?.name || 'Student'}</p>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">ID: {user?.id?.slice(-6)}</p>
-                </div>
-              </div>
+            ) : (
               <button
-                onClick={() => {
-                  logout();
-                  window.location.href = '/login';
-                }}
-                className="flex items-center justify-center w-8 h-8 md:w-auto md:px-4 md:py-2 bg-red-50 text-red-600 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition-all font-bold text-sm"
-                title="Logout"
+                onClick={() => document.getElementById('profile-photo-upload').click()}
+                className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-white text-brand-600 flex items-center justify-center shadow-lg border-2 border-brand-50 transition-transform hover:scale-110 hover:rotate-6"
+                aria-label="Change profile photo"
+                title="Change profile photo"
               >
-                <FaSignOutAlt />
-                <span className="hidden md:inline ml-2">Logout</span>
+                <FiCamera className="text-lg" />
               </button>
+            )}
+            {photoFile && !uploadingPhoto && (
+              <button
+                onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-ink-900 text-white flex items-center justify-center shadow-lg border-2 border-white hover:bg-red-600 transition-colors"
+                aria-label="Discard photo"
+              >
+                <FiX />
+              </button>
+            )}
+            <input type="file" id="profile-photo-upload" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+          </div>
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          {streak && <StreakBadge streak={streak} />}
+          {(currentSlot || nextSlot) && (
+            <BannerChip icon={<FiClock />} onClick={() => setActiveView('timetable')}>
+              {currentSlot
+                ? <>Now: {currentSlot.subject?.name || 'Class'}</>
+                : <>Next: {nextSlot.subject?.name || 'Class'} · {formatTime12(nextSlot.startTime)}</>}
+            </BannerChip>
+          )}
+          {nextExam && (
+            <BannerChip icon={<FiTarget />} tone={timeLeft.days < 3 ? 'solid' : 'glass'} title={new Date(nextExam.date).toLocaleString()}>
+              {nextExam.name} in {timeLeft.days > 0 ? `${timeLeft.days}d ${timeLeft.hours}h` : `${timeLeft.hours}h ${timeLeft.minutes}m`}
+            </BannerChip>
+          )}
+          <BannerChip icon={<FiBookOpen />} tone={!student.classId ? 'warn' : 'glass'} onClick={() => setShowClassModal(true)}>
+            Class: {student.classId?.name || 'Select'}
+          </BannerChip>
+          <BannerChip icon={<FiLayers />} tone={!student.batchId ? 'warn' : 'glass'} onClick={() => setShowBatchModal(true)}>
+            Batch: {student.batchId?.name || 'Select'}
+          </BannerChip>
+        </div>
+      </GradientBanner>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 ui-stagger">
+        <StatCard icon={FiActivity} label="Attendance" value={attendancePct} suffix="%" tone="green" hint={`${attendance.filter(a => a.status === 'present').length} sessions present`} />
+        <StatCard icon={FiBarChart2} label="Average Marks" value={averageMarksPercentage} suffix="%" tone="brand" hint={`${marks.length} subjects evaluated`} />
+        <StatCard
+          icon={FiCreditCard}
+          label="Fees Pending"
+          value={pendingFees}
+          prefix={'₹'}
+          tone={pendingFees > 0 ? 'red' : 'green'}
+          hint={fees.dueDate ? `Due ${new Date(fees.dueDate).toLocaleDateString()}` : 'All clear'}
+        />
+        <StatCard icon={FiZap} label="Day Streak" value={streakCurrent} tone="dark" hint={`Best: ${streakBest} day${streakBest === 1 ? '' : 's'}`} />
+      </div>
+
+      {/* Progress · Today · Countdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="ui-card p-6">
+          <CardHeader icon={FiPieChart} title="Your Progress" subtitle="At a glance" />
+          <div className="grid grid-cols-2 gap-y-6 gap-x-2 place-items-center">
+            <ProgressRing value={attendancePct} tone={attendancePct >= 75 ? 'green' : 'red'} label="Attendance" sublabel={attendancePct >= 75 ? 'On track' : 'Needs attention'} />
+            <ProgressRing value={feesPaidPct} tone="brand" label="Fees Paid" sublabel={totalFees > 0 ? `of ₹${totalFees.toLocaleString('en-IN')}` : 'No fee record'} />
+            <div className="col-span-2">
+              <ProgressRing value={profileCompletion} size={96} stroke={9} tone="dark" label="Profile" sublabel={profileCompletion >= 100 ? 'Complete' : 'Finish setting up'} />
             </div>
           </div>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Module Navigation Tabs */}
-        <div className="flex overflow-x-auto pb-4 mb-8 gap-4 no-scrollbar">
-          {[
-            { id: 'overview', name: 'Dashboard', icon: <FaHome /> },
-            { id: 'live', name: 'Live Classes', icon: <FaVideo /> },
-            { id: 'videos', name: 'Video Library', icon: <FaPlayCircle /> },
-            { id: 'tests', name: 'Online Tests', icon: <FaFlask /> },
-            { id: 'doubts', name: 'Ask Doubts', icon: <FaQuestionCircle /> },
-            { id: 'ai-buddy', name: 'AI Buddy', icon: <FaRobot /> },
-            { id: 'attendance', name: 'Mark Presence', icon: <FaQrcode /> },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveView(tab.id)}
-              className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shrink-0 ${activeView === tab.id
-                ? 'bg-gray-900 text-white shadow-xl scale-105'
-                : 'bg-white text-gray-400 hover:bg-gray-50 border border-gray-100 hover:border-gray-200 shadow-sm'
-                }`}
-            >
-              <span className={activeView === tab.id ? 'text-orange-500' : ''}>{tab.icon}</span>
-              {tab.name}
-            </button>
-          ))}
-        </div>
+        <TodayClasses schedule={schedule} loading={scheduleLoading} onViewAll={() => setActiveView('timetable')} extraEvents={examEvents} />
 
-        {activeView === 'overview' ? (
-          <>
-            {/* Original Dashboard Layout */}
-            {/* Welcome Section with Profile Photo */}
-            <div className="bg-gradient-to-r from-orange-600 via-orange-500 to-orange-800 rounded-xl md:rounded-2xl p-4 md:p-8 mb-4 md:mb-8 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-              <div className="relative z-10 flex flex-col md:flex-row items-center md:justify-between gap-4">
-                <div className="flex flex-col md:flex-row items-center md:space-x-6 gap-3 md:gap-0 w-full md:w-auto">
-                  <div className="relative group">
-                    <div className="w-16 h-16 md:w-24 md:h-24 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border-2 md:border-4 border-white/30 overflow-hidden shadow-2xl relative">
-                      {uploadingPhoto ? (
-                        <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-2 md:border-4 border-white border-t-transparent"></div>
-                      ) : photoPreview ? (
-                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                      ) : (user?.profilePhoto || profile?.profilePhoto) ? (
-                        <img
-                          src={`${config.API_URL.replace('/api', '')}${user?.profilePhoto || profile?.profilePhoto}`}
-                          alt="Profile"
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Student')}&background=random&color=fff&bold=true`;
-                          }}
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <FaUser className="text-2xl md:text-4xl text-white opacity-90" />
-                          <span className="text-[8px] md:text-[10px] uppercase font-bold tracking-tighter mt-1 opacity-70">No Photo</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {photoFile ? (
-                      <button
-                        onClick={handleQuickPhotoUpload}
-                        disabled={uploadingPhoto}
-                        className="absolute -bottom-1 md:-bottom-2 -right-1 md:-right-2 bg-green-500 text-white p-1.5 md:p-2 rounded-full shadow-lg hover:bg-green-600 transition-all transform hover:scale-110 z-20 flex items-center justify-center border-2 border-white"
-                        title="Save Photo"
-                      >
-                        {uploadingPhoto ? <div className="animate-spin h-3 w-3 md:h-4 md:w-4 border-2 border-white border-t-transparent"></div> : <FaCheckCircle className="text-sm md:text-lg" />}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => document.getElementById('profile-photo-upload').click()}
-                        className="absolute -bottom-1 -right-1 w-7 h-7 md:w-9 md:h-9 bg-white text-orange-600 rounded-full flex items-center justify-center shadow-xl hover:bg-orange-50 transition-all transform hover:scale-110 z-20 border-2 border-orange-50"
-                      >
-                        <FaCamera className="text-sm md:text-lg" />
-                      </button>
-                    )}
-
-                    {photoFile && !uploadingPhoto && (
-                      <button
-                        onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-all z-20"
-                      >
-                        <FaTimes className="text-xs" />
-                      </button>
-                    )}
-
-                    <input
-                      type="file"
-                      id="profile-photo-upload"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                      className="hidden"
-                    />
-                  </div>
-                  <div className="text-center md:text-left">
-                    <h2 className="text-xl md:text-3xl font-bold mb-1 md:mb-2">Welcome back, {user?.name || 'Student'}!</h2>
-                    <p className="text-blue-100 text-xs md:text-base mb-2 md:mb-4">Ready to continue your learning journey?</p>
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-4 text-xs md:text-sm">
-                      <span
-                        onClick={() => setShowClassModal(true)}
-                        className={`flex items-center cursor-pointer px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all ${!student.classId ? 'bg-red-500/20 text-red-100 animate-pulse border border-red-400/30' : 'bg-white/10 hover:bg-white/20'}`}
-                      >
-                        <img src={oasisLogo} alt="Logo" className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 object-contain brightness-200" />
-                        Class: {student.classId?.name || 'Select'}
-                      </span>
-                      <span
-                        onClick={() => setShowBatchModal(true)}
-                        className={`flex items-center cursor-pointer px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all ${!student.batchId ? 'bg-orange-500/20 text-orange-100 animate-pulse border border-orange-400/30' : 'bg-white/10 hover:bg-white/20'}`}
-                      >
-                        <FaCalendarAlt className="mr-1 md:mr-2 text-xs md:text-sm" />
-                        Batch: {student.batchId?.name || 'Select'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="hidden lg:block">
-                  <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6">
-                    <div className="text-center">
-                      <div className="text-3xl font-bold mb-2">{getProfileCompletion()}%</div>
-                      <p className="text-sm opacity-90">Profile Complete</p>
-                      <div className="w-20 h-2 bg-white bg-opacity-20 rounded-full mt-3 mx-auto">
-                        <div
-                          className="h-full bg-white rounded-full transition-all duration-500"
-                          style={{ width: `${getProfileCompletion()}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <div className="space-y-6 md:col-span-2 xl:col-span-1">
+          <div className="relative overflow-hidden rounded-3xl bg-brand-dark text-white p-6 shadow-card">
+            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-brand-500/30 blur-3xl animate-float-slow" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <span className="ui-badge bg-white/10 text-brand-300 border border-white/10"><FiClock /> Exam countdown</span>
+                {nextExam && <span className="text-xs text-white/50">{new Date(nextExam.date).toLocaleDateString()}</span>}
               </div>
-            </div>
-
-            {/* Quick Stats Cards */}
-            <div className="grid grid-cols-4 lg:grid-cols-4 gap-2 md:gap-6 mb-8">
-              <div className="group bg-white dark:bg-gray-800 rounded-xl md:rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-2 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-emerald-50 rounded-bl-[2rem] md:rounded-bl-[5rem] -mr-6 md:-mr-10 -mt-6 md:-mt-10 transition-transform group-hover:scale-110"></div>
-                <div className="relative flex flex-col items-center text-center">
-                  <div className="w-6 h-6 md:w-16 md:h-16 bg-emerald-100 text-emerald-600 rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-2xl mb-1 md:mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
-                    <FaCalendarAlt />
-                  </div>
-                  <p className="text-[6px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Academic Attendance</p>
-                  <div className="relative mb-1 md:mb-2">
-                    <p className="text-lg md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{calculateAttendancePercentage()}%</p>
-                    <div className="w-full h-0.5 md:h-1 bg-gray-100 rounded-full mt-1 md:mt-2 overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
-                        style={{ width: `${calculateAttendancePercentage()}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <p className="text-[6px] md:text-xs font-bold text-emerald-600 bg-emerald-50 px-1 md:px-3 py-0.5 md:py-1 rounded-full leading-tight">
-                    {attendance.filter(a => a.status === 'present').length} Sessions Recorded
-                  </p>
-                </div>
-              </div>
-
-              <div className="group bg-white rounded-xl md:rounded-3xl shadow-sm border border-gray-100 p-2 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-orange-50 rounded-bl-[2rem] md:rounded-bl-[5rem] -mr-6 md:-mr-10 -mt-6 md:-mt-10 transition-transform group-hover:scale-110"></div>
-                <div className="relative flex flex-col items-center text-center">
-                  <div className="w-6 h-6 md:w-16 md:h-16 bg-orange-100 text-orange-600 rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-2xl mb-1 md:mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
-                    <FaBook />
-                  </div>
-                  <p className="text-[6px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Average Marks</p>
-                  <div className="relative mb-1 md:mb-2">
-                    <p className="text-lg md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-                      {marks.length > 0 ? Math.round(marks.reduce((sum, m) => sum + (m.marks || 0), 0) / marks.length) : 0}%
-                    </p>
-                    <div className="w-full h-0.5 md:h-1 bg-gray-100 rounded-full mt-1 md:mt-2 overflow-hidden">
-                      <div
-                        className="h-full bg-orange-500 rounded-full transition-all duration-1000"
-                        style={{ width: `${marks.length > 0 ? Math.round(marks.reduce((sum, m) => sum + (m.marks || 0), 0) / marks.length) : 0}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <p className="text-[6px] md:text-xs font-bold text-orange-600 bg-orange-50 px-1 md:px-3 py-0.5 md:py-1 rounded-full leading-tight">{marks.length} Subjects Evaluated</p>
-                </div>
-              </div>
-
-              <div className="group bg-white dark:bg-gray-800 rounded-xl md:rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-2 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-red-50 rounded-bl-[2rem] md:rounded-bl-[5rem] -mr-6 md:-mr-10 -mt-6 md:-mt-10 transition-transform group-hover:scale-110"></div>
-                <div className="relative flex flex-col items-center text-center">
-                  <div className="w-6 h-6 md:w-16 md:h-16 bg-red-100 text-red-600 rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-2xl mb-1 md:mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
-                    <FaMoneyBillWave />
-                  </div>
-                  <p className="text-[6px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Unpaid Balance</p>
-                  <p className="text-lg md:text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-1 md:mb-2">₹{fees.pendingFees || 0}</p>
-                  <p className="text-[6px] md:text-xs font-bold text-red-600 bg-red-50 px-1 md:px-3 py-0.5 md:py-1 rounded-full leading-tight">Due: {fees.dueDate ? new Date(fees.dueDate).toLocaleDateString() : 'Paid'}</p>
-                </div>
-              </div>
-
-              {/* Dynamic Exam Countdown Card (Replaces static Scheduled Exams) */}
-              <div className="group bg-gradient-to-br from-orange-600 to-orange-800 rounded-xl md:rounded-3xl shadow-lg shadow-orange-200 border border-orange-500 p-2 md:p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden text-white">
-                <div className="absolute top-0 right-0 w-16 h-16 md:w-32 md:h-32 bg-white/10 rounded-bl-[2rem] md:rounded-bl-[5rem] -mr-6 md:-mr-10 -mt-6 md:-mt-10 transition-transform group-hover:scale-110"></div>
-                <div className="relative flex flex-col items-center text-center">
-                  <div className="w-6 h-6 md:w-16 md:h-16 bg-white/20 text-white rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-2xl mb-1 md:mb-4 shadow-lg backdrop-blur-sm">
-                    <FaClock className="animate-pulse" />
-                  </div>
-
-                  {nextExam ? (
-                    <>
-                      <p className="text-[6px] md:text-[10px] font-black text-indigo-200 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Next: {nextExam.name}</p>
-                      <div className="flex gap-0.5 md:gap-2 mb-1 md:mb-2">
-                        <div className="bg-white/10 rounded p-0.5 md:p-1 min-w-[18px] md:min-w-[30px]">
-                          <span className="font-black text-[10px] md:text-xl block leading-none">{String(timeLeft.days).padStart(2, '0')}</span>
-                          <span className="text-[5px] md:text-[8px] uppercase opacity-70">Day</span>
-                        </div>
-                        <span className="font-bold pt-0.5 md:pt-1 text-[8px] md:text-base">:</span>
-                        <div className="bg-white/10 rounded p-0.5 md:p-1 min-w-[18px] md:min-w-[30px]">
-                          <span className="font-black text-[10px] md:text-xl block leading-none">{String(timeLeft.hours).padStart(2, '0')}</span>
-                          <span className="text-[5px] md:text-[8px] uppercase opacity-70">Hr</span>
-                        </div>
-                        <span className="font-bold pt-0.5 md:pt-1 text-[8px] md:text-base">:</span>
-                        <div className="bg-white/10 rounded p-0.5 md:p-1 min-w-[18px] md:min-w-[30px]">
-                          <span className="font-black text-[10px] md:text-xl block leading-none">{String(timeLeft.minutes).padStart(2, '0')}</span>
-                          <span className="text-[5px] md:text-[8px] uppercase opacity-70">Min</span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[6px] md:text-[10px] font-black text-indigo-200 uppercase tracking-wider md:tracking-widest mb-0.5 md:mb-1 leading-tight">Upcoming Exams</p>
-                      <p className="text-base md:text-3xl font-black tracking-tight mb-1 md:mb-2">None</p>
-                    </>
-                  )}
-
-                  <p className="text-[6px] md:text-xs font-bold text-white bg-white/20 px-1 md:px-4 py-0.5 md:py-1.5 rounded-full border border-white/10 leading-tight">
-                    {nextExam ? new Date(nextExam.date).toLocaleDateString() : 'Relax & Prepare!'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Complete Your Profile Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 md:p-8 mb-8 transition-colors duration-300">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Complete Your Profile</h2>
-                  <p className="text-gray-600 dark:text-gray-300">Keep your information up to date for better services</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 md:gap-6 w-full md:w-auto mt-4 md:mt-0">
-                  <div className="text-left md:text-right">
-                    <div className="text-sm text-gray-500">Complete by</div>
-                    <div className="font-medium text-gray-900">{getCompletionDeadline()}</div>
-                  </div>
-                  <div className="text-left md:text-right">
-                    <div className="text-sm text-gray-500">Progress</div>
-                    <div className="text-2xl font-bold text-orange-600">{getProfileCompletion()}%</div>
-                  </div>
-                  <button
-                    onClick={handleEditToggle}
-                    className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center font-medium ml-auto md:ml-0"
-                  >
-                    {editMode ? <FaTimes className="mr-2" /> : <FaEdit className="mr-2" />}
-                    {editMode ? 'Cancel' : 'Edit Profile'}
-                  </button>
-                </div>
-              </div>
-
-              {editMode ? (
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                      <input
-                        type="text"
-                        value={editForm.name}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Father's Name</label>
-                      <input
-                        type="text"
-                        value={editForm.fatherName}
-                        onChange={(e) => setEditForm({ ...editForm, fatherName: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Mother's Name</label>
-                      <input
-                        type="text"
-                        value={editForm.motherName}
-                        onChange={(e) => setEditForm({ ...editForm, motherName: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                      <input
-                        type="date"
-                        value={editForm.dob}
-                        onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
-                      <input
-                        type="tel"
-                        value={editForm.phone}
-                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                      <input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Admission Date</label>
-                      <input
-                        type="date"
-                        value={editForm.admissionDate}
-                        onChange={(e) => setEditForm({ ...editForm, admissionDate: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo</label>
-                      <div className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-400 transition-colors">
-                        <FaCamera className="text-gray-400 text-xl" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">
-                            {photoFile ? photoFile.name : 'Click to upload photo'}
-                          </p>
-                          <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => setPhotoFile(e.target.files[0])}
-                          className="hidden"
-                          id="edit-photo-upload"
-                        />
-                        <label
-                          htmlFor="edit-photo-upload"
-                          className="ml-auto bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors cursor-pointer text-sm font-medium"
-                        >
-                          Choose File
-                        </label>
-                      </div>
-                    </div>
-                    <div className="flex justify-end pt-4">
-                      <button
-                        onClick={handleSaveProfile}
-                        className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center font-medium"
-                      >
-                        <FaSave className="mr-2" />
-                        Save Changes
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              {nextExam ? (
+                <>
+                  <p className="text-lg font-extrabold tracking-tight mb-4 truncate">{nextExam.name}</p>
+                  <CountdownTiles timeLeft={timeLeft} />
+                </>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div
-                    onClick={() => setEditMode(true)}
-                    className={`bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border-2 cursor-pointer hover:shadow-md transition-all ${!editForm.name ? 'border-red-200' : 'border-orange-200'}`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                        <FaUser className="text-white text-xl" />
-                      </div>
-                      {!editForm.name && <FaStar className="text-red-500" />}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Full Name</h3>
-                    <p className="text-gray-700 break-words">{editForm.name || 'Not provided'}</p>
-                    {editForm.name && <FaCheckCircle className="text-green-500 mt-2" />}
-                  </div>
-
-                  <div
-                    onClick={() => setEditMode(true)}
-                    className={`bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border-2 cursor-pointer hover:shadow-md transition-all ${!editForm.phone ? 'border-red-200' : 'border-green-200'}`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                        <FaUser className="text-white text-xl" />
-                      </div>
-                      {!editForm.phone && <FaStar className="text-red-500" />}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Phone</h3>
-                    <p className="text-gray-700 break-words">{editForm.phone || 'Not provided'}</p>
-                    {editForm.phone && <FaCheckCircle className="text-green-500 mt-2" />}
-                  </div>
-
-                  <div
-                    onClick={() => setEditMode(true)}
-                    className={`bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border-2 cursor-pointer hover:shadow-md transition-all ${!editForm.email ? 'border-red-200' : 'border-orange-200'}`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                        <FaUser className="text-white text-xl" />
-                      </div>
-                      {!editForm.email && <FaStar className="text-red-500" />}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Email</h3>
-                    <p className="text-gray-700 break-all">{editForm.email || 'Not provided'}</p>
-                    {editForm.email && <FaCheckCircle className="text-green-500 mt-2" />}
-                  </div>
-
-                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border-2 border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-gray-500 rounded-lg flex items-center justify-center">
-                        <FaCamera className="text-white text-xl" />
-                      </div>
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Profile Photo</h3>
-                    <p className="text-gray-700">{profile.profilePhoto ? 'Uploaded' : 'Not uploaded'}</p>
-                    {profile.profilePhoto && <FaCheckCircle className="text-green-500 mt-2" />}
-                  </div>
-
-                  <div
-                    onClick={() => setEditMode(true)}
-                    className={`bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-6 border-2 cursor-pointer hover:shadow-md transition-all ${!editForm.fatherName ? 'border-red-200' : 'border-yellow-200'}`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
-                        <FaUser className="text-white text-xl" />
-                      </div>
-                      {!editForm.fatherName && <FaStar className="text-red-500" />}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Father's Name</h3>
-                    <p className="text-gray-700 break-words">{editForm.fatherName || 'Not provided'}</p>
-                    {editForm.fatherName && <FaCheckCircle className="text-green-500 mt-2" />}
-                  </div>
-
-                  <div
-                    onClick={() => setEditMode(true)}
-                    className={`bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-6 border-2 cursor-pointer hover:shadow-md transition-all ${!editForm.motherName ? 'border-red-200' : 'border-pink-200'}`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-pink-500 rounded-lg flex items-center justify-center">
-                        <FaUser className="text-white text-xl" />
-                      </div>
-                      {!editForm.motherName && <FaStar className="text-red-500" />}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Mother's Name</h3>
-                    <p className="text-gray-700 break-words">{editForm.motherName || 'Not provided'}</p>
-                    {editForm.motherName && <FaCheckCircle className="text-green-500 mt-2" />}
-                  </div>
-
-                  <div
-                    onClick={() => setEditMode(true)}
-                    className={`bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border-2 cursor-pointer hover:shadow-md transition-all ${!editForm.dob ? 'border-red-200' : 'border-orange-200'}`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                        <FaCalendarAlt className="text-white text-xl" />
-                      </div>
-                      {!editForm.dob && <FaStar className="text-red-500" />}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Date of Birth</h3>
-                    <p className="text-gray-700">{editForm.dob ? new Date(editForm.dob).toLocaleDateString() : 'Not provided'}</p>
-                    {editForm.dob && <FaCheckCircle className="text-green-500 mt-2" />}
-                  </div>
-
-                  <div className={`bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-6 border-2 ${!editForm.admissionDate ? 'border-red-200' : 'border-teal-200'}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-teal-500 rounded-lg flex items-center justify-center">
-                        <FaClock className="text-white text-xl" />
-                      </div>
-                      {!editForm.admissionDate && <FaStar className="text-red-500" />}
-                    </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Admission Date</h3>
-                    <p className="text-gray-700">{editForm.admissionDate ? new Date(editForm.admissionDate).toLocaleDateString() : 'Not provided'}</p>
-                    {editForm.admissionDate && <FaCheckCircle className="text-green-500 mt-2" />}
-                  </div>
-                </div>
+                <>
+                  <p className="text-lg font-extrabold tracking-tight">No upcoming exams</p>
+                  <p className="text-sm text-white/60 mt-1">Relax &amp; prepare — consistency wins.</p>
+                </>
               )}
             </div>
-
-            {/* Analytics & Digital ID Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-              {/* Performance Chart */}
-              <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Performance Analytics</h2>
-                    <p className="text-gray-500 text-sm">Subject-wise marks distribution</p>
-                  </div>
-                  <FaChartLine className="text-orange-500 text-xl" />
-                </div>
-                <div className="h-64">
-                  {marks.length > 0 ? (
-                    <Bar
-                      data={{
-                        labels: marks.map(m => m.subjectId?.name || 'Subject'),
-                        datasets: [{
-                          label: 'Marks Obtained',
-                          data: marks.map(m => m.marks),
-                          backgroundColor: 'rgba(243, 112, 33, 0.8)',
-                          borderRadius: 8,
-                        }]
-                      }}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                          y: { beginAtZero: true, max: 100 }
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                      <FaChartLine className="text-4xl mb-2" />
-                      <p>No performance data available</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Digital ID Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-gray-900">Digital ID Card</h2>
-                  <button
-                    onClick={() => {
-                      const printContent = document.getElementById('digital-id-card').innerHTML;
-                      const win = window.open('', '', 'width=400,height=600');
-                      win.document.write('<html><head><title>Student ID Card</title></head><body style="padding: 20px; display: flex; justify-content: center;">' + printContent + '</body></html>');
-                      win.document.close();
-                      win.print();
-                    }}
-                    className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 uppercase tracking-wider"
-                  >
-                    <FaDownload /> Print ID
-                  </button>
-                </div>
-
-                <div id="digital-id-card" className="flex-1 bg-gradient-to-br from-black to-gray-900 rounded-2xl p-6 text-white relative overflow-hidden shadow-2xl flex flex-col items-center text-center">
-                  {/* ID Card Decor */}
-                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-500 via-orange-400 to-black"></div>
-                  <img src={oasisLogo} alt="Logo" className="w-12 h-12 object-contain mb-4 brightness-200" />
-
-                  <div className="w-24 h-24 rounded-full border-4 border-white/20 p-1 mb-4">
-                    <img
-                      src={`${config.API_URL.replace('/api', '')}${student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto}`}
-                      onError={(e) => { e.target.onerror = null; e.target.src = 'https://ui-avatars.com/api/?name=' + (student.name || 'Student'); }}
-                      alt="Student"
-                      className="w-full h-full rounded-full object-cover bg-slate-700"
-                    />
-                  </div>
-
-                  <h3 className="text-xl font-bold mb-1">{student.name || profile.name || 'Student Name'}</h3>
-                  <p className="text-orange-400 text-xs font-bold uppercase tracking-widest mb-4">Oasis JEE Student</p>
-
-                  <div className="w-full space-y-2 text-sm bg-white/5 rounded-xl p-4 border border-white/10">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">ID No.</span>
-                      <span className="font-mono">{user?.id?.slice(-8).toUpperCase()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Class</span>
-                      <span>{student.classId?.name || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Batch</span>
-                      <span>{student.batchId?.name || 'N/A'}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-auto pt-4 w-full">
-                    <div className="w-full h-8 bg-white rounded flex items-center justify-center">
-                      {/* Barcode Placeholder */}
-                      <div className="flex gap-1 h-4">
-                        {[...Array(20)].map((_, i) => (
-                          <div key={i} className={`w-${Math.floor(Math.random() * 2) + 1} bg-black h-full`}></div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Attendance & Marks */}
-              <div className="lg:col-span-2 space-y-8">
-                {/* Attendance Section */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Attendance Overview</h2>
-                      <p className="text-gray-600 dark:text-gray-400 text-sm">Your attendance record</p>
-                    </div>
-                    <select
-                      value={selectedSubject}
-                      onChange={(e) => setSelectedSubject(e.target.value)}
-                      className="bg-gray-50 dark:bg-gray-700 border-none rounded-xl px-4 py-2 font-bold text-sm text-orange-600 dark:text-orange-400 focus:ring-0 cursor-pointer outline-none transition-colors w-full sm:w-auto"
-                    >
-                      {subjects.map(sub => (
-                        <option key={sub} value={sub}>{sub}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Summary Stats Input */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
-                      <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Total</p>
-                      <p className="text-2xl font-black text-gray-900 dark:text-white">{filteredTotal}</p>
-                    </div>
-                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-800">
-                      <p className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-500 uppercase tracking-widest mb-1">Present</p>
-                      <p className="text-2xl font-black text-emerald-600 dark:text-emerald-500">{filteredPresent}</p>
-                    </div>
-                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-800">
-                      <p className="text-[10px] font-bold text-rose-600/70 dark:text-rose-500 uppercase tracking-widest mb-1">Absent</p>
-                      <p className="text-2xl font-black text-rose-600 dark:text-rose-500">{filteredTotal - filteredPresent}</p>
-                    </div>
-                    <div className="bg-orange-50 dark:bg-orange-900/10 p-4 rounded-2xl border border-orange-100 dark:border-orange-800">
-                      <p className="text-[10px] font-bold text-orange-600/70 dark:text-orange-500 uppercase tracking-widest mb-1">Rate</p>
-                      <p className={`text-2xl font-black ${filteredPercentage >= 75 ? 'text-orange-600 dark:text-orange-400' : 'text-rose-500'}`}>{filteredPercentage}%</p>
-                    </div>
-                  </div>
-
-                  {/* Scrollable List */}
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-sm uppercase tracking-wider">Recent Logs</h3>
-                    <div className="max-h-64 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-                      {filteredAttendance.length > 0 ? filteredAttendance.map(a => (
-                        <div key={a._id} className={`p-4 rounded-2xl border transition-colors flex items-center justify-between group ${a.status === 'present' ? 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-emerald-800' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-rose-200 dark:hover:border-rose-800'}`}>
-                          <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${a.status === 'present' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                              {new Date(a.date).getDate()}
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{new Date(a.date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</p>
-                              <div className="flex items-center gap-2">
-                                <span className={`font-black text-sm uppercase ${a.status === 'present' ? 'text-gray-800 dark:text-gray-200' : 'text-red-500'}`}>{a.status}</span>
-                                {a.subjectId?.name && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-bold border border-gray-200 dark:border-gray-600">{a.subjectId.name}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className={`w-2 h-2 rounded-full ${a.status === 'present' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                        </div>
-                      )) : (
-                        <div className="text-center py-8 text-gray-400 dark:text-gray-500">
-                          No records found.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Marks Section */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-8">
-                    <div>
-                      <h2 className="text-2xl font-black text-gray-900 leading-tight">Academic Reports</h2>
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Official performance records</p>
-                    </div>
-                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 shadow-sm border border-orange-100">
-                      <FaTrophy className="text-xl" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    {cumulativeSummary && cumulativeSummary.isPublished && (
-                      <div className="p-6 bg-gradient-to-br from-orange-600 to-orange-800 rounded-3xl border border-orange-500 shadow-xl relative overflow-hidden group mb-8">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-
-                        {/* Mobile Optimized Layout */}
-                        <div className="md:hidden relative">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg border border-white/10">
-                              <FaGraduationCap className="text-lg" />
-                            </div>
-                            <span className="text-[10px] font-black text-blue-100 uppercase tracking-widest bg-white/10 px-2 py-1 rounded">2025-26</span>
-                          </div>
-
-                          <h3 className="text-xl font-black text-white mb-1">Final Report</h3>
-                          <p className="text-xs font-bold text-blue-100 mb-6 block">Cumulative Performance Record</p>
-
-                          <div className="flex items-end justify-between bg-black/20 p-4 rounded-2xl border border-white/5 mb-4">
-                            <div>
-                              <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Aggregate</p>
-                              <p className="text-3xl font-black text-white leading-none">{cumulativeSummary.percentage}%</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Grade</p>
-                              <p className="text-xl font-black text-white leading-none">A+</p>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => setViewingReportCard({
-                              ...cumulativeSummary,
-                              exam: { name: 'Overall Academic Performance', type: 'Consolidated' }
-                            })}
-                            className="w-full py-3 bg-white text-orange-700 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-orange-50 transition-all shadow-lg active:scale-95"
-                          >
-                            View Final Transcript
-                          </button>
-                        </div>
-
-                        {/* Desktop Layout (Hidden on Mobile) */}
-                        <div className="hidden md:flex relative flex-col md:flex-row items-center justify-between gap-6">
-                          <div className="flex items-start gap-4">
-                            <div className="w-14 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center text-white shrink-0 shadow-lg border border-white/10">
-                              <span className="text-[10px] font-black leading-none mb-1 opacity-70">FINAL</span>
-                              <FaGraduationCap className="text-2xl" />
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-black text-white">Final Cumulative Record</h3>
-                              <p className="text-xs font-bold text-blue-100 uppercase tracking-widest mt-1">Academic Session 2025-26</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <div className="text-right">
-                              <p className="text-3xl font-black text-white leading-none mb-1">{cumulativeSummary.percentage}%</p>
-                              <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest">Aggregate Score</p>
-                            </div>
-                            <button
-                              onClick={() => setViewingReportCard({
-                                ...cumulativeSummary,
-                                exam: { name: 'Overall Academic Performance', type: 'Consolidated' }
-                              })}
-                              className="px-8 py-4 bg-white text-orange-700 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-orange-50 transition-all shadow-xl active:scale-95"
-                            >
-                              View Final Transcript
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {marks.length > 0 ? (
-                      <>
-                        {/* Mobile View: Single Unified Card Style List */}
-                        <div className="md:hidden space-y-3">
-                          <div className="flex items-center gap-2 mb-2 px-1">
-                            <FaFileAlt className="text-gray-400" />
-                            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Recent Exams</span>
-                          </div>
-
-                          {Object.values(marks.reduce((acc, m) => {
-                            const examId = m.examId?._id || 'unknown';
-                            if (!acc[examId]) acc[examId] = {
-                              exam: m.examId,
-                              totalObtained: 0,
-                              totalMax: 0
-                            };
-                            acc[examId].totalObtained += m.marks;
-                            acc[examId].totalMax += (m.maxMarks || 100);
-                            return acc;
-                          }, {})).map((summary, idx) => (
-                            <div key={idx} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-md ${idx % 2 === 0 ? 'bg-orange-500' : 'bg-orange-600'}`}>
-                                  <span className="font-bold text-xs">{((summary.totalObtained / summary.totalMax) * 100).toFixed(0)}%</span>
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{summary.exam?.name}</h4>
-                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{summary.exam?.type}</p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => setViewingReportCard({
-                                  ...summary,
-                                  name: user.name,
-                                  rollNo: student.rollNo || user.id.slice(-6).toUpperCase(),
-                                  fatherName: student.fatherName,
-                                  percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
-                                })}
-                                className="w-8 h-8 flex items-center justify-center bg-gray-50 rounded-full text-gray-400 hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                              >
-                                <FaFileAlt />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Desktop View: Individual Detailed Cards */}
-                        <div className="hidden md:block space-y-6">
-                          {Object.values(marks.reduce((acc, m) => {
-                            const examId = m.examId?._id || 'unknown';
-                            if (!acc[examId]) acc[examId] = {
-                              exam: m.examId,
-                              subjectResults: [],
-                              totalObtained: 0,
-                              totalMax: 0
-                            };
-                            acc[examId].subjectResults.push({
-                              subjectId: m.subjectId?._id,
-                              subjectName: m.subjectId?.name || 'Subject',
-                              obtained: m.marks,
-                              maxMarks: m.maxMarks || 100
-                            });
-                            acc[examId].totalObtained += m.marks;
-                            acc[examId].totalMax += (m.maxMarks || 100);
-                            return acc;
-                          }, {})).map(summary => (
-                            <div key={summary.exam?._id} className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-                              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 opacity-20 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform duration-500"></div>
-                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
-                                <div className="flex items-start gap-4">
-                                  <div className="w-12 h-14 bg-orange-600 rounded-xl flex flex-col items-center justify-center text-white shrink-0 shadow-lg">
-                                    <span className="text-[10px] font-bold leading-none mb-1 opacity-70">EXAM</span>
-                                    <FaFileAlt className="text-lg" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <h3 className="text-lg font-black text-gray-900 truncate">{summary.exam?.name || 'Academic Assessment'}</h3>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{summary.exam?.type || 'Record'}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-6">
-                                  <div className="text-right">
-                                    <p className="text-2xl font-black text-orange-600 leading-none mb-1">{((summary.totalObtained / summary.totalMax) * 100).toFixed(1)}%</p>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{summary.totalObtained} / {summary.totalMax} MARKS</p>
-                                  </div>
-                                  <button
-                                    onClick={() => setViewingReportCard({
-                                      ...summary,
-                                      name: user.name,
-                                      rollNo: student.rollNo || user.id.slice(-6).toUpperCase(),
-                                      fatherName: student.fatherName,
-                                      percentage: ((summary.totalObtained / summary.totalMax) * 100).toFixed(1)
-                                    })}
-                                    className="px-6 py-3 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg active:scale-95"
-                                  >
-                                    VIEW REPORT
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-gray-200 mx-auto mb-4 shadow-sm">
-                          <FaBook className="text-2xl" />
-                        </div>
-                        <p className="text-gray-400 font-bold">No academic reports published yet.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column - Fees, Notices, Materials */}
-              <div className="space-y-8">
-                {/* Fees Section */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Fee Details</h2>
-                    <FaMoneyBillWave className="text-green-600 text-xl" />
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="text-gray-600">Total Fees</span>
-                      <span className="font-bold text-gray-900">₹{fees.totalFees || 0}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <span className="text-gray-600">Paid</span>
-                      <span className="font-bold text-green-600">₹{fees.paidFees || 0}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                      <span className="text-gray-600">Pending</span>
-                      <span className="font-bold text-red-600">₹{fees.pendingFees || 0}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                      <span className="text-gray-600">Due Date</span>
-                      <span className="font-bold text-orange-600">
-                        {fees.dueDate ? new Date(fees.dueDate).toLocaleDateString() : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {fees.payments && fees.payments.length > 0 && (
-                    <div className="mt-6">
-                      <h3 className="font-semibold text-gray-900 mb-3">Recent Payments</h3>
-                      <div className="space-y-2">
-                        {fees.payments.slice(0, 3).map((payment, index) => (
-                          <div key={index} className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">{new Date(payment.date).toLocaleDateString()}</span>
-                            <div className="flex items-center gap-3">
-                              <span className="font-medium text-green-600">₹{payment.amount}</span>
-                              <button onClick={() => handleDownloadReceipt(payment)} className="text-xs text-orange-600 hover:underline flex items-center gap-1">
-                                <FaDownload /> Receipt
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Notices */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Announcements</h2>
-                    <FaBullhorn className="text-orange-600 text-xl" />
-                  </div>
-
-                  <div className="space-y-4">
-                    {[...notices].reverse().slice(0, 2).map(notice => (
-                      <div
-                        key={notice._id}
-                        onClick={() => setSelectedNotice(notice)}
-                        className="p-4 bg-orange-50 rounded-lg border border-orange-200 cursor-pointer hover:bg-orange-100 transition-all group"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-semibold text-gray-900 group-hover:text-orange-700 transition-colors">{notice.title}</h3>
-                          {new Date(notice.createdAt) > new Date(Date.now() - 604800000) && <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold uppercase rounded-full animate-pulse">Live</span>}
-                        </div>
-                        <p className="text-sm text-gray-700 mb-3 line-clamp-2">{notice.content || notice.description}</p>
-                        <div className="flex items-center text-xs text-gray-500 font-medium uppercase tracking-wide">
-                          <FaClock className="mr-1" />
-                          {new Date(notice.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </div>
-                      </div>
-                    )) || (
-                        <div className="text-center py-8">
-                          <FaBullhorn className="text-gray-400 text-4xl mx-auto mb-4" />
-                          <p className="text-gray-500">No announcements</p>
-                        </div>
-                      )}
-                  </div>
-                </div>
-
-                {/* Study Materials */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Study Materials</h2>
-                    <FaDownload className="text-orange-600 text-xl" />
-                  </div>
-
-                  <div className="space-y-3">
-                    {materials.slice(0, 3).map(material => (
-                      <div key={material._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 truncate">{material.title}</h3>
-                          <p className="text-sm text-gray-600 truncate">{material.description}</p>
-                        </div>
-                        <a
-                          href={`${config.API_URL.replace('/api', '')}/${material.fileUrl}`}
-                          download
-                          className="ml-3 bg-orange-600 text-white p-2 rounded-lg hover:bg-orange-700 transition-colors"
-                        >
-                          <FaDownload className="text-sm" />
-                        </a>
-                      </div>
-                    )) || (
-                        <div className="text-center py-8">
-                          <FaDownload className="text-gray-400 text-4xl mx-auto mb-4" />
-                          <p className="text-gray-500">No materials available</p>
-                        </div>
-                      )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : activeView === 'live' ? (
-          <StudentLiveClass studentId={student._id || user.id} />
-        ) : activeView === 'videos' ? (
-          <StudentVideo studentId={student._id || user.id} />
-        ) : activeView === 'tests' ? (
-          <StudentTest studentId={student._id || user.id} />
-        ) : activeView === 'doubts' ? (
-          <StudentDoubt studentId={student._id || user.id} />
-        ) : activeView === 'ai-buddy' ? (
-          <AIStudyBuddy />
-        ) : activeView === 'attendance' ? (
-          <QRScanner studentId={student._id || user.id} />
-        ) : null}
-
-        {/* Mobile Bottom Navigation */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-2 py-2 flex justify-around items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
-          {[
-            { id: 'overview', icon: <FaHome />, label: 'Home' },
-            { id: 'live', icon: <FaVideo />, label: 'Live' },
-            { id: 'tests', icon: <FaFlask />, label: 'Tests' },
-            { id: 'ai-buddy', icon: <FaRobot />, label: 'AI' },
-            { id: 'attendance', icon: <FaQrcode />, label: 'Scan' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveView(tab.id)}
-              className={`flex flex-col items-center gap-1 p-2 min-w-[64px] transition-all ${activeView === tab.id ? 'text-orange-600' : 'text-gray-400'}`}
-            >
-              <span className={`text-xl ${activeView === tab.id ? 'scale-110' : ''}`}>{tab.icon}</span>
-              <span className="text-[10px] font-bold uppercase tracking-tighter">{tab.label}</span>
-            </button>
-          ))}
+          </div>
+          <TipOfTheDay />
         </div>
-        <div className="lg:hidden h-20"></div> {/* Spacer for bottom nav */}
-        {/* Class Selection Modal */}
-        {showClassModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-[2rem] p-10 max-w-lg w-full shadow-2xl animate-in zoom-in duration-300 relative">
-              <button
-                onClick={() => setShowClassModal(false)}
-                className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
-              >
-                <FaTimes className="text-xl" />
-              </button>
-              <div className="text-center mb-10">
-                <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-[2rem] flex items-center justify-center text-3xl mx-auto mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
-                  <FaGraduationCap />
-                </div>
-                <h2 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">Select Your Academic Level</h2>
-                <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Choose your grade to customize your dashboard</p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                {availableClasses.length > 0 ? availableClasses.map(c => (
-                  <button
-                    key={c._id}
-                    onClick={() => handleClassSelection(c._id)}
-                    className="group flex items-center justify-between p-6 bg-gray-50 hover:bg-orange-600 rounded-3xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl group"
-                  >
-                    <div className="text-left">
-                      <p className="text-lg font-black text-gray-900 group-hover:text-white transition-colors">{c.name}</p>
-                      <p className="text-xs font-bold text-gray-400 group-hover:text-blue-100 transition-colors capitalize">Standard Track</p>
-                    </div>
-                    <FaChevronRight className="text-gray-300 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                  </button>
-                )) : (
-                  <div className="text-center p-8 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                    <p className="text-gray-500 font-bold">No academic levels found.</p>
-                    <p className="text-[10px] text-gray-400 mt-2 uppercase">Please ask admin to add classes (11th, 12th, etc.)</p>
-                  </div>
-                )}
-              </div>
-
-              <p className="mt-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest leading-relaxed">
-                If your class isn't listed, please contact<br />
-                the administration office.
-              </p>
-            </div>
-          </div>
-        )}
-        {/* Batch Selection Modal */}
-        {showBatchModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-[2rem] p-10 max-w-lg w-full shadow-2xl animate-in zoom-in duration-300 relative">
-              <button
-                onClick={() => setShowBatchModal(false)}
-                className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
-              >
-                <FaTimes className="text-xl" />
-              </button>
-              <div className="text-center mb-10">
-                <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-[2rem] flex items-center justify-center text-3xl mx-auto mb-6 shadow-lg rotate-3 group-hover:rotate-0 transition-transform">
-                  <FaClock />
-                </div>
-                <h2 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">Select Your Batch</h2>
-                <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Choose your preferred timing</p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                {availableBatches.length > 0 ? availableBatches.map(b => (
-                  <button
-                    key={b._id}
-                    onClick={() => handleBatchSelection(b._id)}
-                    className="group flex items-center justify-between p-6 bg-gray-50 hover:bg-orange-600 rounded-3xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl group"
-                  >
-                    <div className="text-left">
-                      <p className="text-lg font-black text-gray-900 group-hover:text-white transition-colors">{b.name}</p>
-                      <p className="text-xs font-bold text-gray-400 group-hover:text-orange-100 transition-colors uppercase">Timing Schedule</p>
-                    </div>
-                    <FaChevronRight className="text-gray-300 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                  </button>
-                )) : (
-                  <div className="text-center p-8 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                    <p className="text-gray-500 font-bold">No batches found.</p>
-                    <p className="text-[10px] text-gray-400 mt-2 uppercase">Please ask admin to add batches</p>
-                  </div>
-                )}
-              </div>
-              <p className="mt-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Select your shift to see your schedule</p>
-            </div>
-          </div>
-        )}
-        {/* Notification Drawer */}
-        {showNotifications && (
-          <>
-            <div
-              className="fixed inset-0 z-[60] bg-slate-900/20 backdrop-blur-sm"
-              onClick={() => setShowNotifications(false)}
-            ></div>
-            <div className="fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl z-[70] transform transition-transform duration-300 overflow-y-auto border-l border-slate-100">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10">
-                <div>
-                  <h2 className="text-lg font-black text-gray-800 tracking-tight">Notifications</h2>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Recent Alerts & Updates</p>
-                </div>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors"
-                >
-                  <FaTimes />
-                </button>
-              </div>
-
-              <div className="p-4 space-y-4">
-                {/* Section 1: Live Notices */}
-                <div className="mb-6">
-                  <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3 px-2">Official Announcements</h3>
-                  {notices.length > 0 ? (
-                    <div className="space-y-3">
-                      {notices.slice(0, 5).map(notice => (
-                        <div
-                          key={notice._id}
-                          onClick={() => { setSelectedNotice(notice); setShowNotifications(false); }}
-                          className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 cursor-pointer hover:shadow-md transition-all active:scale-95"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs shrink-0 shadow-sm"><FaBullhorn /></div>
-                            <div>
-                              <h4 className="text-sm font-bold text-gray-900 leading-tight mb-1">{notice.title}</h4>
-                              <p className="text-xs text-blue-700/80 line-clamp-2 leading-relaxed">{notice.content || notice.description}</p>
-                              <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wide mt-2">{new Date(notice.createdAt).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-center text-xs text-gray-400 py-4 italic">No active announcements</p>
-                  )}
-                </div>
-
-                {/* Section 2: Personal Notifications */}
-                <div>
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 px-2">Personal Alerts</h3>
-                  {notifications.length > 0 ? (
-                    <div className="space-y-3">
-                      {notifications.map((notif, idx) => (
-                        <div key={idx} className={`p-4 rounded-2xl border transition-all ${notif.read ? 'bg-white border-gray-100' : 'bg-red-50 border-red-100'}`}>
-                          <div className="flex items-start gap-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs shrink-0 ${notif.read ? 'bg-gray-100 text-gray-500' : 'bg-red-500 text-white shadow-sm'}`}>
-                              <FaBell />
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-bold text-gray-900 leading-tight mb-1">{notif.title || 'Notification'}</h4>
-                              <p className="text-xs text-gray-600 leading-relaxed">{notif.message || notif.content || 'New update received'}</p>
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-2">{(notif.createdAt || notif.date) ? new Date(notif.createdAt || notif.date).toLocaleDateString() : 'Just Now'}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-10 opacity-50">
-                      <FaBell className="text-4xl text-gray-300 mx-auto mb-2" />
-                      <p className="text-xs font-bold text-gray-400 uppercase">No new notifications</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Notice Detail Modal */}
-        {selectedNotice && (
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
-            onClick={() => setSelectedNotice(null)}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-300"
-            >
-              <div className="p-8 bg-gradient-to-r from-orange-500 to-amber-500 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-                <h2 className="text-2xl font-black tracking-tight relative z-10 mb-2">{selectedNotice.title}</h2>
-                <div className="flex items-center gap-3 relative z-10">
-                  <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/20">Official Notice</span>
-                  <span className="text-orange-100 text-xs font-medium">{new Date(selectedNotice.createdAt).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                </div>
-                <button
-                  onClick={() => setSelectedNotice(null)}
-                  className="absolute top-6 right-6 w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-all"
-                >
-                  <FaTimes />
-                </button>
-              </div>
-              <div className="p-8 max-h-[60vh] overflow-y-auto">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-lg">
-                  {selectedNotice.content || selectedNotice.description}
-                </p>
-              </div>
-              <div className="p-6 bg-gray-50 border-t border-gray-100 text-right">
-                <button
-                  onClick={() => setSelectedNotice(null)}
-                  className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold text-sm uppercase tracking-widest hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl active:scale-95"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-      {/* Report Card Premium Modal */}
-      {viewingReportCard && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2rem] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden print:p-0 print:shadow-none print:static">
-            {/* Tool Bar - Hidden in Print */}
-            <div className="px-8 py-4 bg-gray-50 border-b flex justify-between items-center shrink-0 print:hidden">
-              <div className="flex items-center gap-3">
-                <FaTrophy className="text-yellow-500" />
-                <h3 className="font-black text-gray-700 text-sm">Academic Report Preview</h3>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => window.print()}
-                  className="px-5 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center gap-2"
-                >
-                  <FaPrint /> PRINT RECORD
-                </button>
-                <button
-                  onClick={() => setViewingReportCard(null)}
-                  className="p-2.5 bg-white text-gray-400 hover:text-red-500 rounded-xl border border-gray-200 transition-all shadow-sm"
-                >
-                  <FaTimesCircle className="text-lg" />
-                </button>
-              </div>
-            </div>
 
-            {/* Printable Body */}
-            <div className="flex-1 overflow-y-auto p-10 md:p-16 print:overflow-visible print:p-0">
-              <div className="border-4 border-blue-600 p-1 relative min-h-[1000px]">
-                <div className="border border-blue-200 p-8 h-full bg-white relative">
-                  {/* Brand Header */}
-                  <div className="flex justify-between items-start mb-12 border-b-2 border-blue-600 pb-8">
-                    <div>
-                      <img src={oasisFullLogo} alt="Logo" className="h-16 mb-4 filter contrast-125" />
-                      <p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.3em]">Excellence in JEE/NEET Coaching</p>
-                    </div>
-                    <div className="text-right">
-                      <h1 className="text-4xl font-black text-blue-900 mb-1">REPORT CARD</h1>
-                      <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">{viewingReportCard.exam?.name} - 2026</p>
-                    </div>
-                  </div>
+      <AchievementBadges stats={{
+        streakBest,
+        attendancePct,
+        hasAttendance: attendance.length > 0,
+        topScore,
+        feesClear: totalFees > 0 && pendingFees === 0,
+        profilePct: profileCompletion,
+      }} />
 
-                  {/* Student Info Grid */}
-                  <div className="grid grid-cols-2 gap-y-10 mb-16 bg-gray-50/50 p-10 rounded-3xl border border-gray-100">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Student Name</label>
-                        <p className="text-2xl font-black text-blue-900 underline underline-offset-4 decoration-blue-200">{viewingReportCard.name}</p>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Roll Number</label>
-                        <p className="text-lg font-bold text-gray-700">{viewingReportCard.rollNo}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-4 text-right">
-                      <div>
-                        <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Father's Name</label>
-                        <p className="text-lg font-bold text-gray-700">{viewingReportCard.fatherName || 'Not Provided'}</p>
-                      </div>
-                      <div className="flex justify-end gap-10">
-                        <div>
-                          <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Class</label>
-                          <p className="text-lg font-bold text-blue-600">Standard IX</p>
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Section</label>
-                          <p className="text-lg font-bold text-blue-600">Oasis-A1</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      <ProfileCard
+        editForm={editForm}
+        setEditForm={setEditForm}
+        editMode={editMode}
+        setEditMode={setEditMode}
+        onToggleEdit={handleEditToggle}
+        onSave={handleSaveProfile}
+        photoFile={photoFile}
+        setPhotoFile={setPhotoFile}
+        hasPhoto={!!profile.profilePhoto}
+        completion={profileCompletion}
+        deadline={getCompletionDeadline()}
+      />
 
-                  {/* Marks Table */}
-                  <div className="mb-16">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-blue-600 text-white">
-                          <th className="px-6 py-4 text-left font-black text-xs uppercase tracking-widest">Subject</th>
-                          {viewingReportCard.exam?.type === 'Consolidated' ? (
-                            <>
-                              <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Unit (20%)</th>
-                              <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Monthly (30%)</th>
-                              <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Final (50%)</th>
-                              <th className="px-4 py-4 text-center font-black text-xs uppercase tracking-widest whitespace-nowrap">Total</th>
-                            </>
-                          ) : (
-                            <>
-                              <th className="px-6 py-4 text-center font-black text-xs uppercase tracking-widest">Full Marks</th>
-                              <th className="px-6 py-4 text-center font-black text-xs uppercase tracking-widest">Obtained Marks</th>
-                            </>
-                          )}
-                          <th className="px-6 py-4 text-right font-black text-xs uppercase tracking-widest">Status / Grade</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y-2 divide-gray-100">
-                        {viewingReportCard.subjectResults.map(sub => (
-                          <tr key={sub.subjectId} className="hover:bg-blue-50/20 transition-colors">
-                            <td className="px-6 py-5 font-bold text-gray-800">{sub.subjectName}</td>
-                            {viewingReportCard.exam?.type === 'Consolidated' ? (
-                              <>
-                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.unit || 0}</td>
-                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.monthly || 0}</td>
-                                <td className="px-4 py-5 text-center font-bold text-gray-600">{sub.final || 0}</td>
-                                <td className="px-4 py-5 text-center font-black text-blue-600 text-lg">{sub.total || 0}</td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="px-6 py-5 text-center font-bold text-gray-500">{sub.maxMarks || 100}</td>
-                                <td className="px-6 py-5 text-center font-black text-blue-600 text-lg">{sub.obtained || 0}</td>
-                              </>
-                            )}
-                            <td className="px-6 py-5 text-right">
-                              <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.4 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                {((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.9 ? 'A+' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.8 ? 'A' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.7 ? 'B+' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.6 ? 'B' : ((sub.total || sub.obtained) / (sub.maxMarks || 100)) >= 0.4 ? 'C' : 'FAIL'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-blue-50/50">
-                          <th className="px-6 py-6 text-left font-black text-blue-900 border-t-2 border-blue-600">OVERALL ASSESSMENT</th>
-                          {viewingReportCard.exam?.type === 'Consolidated' && (
-                            <>
-                              <th className="border-t-2 border-blue-600"></th>
-                              <th className="border-t-2 border-blue-600"></th>
-                              <th className="border-t-2 border-blue-600"></th>
-                            </>
-                          )}
-                          <th className="px-6 py-6 text-center font-black text-blue-900 border-t-2 border-blue-600">{viewingReportCard.totalMax}</th>
-                          <th className="px-6 py-6 text-center font-black text-blue-600 text-2xl border-t-2 border-blue-600">{viewingReportCard.totalObtained}</th>
-                          <th className="px-6 py-6 text-right font-black text-blue-900 border-t-2 border-blue-600">{viewingReportCard.percentage}%</th>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+      <PerformanceAnalysis studentId={student._id} onData={(d) => setTestBest(Number(d?.overall?.bestPercentage) || 0)} />
 
-                  {/* Performance Summary */}
-                  <div className="grid grid-cols-2 gap-6 mb-20 text-center">
-                    <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-blue-100 transition-all">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Attendance</label>
-                      <p className="text-3xl font-black text-gray-800">{viewingReportCard.attendancePercentage || calculateAttendancePercentage()}%</p>
-                    </div>
-                    <div className="p-6 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-blue-100 transition-all">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Conduct</label>
-                      <p className="text-3xl font-black text-blue-600">{viewingReportCard.conduct || 'GOOD'}</p>
-                    </div>
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2"><MarksChart marks={marks} /></div>
+        <DigitalIdCard
+          student={student}
+          profile={profile}
+          user={user}
+          photoUrl={`${config.API_URL.replace('/api', '')}${student.userId?.profilePhoto || student.profilePhoto || profile.profilePhoto}`}
+          onPrint={handlePrintId}
+        />
+      </div>
 
-                  {/* Footer Signatures */}
-                  <div className="mt-auto flex justify-between items-end pb-12 pt-12 border-t border-gray-100">
-                    <div className="text-center w-48">
-                      <div className="h-1 bg-gray-200 mb-2"></div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Class Teacher</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex flex-col items-center">
-                        <div className="w-16 h-1 bg-blue-600 mb-2"></div>
-                        <img src={oasisLogo} alt="Seal" className="w-12 h-12 opacity-20 filter grayscale mb-2" />
-                        <p className="text-[10px] font-black text-blue-900 uppercase tracking-[0.2em]">Institute Seal</p>
-                      </div>
-                    </div>
-                    <div className="text-center w-48">
-                      <div className="h-1 bg-gray-200 mb-2 font-handwriting italic text-gray-400 text-xs">Director Signature</div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Authorized Signature</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <AttendanceCard
+            subjects={subjects}
+            selectedSubject={selectedSubject}
+            setSelectedSubject={setSelectedSubject}
+            records={filteredAttendance}
+            total={filteredTotal}
+            present={filteredPresent}
+            percentage={filteredPercentage}
+          />
+          <AcademicReports
+            cumulativeSummary={cumulativeSummary}
+            marks={marks}
+            onViewSummary={() => setViewingReportCard({
+              ...cumulativeSummary,
+              exam: { name: 'Overall Academic Performance', type: 'Consolidated' }
+            })}
+            onViewExam={(summary, pct) => setViewingReportCard({
+              ...summary,
+              name: user.name,
+              rollNo: student.rollNo || user.id.slice(-6).toUpperCase(),
+              fatherName: student.fatherName,
+              percentage: pct.toFixed(1)
+            })}
+          />
         </div>
-      )}
+        <div className="space-y-6">
+          <FeesCard fees={fees} onReceipt={handleDownloadReceipt} />
+          <AnnouncementsCard notices={sortedNotices} onSelect={setSelectedNotice} onViewAll={() => setActiveView('notices')} />
+          <MaterialsCard materials={materials} />
+        </div>
+      </div>
     </div>
+  );
+
+  const tabContent = {
+    overview,
+    timetable: (
+      <Timetable
+        schedule={schedule}
+        loading={scheduleLoading}
+        error={scheduleError}
+        onRetry={() => fetchSchedule(student._id)}
+      />
+    ),
+    notices: <NoticesList notices={notices} onSelect={setSelectedNotice} />,
+    live: <StudentLiveClass studentId={studentId} />,
+    videos: <StudentVideo studentId={studentId} />,
+    tests: <StudentTest studentId={studentId} />,
+    doubts: <StudentDoubt studentId={studentId} />,
+    'ai-buddy': <AIStudyBuddy />,
+    attendance: <QRScanner studentId={studentId} />,
+  };
+
+  return (
+    <StudentShell
+      active={activeView}
+      onNavigate={setActiveView}
+      user={{
+        name: user?.name || 'Student',
+        photo: photoUrl,
+        subtitle: [student.classId?.name, student.batchId?.name].filter(Boolean).join(' · ') || `ID ${user?.id?.slice(-6) || ''}`,
+      }}
+      onLogout={handleLogout}
+      hasUnread={hasUnread}
+      onBellClick={() => setShowNotifications(v => !v)}
+      extraCommands={extraCommands}
+    >
+      <TabPanel key={activeView}>
+        {tabContent[activeView] || null}
+      </TabPanel>
+
+      <SelectionModal
+        open={showClassModal}
+        onClose={() => setShowClassModal(false)}
+        icon={FiBookOpen}
+        title="Select your academic level"
+        subtitle="Choose your grade to customise your dashboard"
+        options={availableClasses}
+        itemHint="Standard track"
+        onSelect={handleClassSelection}
+        emptyTitle="No academic levels found."
+        emptyHint="Please ask admin to add classes (11th, 12th, etc.)"
+        footer="If your class isn't listed, please contact the administration office."
+      />
+      <SelectionModal
+        open={showBatchModal}
+        onClose={() => setShowBatchModal(false)}
+        icon={FiLayers}
+        title="Select your batch"
+        subtitle="Choose your preferred timing"
+        options={availableBatches}
+        itemHint="Timing schedule"
+        onSelect={handleBatchSelection}
+        emptyTitle="No batches found."
+        emptyHint="Please ask admin to add batches"
+        footer="Select your shift to see your schedule"
+      />
+      <NotificationDrawer
+        open={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        notices={notices}
+        notifications={notifications}
+        onSelectNotice={(notice) => { setSelectedNotice(notice); setShowNotifications(false); }}
+      />
+      <NoticeModal notice={selectedNotice} onClose={() => setSelectedNotice(null)} />
+      <ReportCardModal report={viewingReportCard} onClose={() => setViewingReportCard(null)} attendancePct={attendancePct} />
+    </StudentShell>
   );
 };
 
 export default StudentDashboard;
-

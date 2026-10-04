@@ -1,13 +1,62 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import config from '../../config';
-import { FaLaptopCode, FaPlus, FaTimes, FaTrash, FaCheckCircle, FaChartBar, FaFileAlt } from 'react-icons/fa';
+import {
+    FiClipboard, FiPlus, FiX, FiTrash2, FiBarChart2, FiFileText, FiEdit2, FiZap, FiAward,
+    FiUsers, FiMinusCircle, FiExternalLink, FiUploadCloud, FiCheck, FiCheckCircle
+} from 'react-icons/fi';
+import { notify } from '../../utils/notify';
+import { authHeaders, errMsg, fileHref, getTeacherId, idOf } from '../teacher/teacherApi';
+import { Avatar, Badge, ConfirmButton, EmptyState, Field, Modal, PageHeader, Segmented, Spinner } from '../teacher/TeacherUI';
+
+const blankQuestion = () => ({ type: 'mcq', questionText: '', options: ['', '', '', ''], correctOption: 0, correctAnswer: '', marks: 4 });
+
+const emptyTest = () => ({
+    title: '',
+    description: '',
+    subjectId: '',
+    classId: '',
+    batchId: '',
+    duration: 30,
+    negativeMarks: 0,
+    status: 'active',
+    questionPaperUrl: null,
+    questions: [blankQuestion()]
+});
+
+const STATUS_TONE = { draft: 'grey', active: 'brand', completed: 'dark' };
+const STATUSES = ['draft', 'active', 'completed'];
+
+const isBlankQuestion = (q) => !q.questionText?.trim() && (q.options || []).every(o => !String(o).trim());
+
+const fmtSeconds = (s) => {
+    const n = Number(s);
+    if (!Number.isFinite(n) || n <= 0) return '—';
+    return `${Math.floor(n / 60)}:${String(Math.round(n % 60)).padStart(2, '0')}`;
+};
+
+// Numbered step heading used inside the test builder.
+const StepTitle = ({ n, title, hint, compact = false }) => (
+    <div className={`flex items-center gap-3 ${compact ? '' : 'mb-4'}`}>
+        <span className="w-7 h-7 rounded-full bg-ink-900 dark:bg-white/10 text-white text-xs font-extrabold flex items-center justify-center shrink-0">{n}</span>
+        <div className="min-w-0">
+            <h4 className="text-sm font-extrabold text-gray-900 dark:text-white">{title}</h4>
+            {hint && <p className="text-[11px] text-gray-500">{hint}</p>}
+        </div>
+    </div>
+);
 
 const TeacherTest = ({ teacherData }) => {
     const [tests, setTests] = useState([]);
+    const [loadingTests, setLoadingTests] = useState(true);
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusBusy, setStatusBusy] = useState(null);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [viewingResults, setViewingResults] = useState(null); // testId
-    const [results, setResults] = useState([]);
+    const [editingId, setEditingId] = useState(null);
+    const [saving, setSaving] = useState(false);
+
     const subjects = teacherData?.subjects || [];
     const classes = teacherData?.classes || [];
     const batches = teacherData?.batches || [];
@@ -15,37 +64,31 @@ const TeacherTest = ({ teacherData }) => {
     const [testMode, setTestMode] = useState('manual'); // 'manual' or 'upload'
     const [questionFile, setQuestionFile] = useState(null);
     const [numQuestions, setNumQuestions] = useState(1);
+    const [newTest, setNewTest] = useState(emptyTest);
 
-    const [newTest, setNewTest] = useState({
-        title: '',
-        description: '',
-        subjectId: '',
-        classId: '',
-        batchId: '',
-        duration: 30,
-        totalMarks: 0,
-        status: 'active',
-        questionPaperUrl: null,
-        questions: [{ questionText: '', options: ['', '', '', ''], correctOption: 0, marks: 1 }]
-    });
+    // AI generator
+    const [aiOpen, setAiOpen] = useState(false);
+    const [ai, setAi] = useState({ topic: '', count: 5, difficulty: 'medium' });
+    const [aiLoading, setAiLoading] = useState(false);
+
+    // Results drawer
+    const [viewing, setViewing] = useState(null); // test object
+    const [resultsTab, setResultsTab] = useState('leaderboard');
+    const [results, setResults] = useState([]);
+    const [leaderboard, setLeaderboard] = useState([]);
+    const [loadingResults, setLoadingResults] = useState(false);
 
     const fetchTests = useCallback(async () => {
-        const token = sessionStorage.getItem('token');
-        if (!token) return;
-
+        const teacherId = getTeacherId();
+        if (!teacherId) { setLoadingTests(false); return; }
         try {
-            // Decode token to get user ID
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(window.atob(base64));
-            const teacherId = payload.user.id;
-
-            const res = await axios.get(`${config.API_URL}/tests/teacher/${teacherId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setTests(res.data);
+            const res = await axios.get(`${config.API_URL}/tests/teacher/${teacherId}`, { headers: authHeaders() });
+            setTests(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error('Error fetching tests:', err);
+            notify(errMsg(err, 'Failed to load tests'));
+        } finally {
+            setLoadingTests(false);
         }
     }, []);
 
@@ -53,429 +96,755 @@ const TeacherTest = ({ teacherData }) => {
         fetchTests();
     }, [fetchTests]);
 
-    const handleAddQuestion = () => {
-        setNewTest({
-            ...newTest,
-            questions: [...newTest.questions, { questionText: '', options: ['', '', '', ''], correctOption: 0, marks: 1 }]
-        });
-    };
-
-    const handleRemoveQuestion = (index) => {
-        const updated = [...newTest.questions];
-        updated.splice(index, 1);
-        setNewTest({ ...newTest, questions: updated });
-    };
-
-    const handleQuestionChange = (index, field, value) => {
-        const updated = [...newTest.questions];
-        updated[index][field] = value;
-        setNewTest({ ...newTest, questions: updated });
-    };
-
-    const handleOptionChange = (qIndex, oIndex, value) => {
-        const updated = [...newTest.questions];
-        updated[qIndex].options[oIndex] = value;
-        setNewTest({ ...newTest, questions: updated });
-    };
+    // ---------- builder helpers (immutable) ----------
+    const setQuestions = (fn) => setNewTest(t => ({ ...t, questions: fn(t.questions) }));
+    const updateQuestion = (index, patch) => setQuestions(qs => qs.map((q, i) => (i === index ? { ...q, ...patch } : q)));
+    const handleAddQuestion = () => setQuestions(qs => [...qs, blankQuestion()]);
+    const handleRemoveQuestion = (index) => setQuestions(qs => qs.filter((_, i) => i !== index));
+    const handleOptionChange = (qIndex, oIndex, value) =>
+        setQuestions(qs => qs.map((q, i) => (i === qIndex ? { ...q, options: q.options.map((o, j) => (j === oIndex ? value : o)) } : q)));
 
     const generateAnswerSheet = (count) => {
-        const questions = Array.from({ length: count }, (_, i) => ({
+        const n = Math.max(1, Math.min(200, Number(count) || 1));
+        setQuestions(() => Array.from({ length: n }, (_, i) => ({
+            ...blankQuestion(),
             questionText: `Question ${i + 1}`,
             options: ['A', 'B', 'C', 'D'],
-            correctOption: 0,
-            marks: 1
-        }));
-        setNewTest({ ...newTest, questions });
+        })));
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const token = sessionStorage.getItem('token');
-        const headers = { Authorization: `Bearer ${token}` };
+    const openCreate = () => {
+        setEditingId(null);
+        setNewTest(emptyTest());
+        setTestMode('manual');
+        setQuestionFile(null);
+        setAiOpen(false);
+        setIsModalOpen(true);
+    };
 
+    const openEdit = (test) => {
+        setEditingId(test._id);
+        setNewTest({
+            title: test.title || '',
+            description: test.description || '',
+            subjectId: idOf(test.subjectId),
+            classId: idOf(test.classId),
+            batchId: idOf(test.batchId),
+            duration: test.duration || 30,
+            negativeMarks: test.negativeMarks ?? 0,
+            status: test.status || 'active',
+            questionPaperUrl: test.questionPaperUrl || null,
+            questions: (test.questions?.length ? test.questions : [blankQuestion()]).map(q => {
+                const opts = [...(q.options || [])];
+                while (opts.length < 4) opts.push('');
+                return {
+                    type: q.type || 'mcq',
+                    questionText: q.questionText || '',
+                    options: opts.slice(0, 4),
+                    correctOption: q.correctOption ?? 0,
+                    correctAnswer: q.correctAnswer ?? '',
+                    marks: q.marks ?? 4,
+                };
+            })
+        });
+        setTestMode(test.questionPaperUrl ? 'upload' : 'manual');
+        setQuestionFile(null);
+        setAiOpen(false);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        if (saving) return;
+        setIsModalOpen(false);
+        setEditingId(null);
+    };
+
+    // ---------- AI generation ----------
+    const handleGenerateAI = async () => {
+        const subjectName = subjects.find(s => s._id === newTest.subjectId)?.name;
+        if (!subjectName) { notify('Please select a Subject before generating questions'); return; }
+        if (!ai.topic.trim()) { notify('Please enter a topic for the AI'); return; }
+        setAiLoading(true);
+        try {
+            const res = await axios.post(`${config.API_URL}/ai-buddy/generate-questions`, {
+                subject: subjectName,
+                topic: ai.topic.trim(),
+                count: Math.max(1, Math.min(20, Number(ai.count) || 5)),
+                difficulty: ai.difficulty
+            }, { headers: authHeaders() });
+            const generated = (res.data?.questions || []).map(q => {
+                const opts = [...(q.options || [])].map(String);
+                while (opts.length < 4) opts.push('');
+                return {
+                    ...blankQuestion(),
+                    questionText: q.questionText || '',
+                    options: opts.slice(0, 4),
+                    correctOption: Number.isInteger(q.correctOption) ? q.correctOption : 0,
+                    marks: q.marks ?? 4,
+                };
+            });
+            if (!generated.length) { notify('AI returned no questions. Please try a different topic'); return; }
+            setQuestions(qs => [...qs.filter(q => !isBlankQuestion(q)), ...generated]);
+            setTestMode('manual');
+            notify(`${generated.length} AI questions added — please review them before publishing`);
+        } catch (err) {
+            notify(errMsg(err, 'AI generation failed. Please try again'));
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    // ---------- save ----------
+    const handleSubmit = async (e) => {
+        e?.preventDefault();
         if (!newTest.subjectId || !newTest.classId) {
-            alert('Please select BOTH Subject and Class before publishing.');
+            notify('Please select BOTH Subject and Class before publishing.');
+            return;
+        }
+        if (!newTest.questions.length) {
+            notify('Please add at least one question');
+            return;
+        }
+        const badNumerical = newTest.questions.findIndex(q => q.type === 'numerical' && (q.correctAnswer === '' || !Number.isFinite(Number(q.correctAnswer))));
+        if (badNumerical >= 0) {
+            notify(`Please enter the correct numerical answer for Q${badNumerical + 1}`);
+            return;
+        }
+        if (testMode === 'upload' && !questionFile && !newTest.questionPaperUrl) {
+            notify('Please upload the question paper (PDF/Image)');
             return;
         }
 
+        setSaving(true);
         try {
-            let uploadedUrl = null;
+            let paperUrl = testMode === 'upload' ? newTest.questionPaperUrl : null;
             if (testMode === 'upload' && questionFile) {
                 const formData = new FormData();
                 formData.append('file', questionFile);
                 const uploadRes = await axios.post(`${config.API_URL}/tests/upload`, formData, {
-                    headers: { ...headers, 'Content-Type': 'multipart/form-data' }
+                    headers: { ...authHeaders(), 'Content-Type': 'multipart/form-data' }
                 });
-                uploadedUrl = uploadRes.data.url;
+                paperUrl = uploadRes.data.url;
             }
 
-            const totalMarks = newTest.questions.reduce((sum, q) => sum + Number(q.marks), 0);
+            const questions = newTest.questions.map(q => (q.type === 'numerical'
+                ? { type: 'numerical', questionText: q.questionText, options: [], correctOption: 0, correctAnswer: Number(q.correctAnswer), marks: Number(q.marks) || 0 }
+                : { type: 'mcq', questionText: q.questionText, options: q.options, correctOption: Number(q.correctOption), marks: Number(q.marks) || 0 }));
 
             const testPayload = {
-                ...newTest,
-                totalMarks,
-                questionPaperUrl: uploadedUrl
+                title: newTest.title,
+                description: newTest.description,
+                subjectId: newTest.subjectId,
+                classId: newTest.classId,
+                duration: Number(newTest.duration) || 30,
+                negativeMarks: Math.abs(Number(newTest.negativeMarks) || 0),
+                status: newTest.status,
+                totalMarks: questions.reduce((sum, q) => sum + q.marks, 0),
+                questionPaperUrl: paperUrl,
+                questions
             };
+            if (newTest.batchId) testPayload.batchId = newTest.batchId;
 
-            // Remove batchId if it's empty
-            if (!testPayload.batchId) {
-                delete testPayload.batchId;
+            if (editingId) {
+                await axios.put(`${config.API_URL}/tests/${editingId}`, testPayload, { headers: authHeaders() });
+                notify('Test updated successfully!');
+            } else {
+                await axios.post(`${config.API_URL}/tests`, testPayload, { headers: authHeaders() });
+                notify(newTest.status === 'draft' ? 'Test saved as draft' : 'Test created successfully!');
             }
-
-            await axios.post(`${config.API_URL}/tests`, testPayload, { headers });
-
             setIsModalOpen(false);
+            setEditingId(null);
             fetchTests();
-            alert('Test created successfully!');
         } catch (err) {
-            console.error('Error creating test:', err);
-            const errMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to create test';
-            alert(`Error: ${errMsg}`);
+            console.error('Error saving test:', err);
+            notify(`Error: ${errMsg(err, 'Failed to save test')}`);
+        } finally {
+            setSaving(false);
         }
     };
 
-    const fetchResults = async (testId) => {
-        const token = sessionStorage.getItem('token');
+    // ---------- list actions ----------
+    const handleStatusChange = async (test, status) => {
+        if (test.status === status) return;
+        const prev = test.status;
+        setStatusBusy(test._id);
+        setTests(ts => ts.map(t => (t._id === test._id ? { ...t, status } : t)));
         try {
-            // Need a backend endpoint for this
-            const res = await axios.get(`${config.API_URL}/tests/${testId}/results`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setResults(res.data);
-            setViewingResults(testId);
+            await axios.patch(`${config.API_URL}/tests/${test._id}/status`, { status }, { headers: authHeaders() });
+            notify(`Test marked ${status}`);
         } catch (err) {
-            console.error('Error fetching results:', err);
-            alert('Results viewing not implemented in backend yet');
+            setTests(ts => ts.map(t => (t._id === test._id ? { ...t, status: prev } : t)));
+            notify(errMsg(err, 'Failed to update status'));
+        } finally {
+            setStatusBusy(null);
         }
     };
+
+    const handleDelete = async (id) => {
+        try {
+            await axios.delete(`${config.API_URL}/tests/${id}`, { headers: authHeaders() });
+            setTests(ts => ts.filter(t => t._id !== id));
+            notify('Test deleted');
+        } catch (err) {
+            notify(errMsg(err, 'Failed to delete test'));
+        }
+    };
+
+    const openResults = async (test) => {
+        setViewing(test);
+        setResultsTab('leaderboard');
+        setResults([]);
+        setLeaderboard([]);
+        setLoadingResults(true);
+        const headers = authHeaders();
+        const [r, lb] = await Promise.allSettled([
+            axios.get(`${config.API_URL}/tests/${test._id}/results`, { headers }),
+            axios.get(`${config.API_URL}/tests/${test._id}/leaderboard`, { headers })
+        ]);
+        if (r.status === 'fulfilled') setResults(Array.isArray(r.value.data) ? r.value.data : []);
+        if (lb.status === 'fulfilled') setLeaderboard(Array.isArray(lb.value.data) ? lb.value.data : []);
+        if (r.status === 'rejected' && lb.status === 'rejected') notify(errMsg(r.reason, 'Failed to load results'));
+        setLoadingResults(false);
+    };
+
+    const counts = STATUSES.reduce((acc, s) => ({ ...acc, [s]: tests.filter(t => (t.status || 'draft') === s).length }), {});
+    const visibleTests = statusFilter === 'all' ? tests : tests.filter(t => (t.status || 'draft') === statusFilter);
+    const totalMarks = newTest.questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+
+    const avgPct = results.length
+        ? Math.round(results.reduce((s, r) => s + (r.totalMarks ? (r.score / r.totalMarks) * 100 : 0), 0) / results.length)
+        : 0;
+
+    const subjectName = subjects.find(s => s._id === newTest.subjectId)?.name;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-3xl font-black text-gray-900 flex items-center gap-3">
-                        <FaLaptopCode className="text-emerald-500" /> Assessment Center
-                    </h2>
-                    <p className="text-gray-500 font-medium">Create and manage online MCQ examinations</p>
-                </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-gray-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-600 shadow-xl transition-all flex items-center gap-3"
-                >
-                    <FaPlus /> CREATE NEW TEST
-                </button>
-            </div>
+        <div className="space-y-6">
+            <PageHeader
+                icon={FiClipboard}
+                eyebrow="Teaching"
+                title="Online tests"
+                subtitle="Create, schedule and analyse JEE-style assessments."
+                actions={<button type="button" onClick={openCreate} className="ui-btn-primary"><FiPlus /> Create test</button>}
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {tests.map(test => (
-                    <div key={test._id} className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 hover:shadow-2xl transition-all group overflow-hidden relative">
-                        <div className="absolute top-0 right-0 w-2 h-full bg-emerald-400"></div>
-                        <h3 className="text-xl font-black text-gray-800 mb-2 uppercase tracking-tight">{test.title}</h3>
-                        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-6">
-                            {test.subjectId?.name || 'Academic'} • {test.questions?.length} Qs • {test.duration} MINS
-                        </p>
+            <Segmented
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[['all', 'All', tests.length], ...STATUSES.map(s => [s, s.charAt(0).toUpperCase() + s.slice(1), counts[s]])]}
+            />
 
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => fetchResults(test._id)}
-                                className="flex-1 bg-emerald-50 text-emerald-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center gap-2"
-                            >
-                                <FaChartBar /> RESULTS
-                            </button>
-                            <button className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all">
-                                <FaTrash />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Create Test Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[999]">
-                    <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col">
-                        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Test Constructor</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="bg-white p-3 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all shadow-sm">
-                                <FaTimes />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
-                            {/* Metadata Section */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Subject</label>
-                                    <select
-                                        required
-                                        className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-bold"
-                                        value={newTest.subjectId}
-                                        onChange={(e) => setNewTest({ ...newTest, subjectId: e.target.value })}
-                                    >
-                                        <option value="">Select Subject</option>
-                                        {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Target Class</label>
-                                    <select
-                                        required
-                                        className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-bold"
-                                        value={newTest.classId}
-                                        onChange={(e) => setNewTest({ ...newTest, classId: e.target.value })}
-                                    >
-                                        <option value="">Select Class</option>
-                                        {classes.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Duration (Mins)</label>
-                                    <input
-                                        required
-                                        type="number"
-                                        className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-bold"
-                                        value={newTest.duration}
-                                        onChange={(e) => setNewTest({ ...newTest, duration: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Test Title</label>
-                                <input
-                                    required
-                                    type="text"
-                                    placeholder="e.g. Weekly Physics Quiz"
-                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-bold"
-                                    value={newTest.title}
-                                    onChange={(e) => setNewTest({ ...newTest, title: e.target.value })}
-                                />
-                            </div>
-
-                            {/* Test Mode Selection */}
-                            <div className="flex items-center gap-6 p-1 bg-gray-50 rounded-2xl w-fit">
-                                <button
-                                    type="button"
-                                    onClick={() => setTestMode('manual')}
-                                    className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${testMode === 'manual' ? 'bg-white shadow-md text-indigo-600' : 'text-gray-400 hover:text-gray-600'
-                                        }`}
-                                >
-                                    Manual Entry
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setTestMode('upload')}
-                                    className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${testMode === 'upload' ? 'bg-white shadow-md text-indigo-600' : 'text-gray-400 hover:text-gray-600'
-                                        }`}
-                                >
-                                    Upload Paper
-                                </button>
-                            </div>
-
-                            {/* File Upload Section */}
-                            {testMode === 'upload' && (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-[2rem] p-10 text-center relative group hover:bg-indigo-100 transition-all">
-                                        <input
-                                            type="file"
-                                            accept=".pdf,image/*"
-                                            onChange={(e) => setQuestionFile(e.target.files[0])}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        />
-                                        <FaFileAlt className="text-4xl text-indigo-300 mx-auto mb-4 group-hover:scale-110 transition-transform" />
-                                        <h4 className="font-bold text-indigo-900 mb-1">
-                                            {questionFile ? questionFile.name : 'Upload Question Paper (PDF/Image)'}
-                                        </h4>
-                                        <p className="text-xs text-indigo-400 font-medium">Click or Drag file here</p>
-                                    </div>
-
-                                    <div className="bg-gray-50 p-8 rounded-[2rem] flex items-center justify-between">
-                                        <div>
-                                            <h4 className="font-bold text-gray-800">Answer Key Generator</h4>
-                                            <p className="text-xs text-gray-400 font-medium mt-1">Auto-generate OMR sheet for your paper</p>
+            {loadingTests ? (
+                <Spinner label="Loading your tests..." variant="grid" />
+            ) : visibleTests.length === 0 ? (
+                <EmptyState
+                    icon={FiClipboard}
+                    title={tests.length ? `No ${statusFilter} tests` : 'No tests created yet'}
+                    hint={tests.length ? '' : 'Build one manually, upload a paper with an answer key, or let AI draft questions for you.'}
+                    action={!tests.length && <button type="button" onClick={openCreate} className="ui-btn-primary"><FiPlus /> Create first test</button>}
+                />
+            ) : (
+                <div key={statusFilter} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 ui-stagger">
+                    {visibleTests.map(test => {
+                        const status = test.status || 'draft';
+                        return (
+                            <div key={test._id} className="group ui-card ui-card-hover p-5 flex flex-col relative overflow-hidden">
+                                <div className={`absolute inset-x-0 top-0 h-1 ${status === 'active' ? 'bg-brand-gradient' : status === 'completed' ? 'bg-ink-900 dark:bg-white/30' : 'bg-gray-200 dark:bg-white/10'}`} />
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform">
+                                            {test.questionPaperUrl ? <FiFileText /> : <FiClipboard />}
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max="200"
-                                                value={numQuestions}
-                                                onChange={(e) => setNumQuestions(Number(e.target.value))}
-                                                className="w-20 bg-white border-none rounded-xl p-3 text-center font-black shadow-sm"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => generateAnswerSheet(numQuestions)}
-                                                className="bg-gray-900 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 shadow-lg shadow-gray-200 transition-all"
-                                            >
-                                                Generate
-                                            </button>
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">{test.title}</h3>
+                                            <p className="text-xs text-gray-500 truncate">{test.subjectId?.name || 'Academic'} · {test.classId?.name || 'Class'}</p>
                                         </div>
                                     </div>
-
-                                    {/* Generated Answer Key */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {newTest.questions.map((q, qIndex) => (
-                                            <div key={qIndex} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-                                                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Q{qIndex + 1}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <select
-                                                        value={q.correctOption}
-                                                        onChange={(e) => {
-                                                            const updated = [...newTest.questions];
-                                                            updated[qIndex].correctOption = Number(e.target.value);
-                                                            setNewTest({ ...newTest, questions: updated });
-                                                        }}
-                                                        className="bg-indigo-50 border-none rounded-lg p-2 text-xs font-bold text-indigo-700"
-                                                    >
-                                                        {q.options.map((opt, oIdx) => (
-                                                            <option key={oIdx} value={oIdx}>{String.fromCharCode(65 + oIdx)}</option>
-                                                        ))}
-                                                    </select>
-                                                    <input
-                                                        type="number"
-                                                        value={q.marks}
-                                                        onChange={(e) => {
-                                                            const updated = [...newTest.questions];
-                                                            updated[qIndex].marks = Number(e.target.value);
-                                                            setNewTest({ ...newTest, questions: updated });
-                                                        }}
-                                                        className="w-12 bg-gray-50 border-none rounded-lg p-2 text-center text-xs font-bold"
-                                                        placeholder="Mks"
-                                                    />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <Badge tone={STATUS_TONE[status]} dot={status === 'active'}>{status}</Badge>
                                 </div>
-                            )}
 
-                            {/* Manual Question Builder (Only if 'manual') */}
-                            {testMode === 'manual' && (
-                                <>
-                                    <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                                            <FaFileAlt /> Question Inventory ({newTest.questions.length})
-                                        </h4>
-                                    </div>
-
-                                    {newTest.questions.map((question, qIndex) => (
-                                        <div key={qIndex} className="bg-gray-50 p-8 rounded-[2.5rem] relative group border border-transparent hover:border-gray-200 transition-all">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveQuestion(qIndex)}
-                                                className="absolute top-6 right-6 p-2 bg-white text-gray-300 hover:text-red-500 rounded-full hover:shadow-md transition-all opacity-0 group-hover:opacity-100"
-                                            >
-                                                <FaTrash />
-                                            </button>
-
-                                            <div className="space-y-6">
-                                                <div className="flex items-center gap-4">
-                                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Question {qIndex + 1}</span>
-                                                </div>
-
-                                                <textarea
-                                                    required
-                                                    rows="3"
-                                                    className="w-full bg-white border-none rounded-2xl p-6 font-bold text-gray-800 placeholder-gray-300 focus:ring-2 focus:ring-indigo-500 transition-all resize-none shadow-sm"
-                                                    placeholder="Type your question here..."
-                                                    value={question.questionText}
-                                                    onChange={(e) => handleQuestionChange(qIndex, 'questionText', e.target.value)}
-                                                />
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {question.options.map((option, oIndex) => (
-                                                        <div key={oIndex} className="flex items-center gap-4 bg-white p-3 pr-6 rounded-2xl border border-gray-100 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-200 transition-all">
-                                                            <input
-                                                                type="radio"
-                                                                name={`correct-${qIndex}`}
-                                                                checked={question.correctOption === oIndex}
-                                                                onChange={() => handleQuestionChange(qIndex, 'correctOption', oIndex)}
-                                                                className="w-5 h-5 text-indigo-600 border-gray-300 focus:ring-indigo-500 ml-2 cursor-pointer"
-                                                            />
-                                                            <input
-                                                                required
-                                                                type="text"
-                                                                className="flex-1 bg-transparent border-none p-2 text-sm font-medium focus:ring-0 placeholder-gray-300"
-                                                                placeholder={`Option ${String.fromCharCode(65 + oIndex)}`}
-                                                                value={option}
-                                                                onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)}
-                                                            />
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                <div className="flex items-center justify-end">
-                                                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
-                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Marks:</span>
-                                                        <input
-                                                            type="number"
-                                                            min="1"
-                                                            className="w-12 bg-transparent border-none p-0 text-center font-bold text-indigo-600 focus:ring-0"
-                                                            value={question.marks}
-                                                            onChange={(e) => handleQuestionChange(qIndex, 'marks', e.target.value)}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                <div className="grid grid-cols-3 gap-2 mt-4">
+                                    {[['Questions', test.questions?.length || 0], ['Marks', test.totalMarks || 0], ['Minutes', test.duration]].map(([label, val]) => (
+                                        <div key={label} className="rounded-xl bg-gray-50 dark:bg-white/5 py-2 text-center">
+                                            <p className="text-base font-extrabold text-gray-900 dark:text-white tabular-nums">{val}</p>
+                                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
                                         </div>
                                     ))}
+                                </div>
+                                {Number(test.negativeMarks) > 0 && (
+                                    <p className="mt-2 text-[11px] font-semibold text-red-500 flex items-center gap-1"><FiMinusCircle /> −{test.negativeMarks} per wrong answer</p>
+                                )}
 
-                                    <button
-                                        type="button"
-                                        onClick={handleAddQuestion}
-                                        className="w-full py-6 border-2 border-dashed border-gray-200 rounded-[2rem] text-xs font-black text-gray-400 uppercase tracking-widest hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <FaPlus /> Append Another Question
+                                <div className="mt-4">
+                                    <Segmented
+                                        size="sm"
+                                        className="w-full [&>button]:flex-1 [&>button]:justify-center"
+                                        value={status}
+                                        onChange={(s) => statusBusy !== test._id && handleStatusChange(test, s)}
+                                        options={STATUSES.map(s => [s, s.charAt(0).toUpperCase() + s.slice(1)])}
+                                    />
+                                </div>
+
+                                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-white/5 mt-auto">
+                                    <button type="button" onClick={() => openResults(test)} className="ui-btn-dark flex-1 !py-2 text-xs">
+                                        <FiBarChart2 /> Results
                                     </button>
-                                </>
-                            )}
-                        </form>
-
-                        <div className="p-8 bg-gray-50 border-t border-gray-100">
-                            <button
-                                type="submit"
-                                onClick={handleSubmit}
-                                className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-600 shadow-xl transition-all"
-                            >
-                                PUBLISH ASSESSMENT
-                            </button>
-                        </div>
-                    </div>
+                                    <button type="button" onClick={() => openEdit(test)} title="Edit test" aria-label="Edit test" className="ui-btn-secondary !px-3 !py-2">
+                                        <FiEdit2 />
+                                    </button>
+                                    <ConfirmButton
+                                        onConfirm={() => handleDelete(test._id)}
+                                        prompt="Delete test & results?"
+                                        title="Delete test"
+                                        className="ui-btn-secondary !px-3 !py-2 hover:!text-red-500 hover:!border-red-200"
+                                    >
+                                        <FiTrash2 />
+                                    </ConfirmButton>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
-            {/* Results Sidebar/Modal */}
-            {viewingResults && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-end z-[999]">
-                    <div className="bg-white w-full max-w-xl h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
-                        <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Student Performance</h3>
-                            <button onClick={() => setViewingResults(null)} className="bg-white p-3 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all shadow-sm">
-                                <FaTimes />
+            {/* Create / Edit Test Modal */}
+            <Modal
+                open={isModalOpen}
+                onClose={closeModal}
+                icon={FiClipboard}
+                title={editingId ? 'Edit test' : 'Test builder'}
+                subtitle={`${newTest.questions.length} question${newTest.questions.length === 1 ? '' : 's'} · ${totalMarks} marks`}
+                size="xl"
+                dismissible={false}
+                bodyClassName="p-4 md:p-6 bg-gray-50/60 dark:bg-transparent"
+                footer={
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <Badge tone="brand">{newTest.questions.length} Qs</Badge>
+                            <Badge tone="grey">{totalMarks} marks</Badge>
+                            <Badge tone={newTest.status === 'draft' ? 'grey' : 'green'}>{newTest.status}</Badge>
+                        </div>
+                        <div className="flex gap-2 sm:ml-auto">
+                            <button type="button" onClick={closeModal} className="ui-btn-secondary flex-1 sm:flex-none">Cancel</button>
+                            <button type="submit" form="test-form" disabled={saving} className="ui-btn-primary flex-1 sm:flex-none">
+                                {saving ? 'Saving…' : editingId ? 'Save changes' : newTest.status === 'draft' ? 'Save as draft' : 'Publish test'}
                             </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-8 space-y-4">
-                            {results.length > 0 ? results.map((res, idx) => (
-                                <div key={idx} className="bg-gray-50 p-6 rounded-2xl flex justify-between items-center">
-                                    <div>
-                                        <p className="font-bold text-gray-800">{res.studentId?.name}</p>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Rank #{idx + 1}</p>
+                    </div>
+                }
+            >
+                <form id="test-form" onSubmit={handleSubmit} className="space-y-5">
+                    {/* Step 1 — details */}
+                    <section className="ui-card p-4 md:p-5">
+                        <StepTitle n={1} title="Test details" hint="Who it's for and how it's scored" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                            <Field label="Test title" className="md:col-span-3">
+                                <input required type="text" placeholder="e.g. Weekly Physics Quiz – Kinematics" className="ui-input" value={newTest.title} onChange={(e) => setNewTest({ ...newTest, title: e.target.value })} />
+                            </Field>
+                            <Field label="Subject">
+                                <select required className="ui-input" value={newTest.subjectId} onChange={(e) => setNewTest({ ...newTest, subjectId: e.target.value })}>
+                                    <option value="">Select subject</option>
+                                    {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Target class">
+                                <select required className="ui-input" value={newTest.classId} onChange={(e) => setNewTest({ ...newTest, classId: e.target.value })}>
+                                    <option value="">Select class</option>
+                                    {classes.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Batch (optional)">
+                                <select className="ui-input" value={newTest.batchId} onChange={(e) => setNewTest({ ...newTest, batchId: e.target.value })}>
+                                    <option value="">All batches</option>
+                                    {batches.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Duration (minutes)">
+                                <input required type="number" min="1" className="ui-input" value={newTest.duration} onChange={(e) => setNewTest({ ...newTest, duration: e.target.value })} />
+                            </Field>
+                            <Field label="Negative marks / wrong">
+                                <input type="number" min="0" step="0.25" className="ui-input" value={newTest.negativeMarks} onChange={(e) => setNewTest({ ...newTest, negativeMarks: e.target.value })} />
+                            </Field>
+                            <Field label="Status">
+                                <select className="ui-input" value={newTest.status} onChange={(e) => setNewTest({ ...newTest, status: e.target.value })}>
+                                    <option value="active">Active (visible to students)</option>
+                                    <option value="draft">Draft (hidden)</option>
+                                    {editingId && <option value="completed">Completed</option>}
+                                </select>
+                            </Field>
+                            <Field label="Instructions (optional)" className="md:col-span-3">
+                                <textarea rows="2" placeholder="e.g. +4 for correct, -1 for wrong. Numerical answers up to 2 decimals." className="ui-input resize-none" value={newTest.description} onChange={(e) => setNewTest({ ...newTest, description: e.target.value })} />
+                            </Field>
+                        </div>
+                    </section>
+
+                    {/* Step 2 — source */}
+                    <section className="ui-card p-4 md:p-5">
+                        <StepTitle n={2} title="How will you add questions?" hint="Type them, upload a paper with an answer key, or let AI draft them" />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {[
+                                { k: 'manual', icon: FiEdit2, label: 'Manual entry', hint: 'Type MCQ / numerical questions' },
+                                { k: 'upload', icon: FiUploadCloud, label: 'Upload paper', hint: 'PDF/image + answer key' },
+                            ].map(opt => {
+                                const on = testMode === opt.k;
+                                return (
+                                    <button
+                                        key={opt.k}
+                                        type="button"
+                                        onClick={() => setTestMode(opt.k)}
+                                        aria-pressed={on}
+                                        className={`text-left p-3.5 rounded-2xl border-2 transition-all flex items-center gap-3 ${on ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'border-gray-100 dark:border-white/10 hover:border-brand-200'}`}
+                                    >
+                                        <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${on ? 'bg-brand-gradient text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}><opt.icon /></span>
+                                        <span className="min-w-0">
+                                            <span className="block text-sm font-bold text-gray-900 dark:text-white">{opt.label}</span>
+                                            <span className="block text-[11px] text-gray-500">{opt.hint}</span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                onClick={() => setAiOpen(o => !o)}
+                                aria-pressed={aiOpen}
+                                className={`text-left p-[2px] rounded-2xl bg-brand-gradient bg-[length:200%_auto] animate-gradient-x transition-all ${aiOpen ? 'shadow-brand-glow' : 'opacity-90 hover:opacity-100'}`}
+                            >
+                                <span className={`h-full p-3 rounded-[14px] flex items-center gap-3 ${aiOpen ? 'bg-transparent text-white' : 'bg-white dark:bg-ink-900'}`}>
+                                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${aiOpen ? 'bg-white/20' : 'bg-brand-gradient text-white'}`}><FiZap /></span>
+                                    <span className="min-w-0">
+                                        <span className={`block text-sm font-bold ${aiOpen ? '' : 'text-gray-900 dark:text-white'}`}>Generate with AI</span>
+                                        <span className={`block text-[11px] ${aiOpen ? 'text-white/80' : 'text-gray-500'}`}>Draft questions from a topic</span>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* AI panel */}
+                        {aiOpen && (
+                            <div className="mt-4 p-[1.5px] rounded-2xl bg-brand-gradient bg-[length:200%_auto] animate-gradient-x animate-fade-up">
+                                <div className="rounded-[15px] bg-white dark:bg-ink-900 p-4 md:p-5 space-y-4">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <FiZap className="text-brand-500" />
+                                        <h4 className="font-extrabold text-sm ui-gradient-text">AI question generator</h4>
+                                        <span className={`ml-auto ui-badge ${subjectName ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-amber-50 text-amber-700'}`}>
+                                            {subjectName ? `Subject: ${subjectName}` : 'Select a subject in step 1'}
+                                        </span>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-xl font-black text-emerald-600">{res.score}/{res.totalMarks}</p>
-                                        <p className="text-[10px] font-bold text-gray-300 uppercase">{new Date(res.submittedAt).toLocaleDateString()}</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                        <Field label="Topic" className="md:col-span-2">
+                                            <input className="ui-input" placeholder="e.g. Projectile motion" value={ai.topic} onChange={e => setAi({ ...ai, topic: e.target.value })} />
+                                        </Field>
+                                        <Field label="Difficulty">
+                                            <select className="ui-input" value={ai.difficulty} onChange={e => setAi({ ...ai, difficulty: e.target.value })}>
+                                                <option value="easy">Easy</option>
+                                                <option value="medium">Medium</option>
+                                                <option value="hard">Hard (JEE Adv)</option>
+                                            </select>
+                                        </Field>
+                                        <Field label="Count (1–20)">
+                                            <input type="number" min="1" max="20" className="ui-input text-center font-bold" value={ai.count} onChange={e => setAi({ ...ai, count: e.target.value })} />
+                                        </Field>
                                     </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                        <button type="button" onClick={handleGenerateAI} disabled={aiLoading} className="ui-btn-primary">
+                                            {aiLoading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating…</> : <><FiZap /> Generate & append</>}
+                                        </button>
+                                        <p className="text-[11px] text-gray-500">Questions are appended below — always review answers before publishing.</p>
+                                    </div>
+                                    {aiLoading && (
+                                        <div className="space-y-2.5 pt-1" aria-hidden="true">
+                                            {[0, 1].map(i => (
+                                                <div key={i} className="rounded-xl border border-gray-100 dark:border-white/10 p-3 space-y-2">
+                                                    <div className="ui-skeleton h-3.5 w-3/4" />
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {[0, 1, 2, 3].map(j => <div key={j} className="ui-skeleton h-7" />)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            )) : (
-                                <div className="text-center py-20 grayscale opacity-30">
-                                    <FaChartBar className="text-5xl mx-auto mb-4" />
-                                    <p className="font-bold text-gray-400">No attempts yet</p>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* Upload paper */}
+                    {testMode === 'upload' && (
+                        <section className="ui-card p-4 md:p-5 space-y-4 animate-fade-up">
+                            <StepTitle n={3} title="Question paper & answer key" hint="Students see the paper and answer on an OMR-style sheet" />
+                            <div className="relative group border-2 border-dashed border-brand-200 dark:border-brand-500/30 rounded-2xl p-7 text-center bg-brand-50/40 dark:bg-brand-500/5 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-all">
+                                <input
+                                    type="file"
+                                    accept=".pdf,image/*"
+                                    aria-label="Upload question paper"
+                                    onChange={(e) => setQuestionFile(e.target.files[0])}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                />
+                                <div className="mx-auto w-12 h-12 rounded-full bg-brand-gradient text-white flex items-center justify-center text-xl mb-3 group-hover:-translate-y-1 transition-transform"><FiUploadCloud /></div>
+                                <p className="font-bold text-gray-900 dark:text-white text-sm break-all">
+                                    {questionFile ? questionFile.name : newTest.questionPaperUrl ? 'Replace uploaded question paper' : 'Upload question paper (PDF / image)'}
+                                </p>
+                                <p className="text-xs text-brand-600 mt-1">Click or drag a file here</p>
+                            </div>
+                            {newTest.questionPaperUrl && !questionFile && (
+                                <a href={fileHref(newTest.questionPaperUrl)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:underline">
+                                    <FiExternalLink /> View current paper
+                                </a>
+                            )}
+
+                            <div className="rounded-2xl bg-gray-50 dark:bg-white/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white">Answer key generator</h4>
+                                    <p className="text-xs text-gray-500 mt-0.5">Creates an OMR sheet for your paper (replaces the current key)</p>
                                 </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="200"
+                                        aria-label="Number of questions"
+                                        value={numQuestions}
+                                        onChange={(e) => setNumQuestions(Number(e.target.value))}
+                                        className="ui-input !w-20 text-center font-bold !py-2.5"
+                                    />
+                                    <button type="button" onClick={() => generateAnswerSheet(numQuestions)} className="ui-btn-dark !py-2.5">Generate</button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                {newTest.questions.map((q, qIndex) => (
+                                    <div key={qIndex} className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-ink-800 p-2.5 flex items-center justify-between gap-2">
+                                        <span className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-xs font-extrabold text-gray-500">Q{qIndex + 1}</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <select
+                                                aria-label={`Answer for Q${qIndex + 1}`}
+                                                value={q.type === 'numerical' ? 'num' : q.correctOption}
+                                                onChange={(e) => (e.target.value === 'num'
+                                                    ? updateQuestion(qIndex, { type: 'numerical' })
+                                                    : updateQuestion(qIndex, { type: 'mcq', correctOption: Number(e.target.value), options: q.options.some(o => o) ? q.options : ['A', 'B', 'C', 'D'] }))}
+                                                className="bg-brand-50 dark:bg-brand-500/10 rounded-lg px-2 py-2 text-xs font-bold text-brand-700 dark:text-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                                            >
+                                                {[0, 1, 2, 3].map(oIdx => (
+                                                    <option key={oIdx} value={oIdx}>{String.fromCharCode(65 + oIdx)}</option>
+                                                ))}
+                                                <option value="num">#NUM</option>
+                                            </select>
+                                            {q.type === 'numerical' && (
+                                                <input
+                                                    type="number"
+                                                    step="any"
+                                                    aria-label={`Numerical answer for Q${qIndex + 1}`}
+                                                    value={q.correctAnswer}
+                                                    onChange={(e) => updateQuestion(qIndex, { correctAnswer: e.target.value })}
+                                                    className="w-16 bg-brand-50 dark:bg-brand-500/10 rounded-lg p-2 text-center text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-300"
+                                                    placeholder="Ans"
+                                                />
+                                            )}
+                                            <input
+                                                type="number"
+                                                value={q.marks}
+                                                onChange={(e) => updateQuestion(qIndex, { marks: e.target.value })}
+                                                className="w-12 bg-gray-50 dark:bg-white/5 rounded-lg p-2 text-center text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-300"
+                                                placeholder="Mks"
+                                                title="Marks"
+                                                aria-label={`Marks for Q${qIndex + 1}`}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Manual question builder */}
+                    {testMode === 'manual' && (
+                        <section className="space-y-3">
+                            <div className="flex items-center justify-between px-1">
+                                <StepTitle n={3} title={`Questions (${newTest.questions.length})`} hint="Click the circle to mark the correct option" compact />
+                            </div>
+
+                            {newTest.questions.map((question, qIndex) => (
+                                <div key={qIndex} className="group ui-card p-4 md:p-5 relative animate-fade-up">
+                                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                                        <span className="w-8 h-8 rounded-lg bg-brand-gradient text-white flex items-center justify-center text-xs font-extrabold">{qIndex + 1}</span>
+                                        <Segmented
+                                            size="sm"
+                                            value={question.type}
+                                            onChange={(t) => updateQuestion(qIndex, { type: t })}
+                                            options={[['mcq', 'MCQ'], ['numerical', 'Numerical']]}
+                                        />
+                                        <label className="ml-auto flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg border border-gray-200 dark:border-white/10">
+                                            <span className="text-[11px] font-bold text-gray-500">Marks</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                className="w-12 py-1 rounded-md bg-gray-50 dark:bg-white/5 text-center text-sm font-bold text-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                                                value={question.marks}
+                                                onChange={(e) => updateQuestion(qIndex, { marks: e.target.value })}
+                                            />
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveQuestion(qIndex)}
+                                            title="Remove question"
+                                            aria-label={`Remove question ${qIndex + 1}`}
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition"
+                                        >
+                                            <FiTrash2 />
+                                        </button>
+                                    </div>
+
+                                    <textarea
+                                        required
+                                        rows="3"
+                                        className="ui-input resize-none !text-[15px]"
+                                        placeholder="Type your question here…"
+                                        aria-label={`Question ${qIndex + 1} text`}
+                                        value={question.questionText}
+                                        onChange={(e) => updateQuestion(qIndex, { questionText: e.target.value })}
+                                    />
+
+                                    {question.type === 'numerical' ? (
+                                        <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/20">
+                                            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5"><FiCheckCircle /> Correct answer</span>
+                                            <input
+                                                required
+                                                type="number"
+                                                step="any"
+                                                className="ui-input flex-1 !py-2 font-bold"
+                                                placeholder="e.g. 9.8"
+                                                value={question.correctAnswer}
+                                                onChange={(e) => updateQuestion(qIndex, { correctAnswer: e.target.value })}
+                                            />
+                                            <span className="text-[11px] text-gray-500">Tolerance ±0.01</span>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            {question.options.map((option, oIndex) => {
+                                                const correct = Number(question.correctOption) === oIndex;
+                                                return (
+                                                    <div key={oIndex} className={`flex items-center gap-2.5 p-1.5 pr-3 rounded-xl border-2 transition-all focus-within:border-brand-400 ${correct ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/5' : 'border-gray-100 dark:border-white/10 bg-white dark:bg-ink-800'}`}>
+                                                        <label className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-xs font-extrabold cursor-pointer transition-all ${correct ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:bg-brand-100 hover:text-brand-700'}`} title="Mark as correct">
+                                                            <input
+                                                                type="radio"
+                                                                className="sr-only"
+                                                                name={`correct-${qIndex}`}
+                                                                checked={correct}
+                                                                onChange={() => updateQuestion(qIndex, { correctOption: oIndex })}
+                                                                aria-label={`Mark option ${String.fromCharCode(65 + oIndex)} correct`}
+                                                            />
+                                                            {correct ? <FiCheck /> : String.fromCharCode(65 + oIndex)}
+                                                        </label>
+                                                        <input
+                                                            required
+                                                            type="text"
+                                                            className="flex-1 min-w-0 bg-transparent py-2 text-sm font-medium text-gray-800 dark:text-gray-100 focus:outline-none placeholder:text-gray-300"
+                                                            placeholder={`Option ${String.fromCharCode(65 + oIndex)}`}
+                                                            value={option}
+                                                            onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)}
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            <button
+                                type="button"
+                                onClick={handleAddQuestion}
+                                className="w-full py-5 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl text-sm font-bold text-gray-400 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/60 dark:hover:bg-brand-500/5 transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
+                            >
+                                <FiPlus /> Add another question
+                            </button>
+                        </section>
+                    )}
+                </form>
+            </Modal>
+
+            {/* Results drawer */}
+            {viewing && createPortal(
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-end z-[999] animate-fade-in" onClick={() => setViewing(null)}>
+                    <div role="dialog" aria-modal="true" aria-label={`Results for ${viewing.title}`} className="bg-white dark:bg-ink-900 w-full max-w-xl h-full shadow-2xl animate-slide-in-right flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="relative overflow-hidden bg-brand-sunset text-white p-5 md:p-6 space-y-4">
+                            <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
+                            <div className="relative flex justify-between items-start gap-4">
+                                <div className="min-w-0">
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">Test results</p>
+                                    <h3 className="text-xl font-extrabold tracking-tight truncate">{viewing.title}</h3>
+                                </div>
+                                <button type="button" onClick={() => setViewing(null)} aria-label="Close results" className="w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center hover:rotate-90 transition-all"><FiX /></button>
+                            </div>
+                            <div className="relative grid grid-cols-3 gap-2.5">
+                                {[['Attempts', results.length], ['Average', `${avgPct}%`], ['Top score', results[0] ? `${results[0].score}/${results[0].totalMarks}` : '—']].map(([label, val]) => (
+                                    <div key={label} className="rounded-2xl bg-white/15 backdrop-blur border border-white/15 p-3 text-center">
+                                        <p className="text-xl font-extrabold tabular-nums">{val}</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">{label}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="px-5 md:px-6 pt-4">
+                            <Segmented
+                                className="w-full [&>button]:flex-1 [&>button]:justify-center"
+                                value={resultsTab}
+                                onChange={setResultsTab}
+                                options={[
+                                    ['leaderboard', <span key="l" className="flex items-center gap-1.5"><FiAward /> Leaderboard</span>],
+                                    ['submissions', <span key="s" className="flex items-center gap-1.5"><FiUsers /> All submissions</span>],
+                                ]}
+                            />
+                        </div>
+                        <div key={resultsTab} className="flex-1 overflow-y-auto ui-scrollbar p-5 md:p-6 space-y-2.5 ui-stagger">
+                            {loadingResults ? (
+                                <Spinner label="Loading results..." rows={5} />
+                            ) : resultsTab === 'leaderboard' ? (
+                                leaderboard.length > 0 ? leaderboard.map((row, idx) => (
+                                    <div key={`${row.rank}-${idx}`} className={`p-3 rounded-2xl flex items-center gap-3 border ${row.rank === 1 ? 'bg-brand-50 dark:bg-brand-500/10 border-brand-200 dark:border-brand-500/30 shadow-brand-soft' : row.rank <= 3 ? 'bg-brand-50/50 dark:bg-white/5 border-brand-100 dark:border-white/10' : 'bg-white dark:bg-ink-800 border-gray-100 dark:border-white/5'}`}>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0 ${row.rank === 1 ? 'bg-brand-gradient text-white animate-glow' : row.rank <= 3 ? 'bg-ink-900 text-brand-300' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
+                                            {row.rank <= 3 ? <FiAward /> : `#${row.rank}`}
+                                        </div>
+                                        <Avatar name={row.studentName || 'Student'} size="sm" />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-gray-900 dark:text-white truncate">{row.studentName || 'Student'}</p>
+                                            <p className="text-[11px] text-gray-400">Rank #{row.rank}{row.timeTaken ? ` · ${fmtSeconds(row.timeTaken)}` : ''}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-base font-extrabold text-gray-900 dark:text-white tabular-nums">{row.score}/{row.totalMarks}</p>
+                                            <p className="text-[11px] font-bold text-brand-600 tabular-nums">{Math.round(Number(row.percentage) || 0)}%</p>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <EmptyState icon={FiAward} title="No attempts yet" hint="Rankings appear once students submit." className="!shadow-none" />
+                                )
+                            ) : results.length > 0 ? results.map((res, idx) => {
+                                const pct = res.totalMarks ? (res.score / res.totalMarks) * 100 : 0;
+                                return (
+                                    <div key={res._id || idx} className="p-3.5 rounded-2xl bg-white dark:bg-ink-800 border border-gray-100 dark:border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar name={res.studentId?.name || 'Student'} size="sm" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-gray-900 dark:text-white truncate">{res.studentId?.name || 'Student'}</p>
+                                                <p className="text-[11px] text-gray-400 flex flex-wrap gap-x-2">
+                                                    <span>#{idx + 1}</span>
+                                                    {res.correct !== undefined && <><span className="text-emerald-600">✓ {res.correct}</span><span className="text-red-500">✗ {res.wrong ?? 0}</span><span>– {res.unattempted ?? 0}</span></>}
+                                                    {res.submittedAt && <span>{new Date(res.submittedAt).toLocaleDateString()}</span>}
+                                                </p>
+                                            </div>
+                                            <p className="text-lg font-extrabold text-brand-600 tabular-nums">{res.score}/{res.totalMarks}</p>
+                                        </div>
+                                        <div className="mt-2.5 h-1.5 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden">
+                                            <div className="h-full bg-brand-gradient rounded-full transition-all duration-700" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            }) : (
+                                <EmptyState icon={FiBarChart2} title="No attempts yet" hint="Submissions will be listed here." className="!shadow-none" />
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

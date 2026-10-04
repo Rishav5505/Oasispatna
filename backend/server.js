@@ -9,6 +9,9 @@ const { Server } = require('socket.io');
 
 dotenv.config();
 
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = require('./utils/jwtSecret');
+
 // Register all models to avoid populate errors
 require('./models/User');
 require('./models/Student');
@@ -33,8 +36,14 @@ require('./models/VideoProgress');
 require('./models/OnlineTest');
 require('./models/TestResult');
 require('./models/Doubt');
+require('./models/SignupVerification');
 
 const app = express();
+
+// Behind a reverse proxy req.ip must be the real client IP, otherwise per-IP rate limits are shared by everyone.
+// Render sets RENDER=true and always sits behind one proxy hop; TRUST_PROXY overrides.
+const trustProxy = process.env.TRUST_PROXY || (process.env.RENDER ? '1' : '');
+if (trustProxy) app.set('trust proxy', Number(trustProxy) || trustProxy);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -44,7 +53,7 @@ const io = new Server(server, {
 });
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 // Inject Socket.io into request
 app.use((req, res, next) => {
@@ -75,14 +84,37 @@ mongoose.connect(dbUri, {
   });
 
 // Socket.io Logic
+// Clients must authenticate with their JWT: either io(url, { auth: { token } })
+// or socket.emit('join', token). The socket joins the room named after decoded.user.id.
+// A raw userId is rejected.
+const verifySocketToken = (token) => {
+  try {
+    if (typeof token !== 'string' || !token) return null;
+    const decoded = jwt.verify(token.replace(/^Bearer /, ''), JWT_SECRET);
+    return decoded && decoded.user && decoded.user.id ? decoded.user : null;
+  } catch (e) {
+    return null;
+  }
+};
+
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
-  socket.on('join', (userId) => {
-    if (userId) {
-      socket.join(userId);
-      console.log(`User ${userId} joined their room`);
+  const handshakeUser = verifySocketToken(socket.handshake.auth && socket.handshake.auth.token);
+  if (handshakeUser) {
+    socket.join(String(handshakeUser.id));
+    socket.data.user = handshakeUser;
+  }
+
+  socket.on('join', (token) => {
+    const user = verifySocketToken(token);
+    if (!user) {
+      socket.emit('join_error', { message: 'Invalid or expired token' });
+      return;
     }
+    socket.join(String(user.id));
+    socket.data.user = user;
+    console.log(`User ${user.id} joined their room`);
   });
 
   socket.on('disconnect', () => {
@@ -105,6 +137,7 @@ app.use('/api/teacher', require('./routes/teacher'));
 app.use('/api/leads', require('./routes/leads'));
 app.use('/api/public', require('./routes/public'));
 app.use('/api/schedule', require('./routes/schedule'));
+app.use('/api/academics', require('./routes/academics'));
 
 // New Routes
 app.use('/api/live-classes', require('./routes/liveClassRoutes'));
@@ -113,6 +146,14 @@ app.use('/api/tests', require('./routes/testRoutes'));
 app.use('/api/doubts', require('./routes/doubtRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/ai-buddy', require('./routes/aiRoutes'));
+
+// Fallback error handler (e.g. malformed JSON bodies)
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.parse.failed') return res.status(400).json({ message: 'Malformed JSON body' });
+  if (err && err.type === 'entity.too.large') return res.status(413).json({ message: 'Request body too large' });
+  console.error('Unhandled error:', err);
+  res.status(500).json({ message: 'Server error' });
+});
 
 const PORT = process.env.PORT || 5002;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

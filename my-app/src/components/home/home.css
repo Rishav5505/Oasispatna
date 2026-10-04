@@ -1,0 +1,118 @@
+/* Home page only — playful motion layer. Transforms/opacity only. */
+
+/* ---------- Hero ---------- */
+.home-hero-overlay {
+  background: linear-gradient(0deg, rgba(9, 9, 11, 0.97) 0%, rgba(9, 9, 11, 0.86) 42%, rgba(9, 9, 11, 0.25) 72%, rgba(9, 9, 11, 0.05) 100%);
+}
+@media (min-width: 1024px) {
+  .home-hero-overlay {
+    background:
+      linear-gradient(90deg, rgba(9, 9, 11, 0.94) 0%, rgba(9, 9, 11, 0.8) 32%, rgba(9, 9, 11, 0.25) 58%, rgba(9, 9, 11, 0) 78%),
+      linear-gradient(0deg, rgba(9, 9, 11, 0.55) 0%, rgba(9, 9, 11, 0) 30%);
+  }
+}
+
+@keyframes home-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(40px, -30px, 0) scale(1.12); }
+  66% { transform: translate3d(-30px, 25px, 0) scale(0.92); }
+}
+.home-orb { animation: home-drift 14s ease-in-out infinite; will-change: transform; }
+
+@keyframes home-sym {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--r, 0deg)); }
+  50% { transform: translate3d(0, -22px, 0) rotate(calc(var(--r, 0deg) + 10deg)); }
+}
+.home-symbol { animation: home-sym var(--d, 9s) ease-in-out infinite; animation-delay: var(--delay, 0s); }
+
+/* Rotating headline word */
+@keyframes home-word-in {
+  0% { opacity: 0; transform: translateY(55%) rotateX(-70deg); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0) rotateX(0); filter: blur(0); }
+}
+.home-word { display: inline-block; transform-origin: 50% 100%; animation: home-word-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Cursor-follow glow (desktop pointer only) */
+.home-cursor-glow { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .home-cursor-glow {
+    display: block;
+    background: radial-gradient(520px circle at var(--mx, 70%) var(--my, 40%), rgba(243, 112, 33, 0.22), transparent 60%);
+    transition: opacity 0.4s ease;
+  }
+}
+
+/* Slide progress on hero indicators */
+@keyframes home-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.home-fill { transform-origin: left; animation: home-fill var(--dur, 5s) linear both; }
+
+/* ---------- Buttons ---------- */
+.home-shine { position: relative; overflow: hidden; isolation: isolate; }
+.home-shine::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+.home-shine:hover::after { transform: translateX(120%); transition: transform 0.75s ease; }
+
+/* ---------- Ticker ---------- */
+@keyframes home-ticker { to { transform: translate3d(-50%, 0, 0); } }
+.home-ticker { animation: home-ticker var(--dur, 36s) linear infinite; will-change: transform; }
+.home-ticker-rev { animation-direction: reverse; }
+.home-ticker-wrap:hover .home-ticker { animation-play-state: paused; }
+
+/* ---------- Progress ring ---------- */
+.home-ring-track { stroke: rgba(243, 112, 33, 0.14); }
+.home-ring { transition: stroke-dashoffset 1.6s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ---------- Tilt card glare ---------- */
+.home-tilt { transform-style: preserve-3d; transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
+.home-tilt-glare {
+  background: radial-gradient(420px circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, 0.35), transparent 55%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.home-tilt:hover .home-tilt-glare { opacity: 1; }
+
+/* ---------- Flip cards ---------- */
+.home-flip { perspective: 1200px; }
+.home-flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+.home-flip-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.home-flip-back { transform: rotateY(180deg); }
+.home-flip.is-flipped .home-flip-inner { transform: rotateY(180deg); }
+@media (hover: hover) and (pointer: fine) {
+  .home-flip:hover .home-flip-inner,
+  .home-flip:focus-within .home-flip-inner { transform: rotateY(180deg); }
+}
+
+/* ---------- Misc ---------- */
+@keyframes home-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+.home-wiggle { display: inline-block; animation: home-wiggle 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+
+@keyframes home-pop {
+  0% { opacity: 0; transform: scale(0.92) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.home-pop { animation: home-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.home-noscroll { scrollbar-width: none; -ms-overflow-style: none; }
+.home-noscroll::-webkit-scrollbar { display: none; }
+
+.home-fab { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease; }
+@media (max-width: 767px) {
+  .home-fab-hide-mobile { opacity: 0; transform: translateY(16px) scale(0.9); pointer-events: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-orb, .home-symbol, .home-ticker, .home-wiggle, .home-word, .home-fill { animation: none !important; }
+  .home-tilt { transform: none !important; }
+  .home-shine::after { display: none; }
+}

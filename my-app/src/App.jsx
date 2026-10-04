@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useTheme } from './contexts/ThemeContext';
 import { AuthProvider, AuthContext } from './contexts/AuthContext';
 import Home from './pages/public/Home';
 import About from './pages/public/About';
@@ -13,6 +14,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AIFloatingBuddy from './components/AIFloatingBuddy';
+import { Toaster } from 'react-hot-toast';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -20,11 +22,22 @@ const ProtectedRoute = ({ children }) => {
   return token ? children : <Navigate to="/login" />;
 };
 
+// Keeps the public website in light mode; only dashboards honour the dark theme.
+const RouteTheme = () => {
+  const { pathname } = useLocation();
+  const { setForceLight } = useTheme();
+  React.useEffect(() => {
+    setForceLight(!pathname.startsWith('/dashboard'));
+  }, [pathname, setForceLight]);
+  return null;
+};
+
 function App() {
   return (
     <AuthProvider>
       <div className="overflow-x-hidden w-full min-h-screen">
         <Router>
+          <RouteTheme />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
@@ -40,6 +53,15 @@ function App() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
           <AIFloatingBuddy />
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 3500,
+              style: { fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '14px', borderRadius: '14px', background: '#111', color: '#fff', padding: '12px 16px' },
+              success: { iconTheme: { primary: '#f37021', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+            }}
+          />
         </Router>
       </div>
     </AuthProvider>

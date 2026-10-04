@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const roleAuth = require('../middleware/roleAuth');
 const Doubt = require('../models/Doubt');
-const multer = require('multer');
-const path = require('path');
-
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
-const upload = multer({ storage });
+const Student = require('../models/Student');
+const Teacher = require('../models/Teacher');
+const { uploadSingle, fileUrl } = require('../utils/upload');
+const { notifyUser } = require('../utils/notify');
+const { getAccessibleStudent, resolveStudent, isObjectId } = require('../utils/access');
 
 // Get doubts for a specific student
 router.get('/student/:studentId', auth, async (req, res) => {
     try {
-        const doubts = await Doubt.find({ studentId: req.params.studentId })
+        const student = await getAccessibleStudent(req, res, req.params.studentId);
+        if (!student) return;
+
+        const doubts = await Doubt.find({ studentId: student._id })
             .populate('subjectId', 'name')
             .sort({ createdAt: -1 });
         res.json(doubts);
@@ -24,16 +24,33 @@ router.get('/student/:studentId', auth, async (req, res) => {
     }
 });
 
-// Post a new doubt
-router.post('/', auth, upload.single('image'), async (req, res) => {
+// Post a new doubt (student derives identity from token)
+router.post('/', auth, uploadSingle('image'), async (req, res) => {
     try {
-        const { title, description, studentId, subjectId } = req.body;
+        const { title, description, subjectId } = req.body;
+
+        let student;
+        if (req.user.role === 'student') {
+            student = await Student.findOne({ userId: req.user.id });
+            if (!student) return res.status(404).json({ message: 'Student profile not found' });
+        } else if (req.user.role === 'admin') {
+            student = await resolveStudent(req.body.studentId);
+            if (!student) return res.status(404).json({ message: 'Student not found' });
+        } else {
+            return res.status(403).json({ message: 'Only students can post doubts' });
+        }
+
+        if (!title || !description || !subjectId) {
+            return res.status(400).json({ message: 'Title, description and subject are required' });
+        }
+        if (!isObjectId(String(subjectId))) return res.status(400).json({ message: 'Invalid subject' });
+
         const newDoubt = new Doubt({
-            title,
-            description,
-            studentId,
+            title: String(title).slice(0, 300),
+            description: String(description).slice(0, 5000),
+            studentId: student._id,
             subjectId,
-            imageUrl: req.file ? `/uploads/${req.file.filename}` : null
+            imageUrl: req.file ? fileUrl(req.file) : null
         });
         await newDoubt.save();
         res.json(newDoubt);
@@ -44,33 +61,31 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 });
 
 // Reply to a doubt (Teacher/Admin)
-router.post('/:doubtId/reply', auth, async (req, res) => {
+router.post('/:doubtId/reply', auth, roleAuth('teacher', 'admin'), async (req, res) => {
     try {
         const { message } = req.body;
+        if (!message || !String(message).trim()) return res.status(400).json({ message: 'Reply message is required' });
+        if (!isObjectId(req.params.doubtId)) return res.status(400).json({ message: 'Invalid doubt id' });
+
         const doubt = await Doubt.findById(req.params.doubtId);
         if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
 
         doubt.replies.push({
             userId: req.user.id,
-            message,
+            message: String(message).slice(0, 5000),
             createdAt: new Date()
         });
         doubt.status = 'resolved';
         await doubt.save();
 
-        // Create Notification for the student
-        const Notification = require('../models/Notification');
-        const notification = new Notification({
-            recipient: doubt.studentId,
-            title: 'Doubt Resolved',
-            message: `Your doubt "${doubt.title}" has been replied to.`,
-            type: 'academic'
-        });
-        await notification.save();
-
-        // Send real-time notification
-        if (req.io) {
-            req.io.to(doubt.studentId.toString()).emit('notification', notification);
+        // Notify the student's USER account (Doubt.studentId is a Student _id)
+        const student = await Student.findById(doubt.studentId).select('userId');
+        if (student && student.userId) {
+            await notifyUser(req.io, student.userId, {
+                title: 'Doubt Resolved',
+                message: `Your doubt "${doubt.title}" has been replied to.`,
+                type: 'academic'
+            });
         }
 
         res.json(doubt);
@@ -79,10 +94,8 @@ router.post('/:doubtId/reply', auth, async (req, res) => {
     }
 });
 
-const Teacher = require('../models/Teacher');
-
 // Get all doubts (Teacher/Admin view)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, roleAuth('teacher', 'admin'), async (req, res) => {
     try {
         let query = {};
 

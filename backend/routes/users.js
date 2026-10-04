@@ -12,6 +12,16 @@ const roleAuth = require('../middleware/roleAuth');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const sendSMS = require('../utils/sendSMS');
+const { getAccessibleStudent, isObjectId } = require('../utils/access');
+
+const safeUser = (u) => {
+  if (!u) return u;
+  const o = u.toObject ? u.toObject() : { ...u };
+  delete o.password;
+  delete o.resetToken;
+  delete o.resetTokenExpiry;
+  return o;
+};
 
 const router = express.Router();
 
@@ -54,6 +64,12 @@ router.get('/', auth, roleAuth('admin'), async (req, res) => {
 router.post('/', auth, roleAuth('admin'), async (req, res) => {
   const { name, email, phone, password, role } = req.body;
   try {
+    if (!name || !email || !phone || !password || !role) {
+      return res.status(400).json({ message: 'name, email, phone, password and role are required' });
+    }
+    const existing = await User.findOne({ email: String(email).toLowerCase() });
+    if (existing) return res.status(400).json({ message: 'User already exists' });
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -68,26 +84,77 @@ router.post('/', auth, roleAuth('admin'), async (req, res) => {
       await teacher.save();
     }
 
-    res.json(user);
+    res.json(safeUser(user));
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Update user
+// (admin) - only whitelisted fields (name, email, phone, role); password is hashed
 router.put('/:id', auth, roleAuth('admin'), async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(user);
+    if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid user id' });
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const { name, email, phone, role, password } = req.body;
+    if (name !== undefined && name !== '') user.name = name;
+    if (phone !== undefined && phone !== '') user.phone = phone;
+    if (role !== undefined) {
+      if (!['admin', 'teacher', 'student', 'parent'].includes(role)) {
+        return res.status(400).json({ message: 'Invalid role' });
+      }
+      user.role = role;
+    }
+    if (email !== undefined && email !== '') {
+      const emailLower = String(email).trim().toLowerCase();
+      if (emailLower !== user.email) {
+        const exists = await User.findOne({ email: emailLower, _id: { $ne: user._id } });
+        if (exists) return res.status(400).json({ message: 'Email already exists' });
+        user.email = emailLower;
+      }
+    }
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(String(password), salt);
+    }
+
+    await user.save();
+    res.json(safeUser(user));
   } catch (err) {
+    console.error('Error updating user:', err);
+    if (err.code === 11000) return res.status(400).json({ message: 'Email already exists' });
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Delete user
+// Cascades Student/Teacher profile docs and unlinks parents
 router.delete('/:id', auth, roleAuth('admin'), async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.params.id);
+    if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid user id' });
+    if (req.params.id === String(req.user.id)) {
+      return res.status(400).json({ message: 'You cannot delete your own account' });
+    }
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Student profile(s): unlink parents, then remove
+    const students = await Student.find({ userId: user._id }).select('_id');
+    if (students.length > 0) {
+      const ids = students.map(s => s._id);
+      await User.updateMany({ studentId: { $in: ids } }, { $unset: { studentId: 1 } });
+      await Student.deleteMany({ _id: { $in: ids } });
+    }
+
+    // Teacher profile
+    await Teacher.deleteMany({ userId: user._id });
+
+    // Parent: unlink from any children
+    await Student.updateMany({ parentId: user._id }, { $unset: { parentId: 1 } });
+
+    await User.findByIdAndDelete(user._id);
     res.json({ message: 'User deleted' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -96,8 +163,10 @@ router.delete('/:id', auth, roleAuth('admin'), async (req, res) => {
 
 // Create teacher (admin only)
 router.post('/teachers', auth, roleAuth('admin'), async (req, res) => {
-  const { name, email, phone, subjects, batches, classes, password } = req.body;
+  const { name, phone, subjects, batches, classes, password } = req.body;
+  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   try {
+    if (!name || !email || !phone) return res.status(400).json({ message: 'Name, email and phone are required' });
     let user = await User.findOne({ email });
     if (user) return res.status(400).json({ message: 'User already exists' });
 
@@ -176,7 +245,7 @@ router.post('/teachers', auth, roleAuth('admin'), async (req, res) => {
     }
     sendSMS(phone, credentialMsg);
 
-    res.json({ message: 'Teacher created successfully', password: tempPassword });
+    res.json({ message: 'Teacher created successfully' });
   } catch (err) {
     console.error('Error creating teacher:', err);
     res.status(500).json({ message: 'Server error' });
@@ -313,10 +382,79 @@ router.get('/students/all', auth, roleAuth('admin'), async (req, res) => {
   }
 });
 
+// Create student (admin): User(role student, mustChangePassword) + Student; emails credentials
+router.post('/students', auth, roleAuth('admin'), async (req, res) => {
+  const { name, phone, password, classId, batchId, fatherName, motherName, totalFee } = req.body;
+  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  try {
+    if (!name || !email || !phone || !classId) {
+      return res.status(400).json({ message: 'Name, email, phone and class are required' });
+    }
+    if (!isObjectId(String(classId)) || (batchId && !isObjectId(String(batchId)))) {
+      return res.status(400).json({ message: 'Invalid class or batch id' });
+    }
+    const cls = await Class.findById(classId);
+    if (!cls) return res.status(400).json({ message: 'Class not found' });
+    if (batchId && !(await Batch.findById(batchId))) return res.status(400).json({ message: 'Batch not found' });
+
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ message: 'User already exists' });
+
+    const tempPassword = password || crypto.randomBytes(6).toString('hex');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(String(tempPassword), salt);
+
+    const createdUser = await User.create({
+      name,
+      email,
+      phone,
+      password: hashedPassword,
+      role: 'student',
+      mustChangePassword: true,
+    });
+
+    let student;
+    try {
+      student = await Student.create({
+        userId: createdUser._id,
+        name,
+        fatherName,
+        motherName,
+        classId,
+        batchId: batchId || undefined,
+        totalFee: Number(totalFee) || 0,
+        admissionDate: new Date(),
+      });
+    } catch (e) {
+      await User.deleteOne({ _id: createdUser._id }); // roll back the half-created account
+      throw e;
+    }
+
+    const loginUrl = (process.env.FRONTEND_URL || 'http://localhost:5173') + '/login';
+    const msg = 'Welcome to Oasis JEE Classes, ' + name + '!\n\n' +
+      'Your student account has been created.\n' +
+      'Login: ' + loginUrl + '\n' +
+      'Email: ' + email + '\n' +
+      'Temporary password: ' + tempPassword + '\n\n' +
+      'You will be asked to change your password on first login.';
+    sendEmail(email, 'Your Oasis Student Account', msg).catch(e => console.error('Failed to send student credential email:', e.message));
+
+    const populated = await Student.findById(student._id).populate('classId', 'name').populate('batchId', 'name');
+    res.status(201).json({ user: safeUser(createdUser), student: populated });
+  } catch (err) {
+    console.error('Error creating student:', err);
+    if (err.code === 11000) return res.status(400).json({ message: 'User already exists' });
+    if (err.name === 'ValidationError' || err.name === 'CastError') return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get student details by userId
 router.get('/students/:userId', auth, async (req, res) => {
   try {
-    const student = await Student.findOne({ userId: req.params.userId })
+    const found = await getAccessibleStudent(req, res, req.params.userId, { userFirst: true });
+    if (!found) return;
+    const student = await Student.findById(found._id)
       .populate('userId', 'name email profilePhoto')
       .populate('classId')
       .populate('batchId')
@@ -334,29 +472,34 @@ router.get('/students/:userId', auth, async (req, res) => {
 // Update student details by userId
 router.put('/students/:userId', auth, async (req, res) => {
   try {
-    console.log('Updating student for userId:', req.params.userId);
-    console.log('Student data received:', req.body);
+    const { role, id: callerId } = req.user;
+    if (!isObjectId(req.params.userId)) return res.status(400).json({ message: 'Invalid user id' });
+    // Only admin or the student themself may edit
+    if (role !== 'admin' && !(role === 'student' && String(callerId) === String(req.params.userId))) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    const isAdmin = role === 'admin';
 
     let student = await Student.findOne({ userId: req.params.userId });
+    if (!student && isAdmin) student = await Student.findById(req.params.userId);
 
     // If student doesn't exist, create one
     if (!student) {
-      console.log('Creating new student record...');
+      const owner = await User.findById(req.params.userId).select('role name');
+      if (!owner || owner.role !== 'student') return res.status(404).json({ message: 'Student not found' });
       student = new Student({
         userId: req.params.userId,
-        name: req.body.name || '',
+        name: req.body.name || owner.name || 'Student',
         fatherName: req.body.fatherName || '',
         motherName: req.body.motherName || '',
         dob: req.body.dob || null,
         admissionDate: req.body.admissionDate || new Date(),
-        classId: null,
-        batchId: null,
+        classId: req.body.classId || null,
+        batchId: req.body.batchId || null,
         subjects: []
       });
       await student.save();
-      console.log('New student created:', student._id);
     } else {
-      console.log('Updating existing student:', student._id);
       // Update existing student
       // Use logic that allows empty strings to be saved if sent
       if (req.body.name !== undefined) student.name = req.body.name;
@@ -364,20 +507,20 @@ router.put('/students/:userId', auth, async (req, res) => {
       if (req.body.motherName !== undefined) student.motherName = req.body.motherName;
       if (req.body.dob !== undefined) student.dob = req.body.dob;
       if (req.body.admissionDate !== undefined) student.admissionDate = req.body.admissionDate;
-      if (req.body.classId !== undefined) student.classId = req.body.classId;
-      if (req.body.batchId !== undefined) student.batchId = req.body.batchId;
+      // Students may pick their class/batch only while unset (onboarding); admin can always change
+      if (req.body.classId !== undefined && (isAdmin || !student.classId)) student.classId = req.body.classId || null;
+      if (req.body.batchId !== undefined && (isAdmin || !student.batchId)) student.batchId = req.body.batchId || null;
+      if (isAdmin && req.body.totalFee !== undefined) student.totalFee = Number(req.body.totalFee) || 0;
 
       await student.save();
-      console.log('Student updated successfully:', student);
     }
 
-    const updatedStudent = await Student.findOne({ userId: req.params.userId })
+    const updatedStudent = await Student.findById(student._id)
       .populate('userId', 'name email profilePhoto')
       .populate('classId')
       .populate('batchId')
       .populate('subjects')
       .populate('parentId', 'name email');
-    console.log('Final student data:', updatedStudent);
     res.json(updatedStudent);
   } catch (err) {
     console.error('Error updating student:', err);

@@ -3,6 +3,7 @@ import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import config from '../config';
+import { notify } from '../utils/notify';
 
 const Contact = () => {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', course: '' });
@@ -13,10 +14,10 @@ const Contact = () => {
     setIsSubmitting(true);
     try {
       await axios.post(`${config.API_URL}/leads`, form);
-      alert('Enquiry submitted successfully! We will get back to you soon.');
+      notify('Enquiry submitted successfully! We will get back to you soon.');
       setForm({ name: '', email: '', phone: '', message: '', course: '' });
     } catch (error) {
-      alert('Error submitting enquiry. Please try again.');
+      notify('Error submitting enquiry. Please try again.');
     }
     setIsSubmitting(false);
   };

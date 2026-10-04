@@ -1,42 +1,48 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { FiUser, FiMail, FiPhone, FiLock, FiKey, FiCheckCircle, FiArrowLeft } from 'react-icons/fi';
 import oasisLogo from '../assets/oasis_logo.png';
 import config from '../config';
+import AuthField, { AuthShell, Spinner } from '../components/ui/AuthField';
 
 const Register = () => {
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', password: '', role: 'student' });
-  const [photoFile, setPhotoFile] = useState(null);
+  const [photoFile] = useState(null);
   const [otp, setOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
+  const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+
   const handleSendOtp = async () => {
-    if (!form.email) return alert('Please enter your email first');
+    if (!form.email) return toast.error('Please enter your email first');
     setSendingOtp(true);
     try {
       await axios.post(`${config.API_URL}/auth/send-signup-otp`, { email: form.email });
       setIsOtpSent(true);
-      alert('OTP sent to your email!');
+      toast.success('OTP sent to your email!');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to send OTP');
+      toast.error(err.response?.data?.message || 'Failed to send OTP');
     } finally {
       setSendingOtp(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp) return alert('Please enter the OTP');
+    if (!otp) return toast.error('Please enter the OTP');
     setVerifyingOtp(true);
     try {
       await axios.post(`${config.API_URL}/auth/verify-signup-otp`, { email: form.email, otp });
       setIsVerified(true);
-      alert('Email verified successfully!');
+      toast.success('Email verified successfully!');
     } catch (err) {
-      alert(err.response?.data?.message || 'Invalid OTP');
+      toast.error(err.response?.data?.message || 'Invalid OTP');
     } finally {
       setVerifyingOtp(false);
     }
@@ -44,8 +50,9 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isVerified) return alert('Please verify your email with OTP first');
+    if (!isVerified) return toast.error('Please verify your email with OTP first');
 
+    setSubmitting(true);
     try {
       const formData = new FormData();
       Object.keys(form).forEach(key => formData.append(key, form[key]));
@@ -54,160 +61,137 @@ const Register = () => {
       await axios.post(`${config.API_URL}/auth/register`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      alert('Registration successful! Please login.');
+      toast.success('Registration successful! Please login.');
       navigate('/login');
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Registration failed. Please try again.';
-      alert(errorMsg);
+      toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const roles = [
+    { id: 'student', label: 'Student', emoji: '👨‍🎓' },
+    { id: 'parent', label: 'Parent', emoji: '👨‍👩‍👦' },
+  ];
+
   return (
-    <div className="min-h-screen bg-black bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-[0_0_50px_rgba(243,112,33,0.3)] p-8 w-full max-w-md transform transition-all duration-300 border border-orange-500/10">
+    <AuthShell>
+      <div className="relative bg-white rounded-3xl shadow-[0_0_60px_rgba(243,112,33,0.25)] p-7 sm:p-8 border border-brand-500/10">
+        <Link
+          to="/"
+          className="absolute top-6 left-6 text-gray-400 hover:text-brand-500 transition-colors flex items-center gap-1 text-xs font-bold uppercase tracking-wider group"
+        >
+          <FiArrowLeft className="group-hover:-translate-x-1 transition-transform" /> Home
+        </Link>
+
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg overflow-hidden p-2 border border-orange-100">
+          <div className="w-16 h-16 bg-white rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg p-2 border border-brand-100">
             <img src={oasisLogo} alt="Oasis Logo" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-black text-gray-900 mb-1 uppercase tracking-tight">Join Oasis</h2>
-          <p className="text-sm text-gray-500 font-medium tracking-wide">Enter your details to register</p>
+          <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Create your account</h2>
+          <p className="text-sm text-gray-500 mt-1">Join Oasis and start your JEE journey</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold transition-all"
-              required
-            />
-          </div>
+        {/* Role selector */}
+        <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-2xl mb-5">
+          {roles.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setForm({ ...form, role: r.id })}
+              className={`py-2.5 rounded-xl text-sm font-bold transition-all ${form.role === r.id ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              <span className="mr-1.5">{r.emoji}</span>{r.label}
+            </button>
+          ))}
+        </div>
 
-          <div className="relative flex gap-2">
-            <div className="relative flex-1">
-              <input
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          <AuthField icon={FiUser} placeholder="Full Name" value={form.name} onChange={update('name')} autoComplete="name" required />
+
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <AuthField
+                icon={FiMail}
                 type="email"
                 placeholder="Email Address"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                onChange={update('email')}
                 disabled={isVerified}
-                className={`w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold transition-all ${isVerified ? 'bg-green-50 border-green-200 text-green-700' : ''}`}
+                autoComplete="email"
+                className={isVerified ? '!bg-green-50 !border-green-200 !text-green-700' : ''}
                 required
               />
             </div>
-            {!isVerified && (
+            {isVerified ? (
+              <span className="shrink-0 bg-green-50 text-green-600 px-3.5 rounded-2xl text-xs font-bold border border-green-200 flex items-center gap-1.5">
+                <FiCheckCircle /> Verified
+              </span>
+            ) : (
               <button
                 type="button"
                 onClick={handleSendOtp}
                 disabled={sendingOtp || !form.email}
-                className="bg-[#f37021] text-white px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-orange-600 disabled:opacity-50 transition-all shadow-md active:scale-95"
+                className="shrink-0 min-w-[96px] bg-brand-500 text-white px-4 rounded-2xl text-xs font-bold hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-brand-500/20 active:scale-95 flex items-center justify-center"
               >
-                {sendingOtp ? '...' : (isOtpSent ? 'Resend' : 'OTP')}
+                {sendingOtp ? <Spinner /> : isOtpSent ? 'Resend OTP' : 'Send OTP'}
               </button>
-            )}
-            {isVerified && (
-              <span className="bg-green-100 text-green-600 px-4 py-2 rounded-2xl text-xs font-bold border border-green-200 flex items-center">
-                ✓ Verified
-              </span>
             )}
           </div>
 
           {isOtpSent && !isVerified && (
-            <div className="relative flex gap-2 animate-in slide-in-from-top-2">
-              <div className="relative flex-1">
-                <input
-                  type="text"
+            <div className="flex gap-2 animate-fade-in-up">
+              <div className="flex-1">
+                <AuthField
+                  icon={FiKey}
+                  inputMode="numeric"
                   placeholder="Enter 6-digit OTP"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold"
-                  maxLength="6"
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  className="tracking-[0.3em] placeholder:tracking-normal"
+                  maxLength={6}
+                  autoComplete="one-time-code"
                 />
               </div>
               <button
                 type="button"
                 onClick={handleVerifyOtp}
-                disabled={verifyingOtp || !otp}
-                className="bg-black text-white px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-gray-900 disabled:opacity-50 transition-all"
+                disabled={verifyingOtp || otp.length < 4}
+                className="shrink-0 min-w-[96px] bg-gray-900 text-white px-4 rounded-2xl text-xs font-bold hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center"
               >
-                {verifyingOtp ? '...' : 'Verify'}
+                {verifyingOtp ? <Spinner /> : 'Verify'}
               </button>
             </div>
           )}
 
-          <div className="relative">
-            <input
-              type="tel"
-              placeholder="Phone Number"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold"
-              required
-            />
-          </div>
-
-          <div className="relative">
-            <input
-              type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold"
-              required
-            />
-          </div>
-
-          <div className="relative">
-            <select
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold appearance-none cursor-pointer"
-            >
-              <option value="student">Student Account</option>
-              <option value="parent">Parent Account</option>
-            </select>
-          </div>
+          <AuthField icon={FiPhone} type="tel" inputMode="numeric" placeholder="Phone Number" value={form.phone} onChange={update('phone')} autoComplete="tel" required />
+          <AuthField icon={FiLock} type="password" placeholder="Create Password" value={form.password} onChange={update('password')} autoComplete="new-password" required />
 
           {form.role === 'student' && (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              <input
-                type="text"
-                placeholder="Father's Name"
-                value={form.fatherName || ''}
-                onChange={(e) => setForm({ ...form, fatherName: e.target.value })}
-                className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold"
-              />
-              <input
-                type="text"
-                placeholder="Mother's Name"
-                value={form.motherName || ''}
-                onChange={(e) => setForm({ ...form, motherName: e.target.value })}
-                className="w-full p-4 border border-gray-100 rounded-2xl focus:border-[#f37021] focus:ring-4 focus:ring-orange-500/10 focus:outline-none bg-gray-50 text-sm font-semibold"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-fade-in-up">
+              <AuthField icon={FiUser} placeholder="Father's Name" value={form.fatherName || ''} onChange={update('fatherName')} />
+              <AuthField icon={FiUser} placeholder="Mother's Name" value={form.motherName || ''} onChange={update('motherName')} />
             </div>
           )}
 
           <button
             type="submit"
-            disabled={!isVerified}
-            className={`w-full p-5 rounded-2xl font-black text-sm uppercase tracking-widest transform transition-all duration-300 shadow-xl ${isVerified ? 'bg-gradient-to-r from-[#f37021] to-black text-white hover:scale-[1.02] shadow-orange-500/30' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+            disabled={!isVerified || submitting}
+            className={`w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${isVerified ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white hover:shadow-xl hover:shadow-brand-500/30 hover:-translate-y-0.5 active:translate-y-0' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
           >
-            {isVerified ? 'Create My Account' : 'Verify Email to Proceed'}
+            {submitting ? <><Spinner /> Creating account...</> : isVerified ? 'Create My Account' : 'Verify Email to Continue'}
           </button>
         </form>
 
-        <div className="text-center mt-6">
-          <p className="text-xs text-gray-500 font-bold">
-            Already a member?
-            <Link to="/login" className="text-[#f37021] hover:text-orange-700 ml-1">
-              LOGIN HERE
-            </Link>
-          </p>
-        </div>
+        <p className="text-center mt-6 text-sm text-gray-500">
+          Already a member?
+          <Link to="/login" className="text-brand-500 hover:text-brand-700 font-bold ml-1">
+            Login here
+          </Link>
+        </p>
       </div>
-    </div>
+    </AuthShell>
   );
 };
 
