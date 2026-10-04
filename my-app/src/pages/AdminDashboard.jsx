@@ -118,6 +118,7 @@ const AdminDashboard = () => {
   const [teacherAttendanceLogs, setTeacherAttendanceLogs] = useState([]);
   const [fees, setFees] = useState([]);
   const [feeForm, setFeeForm] = useState({ studentId: '', amount: '', type: 'Tuition', remarks: '' });
+  const [savingFee, setSavingFee] = useState(false);
   const [selectedFeeStudent, setSelectedFeeStudent] = useState(null); // Selected student for fee details
   const [feeSearchTerm, setFeeSearchTerm] = useState('');
   const [isEditingFee, setIsEditingFee] = useState(false);
@@ -663,6 +664,8 @@ const AdminDashboard = () => {
 
   const handleAddFee = async (e) => {
     e.preventDefault();
+    if (savingFee) return; // double clicks used to record the same payment several times
+    setSavingFee(true);
     try {
       const token = sessionStorage.getItem('token');
       await axios.post(`${config.API_URL}/fees/pay`, feeForm, {
@@ -677,6 +680,8 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error("Payment Error:", err);
       notify('Failed to record payment: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingFee(false);
     }
   };
 
@@ -1502,8 +1507,8 @@ const AdminDashboard = () => {
                             <label className={labelCls} htmlFor="fee-remarks">Remarks / receipt note</label>
                             <input id="fee-remarks" type="text" className={inputCls} placeholder="e.g. Paid via UPI, Transaction ID…" value={feeForm.remarks} onChange={e => setFeeForm({ ...feeForm, remarks: e.target.value })} />
                           </div>
-                          <button type="submit" className="md:col-span-2 ui-btn-primary !py-3">
-                            <FiCheckCircle /> Confirm &amp; send receipt
+                          <button type="submit" disabled={savingFee} className="md:col-span-2 ui-btn-primary !py-3">
+                            <FiCheckCircle /> {savingFee ? 'Recording…' : <>Confirm &amp; send receipt</>}
                           </button>
                         </form>
                       </div>

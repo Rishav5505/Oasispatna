@@ -196,6 +196,16 @@ router.post('/pay', auth, roleAuth('admin', 'staff', 'parent'), async (req, res)
         const isAdmin = req.user.role === 'admin' || req.user.role === 'staff';
         const status = isAdmin ? 'Paid' : 'Pending';
 
+        // Guard against double submits recording the same payment twice
+        const duplicate = await Fee.findOne({
+            studentId: studentProfile._id,
+            amount: amt,
+            mode: mode || 'Cash',
+            ...(transactionId ? { transactionId } : {}),
+            createdAt: { $gte: new Date(Date.now() - 15 * 1000) }
+        }).select('_id').lean();
+        if (duplicate) return res.status(409).json({ message: 'This payment was just recorded. Please refresh before adding it again.' });
+
         const fee = new Fee({
             studentId: studentProfile._id,
             amount: amt,
