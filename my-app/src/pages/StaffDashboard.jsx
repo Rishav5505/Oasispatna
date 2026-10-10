@@ -162,7 +162,7 @@ const StaffDashboard = () => {
               </>
             )}
             {activeTab === 'admissions' && <AdmissionsManager canApprove={false} reloadKey={liveKey} />}
-            {activeTab === 'fees' && <StaffFees students={students} focusStudentId={focusFeeStudent} onFocusHandled={clearFocus} />}
+            {activeTab === 'fees' && <StaffFees students={students} focusStudentId={focusFeeStudent} onFocusHandled={clearFocus} onDataChanged={fetchCounts} />}
             {activeTab === 'students' && (
               <StaffStudents students={students} loading={studentsLoading} onRefresh={fetchStudents} onOpenFees={openFeeStudent} />
             )}

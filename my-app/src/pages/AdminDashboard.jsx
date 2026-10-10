@@ -11,11 +11,9 @@ import {
 } from 'react-icons/fi';
 import oasisLogo from '../assets/oasis_logo.png';
 import oasisFullLogo from '../assets/oasis_full_logo.png';
-import receiptBanner from '../assets/receipt_banner.png';
 import config from '../config';
 import { notify, toast } from '../utils/notify';
 import OverviewAnalytics from '../components/admin/OverviewAnalytics';
-import FeeApprovals from '../components/admin/FeeApprovals';
 import AddStudentModal from '../components/admin/AddStudentModal';
 import AcademicsManager from '../components/admin/AcademicsManager';
 import NoticeHistory from '../components/admin/NoticeHistory';
@@ -29,7 +27,7 @@ import { Sidebar, Topbar, MobileBottomNav, CommandPalette } from '../components/
 import { ADMIN_NAV_SPEC, buildNav } from '../components/admin/adminNav';
 import AdmissionsManager from '../components/admin/AdmissionsManager';
 import AdmissionFunnel from '../components/admin/AdmissionFunnel';
-import FeePlanCard from '../components/admin/FeePlanCard';
+import FeesDesk from '../components/admin/fees/FeesDesk';
 import UpcomingDues from '../components/admin/UpcomingDues';
 import BulkImportModal from '../components/admin/BulkImportModal';
 import FinanceManager from '../components/admin/FinanceManager';
@@ -38,7 +36,6 @@ import StaffManager from '../components/admin/StaffManager';
 import AtRiskCard from '../components/admin/AtRiskCard';
 import TopbarExtras from '../components/admin/TopbarExtras';
 import PreferencesCard from '../components/admin/PreferencesCard';
-import { printInvoice } from '../components/admin/printDocs';
 import { api } from '../components/admin/adminApi';
 import EventCalendar from '../components/common/EventCalendar';
 import UpcomingEventsCard from '../components/common/UpcomingEventsCard';
@@ -48,7 +45,7 @@ import { useChatUnread } from '../components/common/useChatUnread';
 import { useI18n } from '../i18n/useI18n';
 import { StatCard } from '../components/ui/Motion';
 import usePagination from '../components/admin/usePagination';
-import { toastError, formatINR } from '../components/admin/adminApi';
+import { toastError } from '../components/admin/adminApi';
 import { liveClassStatus } from '../components/admin/liveStatus';
 
 const photoUrl = (p) => (p ? `${config.API_URL.replace('/api', '')}${p}` : null);
@@ -116,13 +113,6 @@ const AdminDashboard = () => {
   const [viewingAttendanceTeacher, setViewingAttendanceTeacher] = useState(null);
 
   const [teacherAttendanceLogs, setTeacherAttendanceLogs] = useState([]);
-  const [fees, setFees] = useState([]);
-  const [feeForm, setFeeForm] = useState({ studentId: '', amount: '', type: 'Tuition', remarks: '' });
-  const [savingFee, setSavingFee] = useState(false);
-  const [selectedFeeStudent, setSelectedFeeStudent] = useState(null); // Selected student for fee details
-  const [feeSearchTerm, setFeeSearchTerm] = useState('');
-  const [isEditingFee, setIsEditingFee] = useState(false);
-  const [newTotalFee, setNewTotalFee] = useState('');
 
   // Academics / Test State
   const [tests, setTests] = useState([]);
@@ -153,7 +143,6 @@ const AdminDashboard = () => {
   const [leads, setLeads] = useState([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [testsLoading, setTestsLoading] = useState(false);
-  const [feesLoading, setFeesLoading] = useState(false);
   const [liveLoading, setLiveLoading] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [showAddStudent, setShowAddStudent] = useState(false);
@@ -162,7 +151,7 @@ const AdminDashboard = () => {
   const [admissionsLiveKey, setAdmissionsLiveKey] = useState(0);
   const [pendingAdmissions, setPendingAdmissions] = useState(0);
   const [socket, setSocket] = useState(null);
-  const [planReloadKey, setPlanReloadKey] = useState(0);
+  const [feeFocusId, setFeeFocusId] = useState(null); // student to open in the fees desk
   const { t } = useI18n();
   const nav = useMemo(() => buildNav(ADMIN_NAV_SPEC, t), [t]);
   const { count: chatUnread } = useChatUnread({ socket });
@@ -264,11 +253,8 @@ const AdminDashboard = () => {
     }
   }, [selectedResultExam, activeTab]);
 
-  // Fetch fees when tab changes to 'fees'
+  // Fetch tab data lazily
   useEffect(() => {
-    if (activeTab === 'fees') {
-      fetchFees();
-    }
     if (activeTab === 'tests') {
       fetchTests();
     }
@@ -455,21 +441,6 @@ const AdminDashboard = () => {
       totalTeachers: allUsers.filter(u => u.role === 'teacher').length,
       totalParents: allUsers.filter(u => u.role === 'parent').length,
     }));
-  };
-
-  const fetchFees = async () => {
-    setFeesLoading(true);
-    try {
-      const token = sessionStorage.getItem('token');
-      const res = await axios.get(`${config.API_URL}/fees/all`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setFees(res.data);
-    } catch (err) {
-      toastError(err, 'Failed to load fee records');
-    } finally {
-      setFeesLoading(false);
-    }
   };
 
   const fetchTests = async () => {
@@ -662,96 +633,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAddFee = async (e) => {
-    e.preventDefault();
-    if (savingFee) return; // double clicks used to record the same payment several times
-    setSavingFee(true);
-    try {
-      const token = sessionStorage.getItem('token');
-      await axios.post(`${config.API_URL}/fees/pay`, feeForm, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      notify('Payment recorded successfully!');
-      setFeeForm(prev => ({ studentId: prev.studentId, amount: '', type: 'Tuition', remarks: '' }));
-      fetchFees();
-      setPlanReloadKey(k => k + 1);
-      // Refresh users/students to update stats if necessary (though fee stats are separate)
-      // Ideally we should also refresh the student list to get updated Paid amounts if we tracked that there, but we calculate it live.
-    } catch (err) {
-      console.error("Payment Error:", err);
-      notify('Failed to record payment: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setSavingFee(false);
-    }
-  };
-
-  const handleUpdateTotalFee = async () => {
-    try {
-      const token = sessionStorage.getItem('token');
-      // Safely get the user ID string from the potentially populated userId object
-      const targetUserId = selectedFeeStudent.userId?._id || selectedFeeStudent.userId;
-
-      await axios.put(`${config.API_URL}/users/students/${targetUserId}/fee`,
-        { totalFee: newTotalFee },
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      notify('Total Fee updated!');
-      setIsEditingFee(false);
-      fetchAllStudents(); // Refresh student data to show new fee
-      // We also need to update selectedFeeStudent locally to reflect change immediately
-      setSelectedFeeStudent(prev => ({ ...prev, totalFee: newTotalFee }));
-    } catch (err) {
-      console.error("Update Fee Error:", err);
-      notify('Failed to update fee: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  const handleDownloadReceipt = (payment) => {
-    const receiptContent = `
-        <html>
-        <head>
-            <title>Fee Receipt - ${payment.transactionId || 'N/A'}</title>
-            <style>
-                body { font-family: 'Courier New', monospace; padding: 40px; }
-                .receipt-box { border: 2px dashed #333; padding: 20px; max-width: 600px; margin: 0 auto; }
-                .header { text-align: center; margin-bottom: 20px; }
-                .details { margin-bottom: 20px; }
-                .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
-                .footer { text-align: center; margin-top: 20px; font-size: 12px; }
-            </style>
-        </head>
-        <body>
-            <div class="receipt-box">
-                <div class="header">
-                    <img src="${window.location.origin}${receiptBanner}" alt="Oasis Header" style="width: 100%; max-height: 150px; object-fit: contain; margin-bottom: 20px;" />
-                    <h2>OASIS JEE CLASSES</h2>
-                    <p>Official Payment Receipt</p>
-                </div>
-                <div class="details">
-                    <div class="row"><span>Date:</span> <span>${new Date(payment.date).toLocaleDateString()}</span></div>
-                    <div class="row"><span>Receipt No:</span> <span>${payment.transactionId || payment._id.slice(-8).toUpperCase()}</span></div>
-                    <div class="row"><span>Student Name:</span> <span>${selectedFeeStudent?.name || 'Student'}</span></div>
-                    <div class="row"><span>Father's Name:</span> <span>${selectedFeeStudent?.fatherName || 'N/A'}</span></div>
-                    <hr/>
-                    <div class="row"><span>Payment Type:</span> <span>${payment.type}</span></div>
-                    <div class="row"><span>Amount Paid:</span> <span>₹${payment.amount}</span></div>
-                    <div class="row"><span>Payment Mode:</span> <span>${payment.remarks || 'Admin Entry'}</span></div>
-                    <hr/>
-                    <div class="row" style="font-weight: bold; font-size: 18px;"><span>TOTAL:</span> <span>₹${payment.amount}</span></div>
-                </div>
-                <div class="footer">
-                    <p>This is a computer-generated receipt.</p>
-                    <button onclick="window.print()">PRINT RECEIPT</button>
-                </div>
-            </div>
-        </body>
-        </html>
-    `;
-    const win = window.open('', '', 'width=800,height=600');
-    win.document.write(receiptContent);
-    win.document.close();
-  };
-
   const handleStudentClick = async (student) => {
     console.log('Clicked student:', student);
     setSelectedStudent(student);
@@ -923,35 +804,20 @@ const AdminDashboard = () => {
 
   // Jump to a student's fee profile (from dues lists)
   const openFeeStudent = (studentId) => {
-    const s = allStudents.find(x => String(x._id) === String(studentId));
-    if (!s) return;
-    setSelectedFeeStudent(s);
-    setFeeForm(prev => ({ ...prev, studentId: s._id }));
-    setFeeSearchTerm(s.name);
+    setFeeFocusId(studentId);
     navigate('fees');
+  };
+  const clearFeeFocus = useCallback(() => setFeeFocusId(null), []);
+  // A payment / plan change in the fees desk moves numbers shown elsewhere (student list, nav badge).
+  const refreshAfterFees = () => {
+    fetchAllStudents();
+    api.get('/fees/pending').then(l => setSummary(s => ({ ...s, pendingPayments: l.length }))).catch(() => {});
   };
 
   // Client-side pagination (20/page) for the large tables
   const studentPg = usePagination(filteredStudents);
-  const feesPg = usePagination(fees);
   const testsPg = usePagination(tests);
   const teacherUsers = users.filter(u => u.role === 'teacher');
-
-  // Fees tab KPIs, derived from already-loaded fees + students (same rules as the analytics endpoint).
-  const feeKpis = useMemo(() => {
-    const paidBy = new Map();
-    let collected = 0;
-    fees.forEach(f => {
-      if ((f.status || 'Paid') !== 'Paid') return;
-      const amt = Number(f.amount) || 0;
-      collected += amt;
-      const sid = String(f.studentId?._id || f.studentId || '');
-      paidBy.set(sid, (paidBy.get(sid) || 0) + amt);
-    });
-    const pending = allStudents.reduce((a, s) => a + Math.max(0, (Number(s.totalFee) || 0) - (paidBy.get(String(s._id)) || 0)), 0);
-    const pendingCount = fees.filter(f => (f.status || '').toLowerCase() === 'pending').length;
-    return { collected, pending, pendingCount, pct: collected + pending > 0 ? (collected / (collected + pending)) * 100 : 0 };
-  }, [fees, allStudents]);
 
   const childrenOf = useCallback(
     (parentId) => allStudents.filter(s => (s.parentId?._id || s.parentId) === parentId),
@@ -972,7 +838,7 @@ const AdminDashboard = () => {
   const paletteActions = [
     { key: 'add-student', label: 'Add a new student', hint: 'Create login & email credentials', icon: FiUserPlus, run: () => { navigate('students'); setShowAddStudent(true); } },
     { key: 'onboard-teacher', label: 'Onboard a teacher', hint: 'Open the faculty form', icon: FiUserCheck, run: () => { navigate('teachers'); setTimeout(() => teacherFormRef.current?.scrollIntoView({ behavior: 'smooth' }), 150); } },
-    { key: 'record-payment', label: 'Record a fee payment', hint: 'Search a student in Fees', icon: FiCreditCard, run: () => navigate('fees') },
+    { key: 'record-payment', label: 'Record a fee payment', hint: 'Pick the class, then the student', icon: FiCreditCard, run: () => navigate('fees') },
     { key: 'broadcast', label: 'Broadcast a notice', hint: 'Students, parents, teachers', icon: FiVolume2, run: () => navigate('communication') },
     { key: 'link-parent', label: 'Link parent to student', hint: 'Parents directory', icon: FiLink, run: () => navigate('parents') },
     { key: 'bulk-import', label: t('admin.palette.bulk'), hint: t('admin.palette.bulkHint'), icon: FiUploadCloud, run: () => { navigate('students'); setShowBulkImport(true); } },
@@ -1022,19 +888,6 @@ const AdminDashboard = () => {
       </div>
     );
   }
-
-  const selectedFeeTotals = (() => {
-    if (!selectedFeeStudent) return null;
-    const studentFees = fees.filter(f => (f.studentId?._id === selectedFeeStudent._id || f.studentId === selectedFeeStudent._id));
-    const totalPaid = studentFees.reduce((acc, curr) => (curr.status === 'Paid' ? acc + curr.amount : acc), 0);
-    const totalFee = selectedFeeStudent.totalFee || 50000; // Default or fetched
-    const due = totalFee - totalPaid;
-    return { studentFees, totalPaid, totalFee, due };
-  })();
-
-  const feeMatches = feeSearchTerm && !selectedFeeStudent
-    ? allStudents.filter(s => s.name.toLowerCase().includes(feeSearchTerm.toLowerCase()))
-    : [];
 
   // 3. Main Dashboard Render
   return (
@@ -1357,288 +1210,13 @@ const AdminDashboard = () => {
 
             {/* ============================ FEES ============================ */}
             {activeTab === 'fees' && (
-              <>
-                <PageHeader
-                  icon={FiCreditCard}
-                  eyebrow="Finance"
-                  title="Fees management"
-                  subtitle="Search a student to collect payments and view history"
-                  actions={(
-                    <div className="relative w-full lg:w-96">
-                      {searchInput(feeSearchTerm, e => { setFeeSearchTerm(e.target.value); setSelectedFeeStudent(null); }, 'Search student by name…')}
-                      {feeSearchTerm && !selectedFeeStudent && (
-                        <div className="absolute top-full left-0 right-0 mt-2 ui-card !rounded-2xl max-h-72 overflow-y-auto ui-scrollbar z-20 p-1.5 animate-scale-in origin-top">
-                          {feeMatches.map(s => (
-                            <button
-                              type="button"
-                              key={s._id}
-                              onClick={() => {
-                                setSelectedFeeStudent(s);
-                                setFeeForm(prev => ({ ...prev, studentId: s._id }));
-                                setFeeSearchTerm(s.name);
-                              }}
-                              className="group w-full p-2.5 hover:bg-brand-50 dark:hover:bg-white/5 rounded-xl transition-colors flex items-center gap-3 text-left"
-                            >
-                              <Avatar name={s.name} size="sm" />
-                              <span className="flex-1 min-w-0">
-                                <span className="block font-bold text-sm text-gray-800 dark:text-gray-100 truncate">{s.name}</span>
-                                <span className="block text-[11px] text-gray-500">{s.classId?.name || 'Class N/A'} · {s.fatherName ? `S/O ${s.fatherName}` : 'Father: N/A'}</span>
-                              </span>
-                              <FiChevronRight className="text-gray-300 group-hover:text-brand-500" />
-                            </button>
-                          ))}
-                          {feeMatches.length === 0 && <div className="p-4 text-center text-gray-400 text-sm">No students found</div>}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                />
-
-                {selectedFeeStudent ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
-                    {/* Left: Student payment profile */}
-                    <div className="space-y-5">
-                      <div className="relative overflow-hidden rounded-3xl bg-brand-sunset text-white p-6 shadow-brand-glow">
-                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-                        <div className="relative">
-                          <div className="flex items-center gap-4 mb-5">
-                            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-2xl font-extrabold">
-                              {selectedFeeStudent.name.charAt(0)}
-                            </div>
-                            <div className="min-w-0">
-                              <h3 className="text-lg font-extrabold truncate">{selectedFeeStudent.name}</h3>
-                              <p className="text-white/70 text-sm truncate">{selectedFeeStudent.email || 'No Email'}</p>
-                            </div>
-                            <button onClick={() => { setSelectedFeeStudent(null); setFeeSearchTerm(''); }} className="ml-auto w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center shrink-0" aria-label="Back to all fees"><FiX /></button>
-                          </div>
-                          <dl className="space-y-2.5 bg-black/15 p-4 rounded-2xl text-sm">
-                            {[['Class', selectedFeeStudent.classId?.name || 'N/A'], ["Father's name", selectedFeeStudent.fatherName || 'Not Recorded'], ['Admission date', new Date().toLocaleDateString()]].map(([k, v]) => (
-                              <div key={k} className="flex justify-between gap-3"><dt className="text-white/70 font-semibold">{k}</dt><dd className="font-bold text-right">{v}</dd></div>
-                            ))}
-                          </dl>
-                        </div>
-                      </div>
-
-                      <FeePlanCard
-                        key={selectedFeeStudent._id}
-                        studentId={selectedFeeStudent._id}
-                        defaultTotal={selectedFeeStudent.totalFee}
-                        canEdit
-                        reloadKey={planReloadKey}
-                        onChanged={(p) => { setSelectedFeeStudent(prev => ({ ...prev, totalFee: p.netFee })); fetchAllStudents(); }}
-                      />
-
-                      {/* Financial summary */}
-                      <div className="ui-card p-5 md:p-6">
-                        <h4 className={`${h3} mb-4`}>Fee status</h4>
-                        <div className="flex justify-center mb-5">
-                          <ProgressRing value={selectedFeeTotals.totalFee > 0 ? (selectedFeeTotals.totalPaid / selectedFeeTotals.totalFee) * 100 : 0} size={140} stroke={13} color="#10b981" label="Share of total fee paid">
-                            <p className="text-2xl font-extrabold">{selectedFeeTotals.totalFee > 0 ? Math.min(100, Math.round((selectedFeeTotals.totalPaid / selectedFeeTotals.totalFee) * 100)) : 0}%</p>
-                            <p className={labelSm}>paid</p>
-                          </ProgressRing>
-                        </div>
-                        <div className="space-y-2.5">
-                          <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl">
-                            <span className="text-emerald-800 dark:text-emerald-300 font-bold text-sm">Total paid</span>
-                            <span className="text-xl font-extrabold text-emerald-600">₹{selectedFeeTotals.totalPaid.toLocaleString()}</span>
-                          </div>
-                          <div className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl">
-                            <span className="text-gray-500 font-bold text-sm">Total fee</span>
-                            <div className="flex items-center gap-2">
-                              {isEditingFee ? (
-                                <div className="flex items-center gap-1.5 animate-scale-in">
-                                  <input
-                                    type="number"
-                                    className="ui-input !w-28 !py-1.5 font-bold"
-                                    value={newTotalFee}
-                                    onChange={(e) => setNewTotalFee(e.target.value)}
-                                    aria-label="New total fee"
-                                  />
-                                  <button onClick={handleUpdateTotalFee} className="w-8 h-8 rounded-lg text-emerald-600 bg-emerald-100 hover:bg-emerald-200 flex items-center justify-center" aria-label="Save total fee"><FiCheck /></button>
-                                  <button onClick={() => setIsEditingFee(false)} className="w-8 h-8 rounded-lg text-red-600 bg-red-100 hover:bg-red-200 flex items-center justify-center" aria-label="Cancel"><FiX /></button>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex flex-col items-end">
-                                    <span className={`text-lg font-extrabold ${selectedFeeTotals.totalFee === 0 ? 'text-red-500 animate-pulse' : 'text-gray-800 dark:text-gray-100'}`}>
-                                      ₹{selectedFeeTotals.totalFee.toLocaleString()}
-                                    </span>
-                                    {selectedFeeTotals.totalFee === 0 && <Badge tone="red" className="mt-1">Needs calibration</Badge>}
-                                  </div>
-                                  <button
-                                    onClick={() => { setNewTotalFee(selectedFeeTotals.totalFee); setIsEditingFee(true); }}
-                                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${selectedFeeTotals.totalFee === 0 ? 'bg-brand-gradient text-white shadow-brand-soft animate-glow' : 'text-gray-400 hover:text-brand-600 hover:bg-brand-50'}`}
-                                    title="Configure total course fee"
-                                    aria-label="Configure total course fee"
-                                  >
-                                    <FiEdit2 />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between p-3.5 bg-red-50 dark:bg-red-500/10 rounded-2xl">
-                            <span className="text-red-800 dark:text-red-300 font-bold text-sm">Due amount</span>
-                            <span className="text-xl font-extrabold text-red-600">₹{selectedFeeTotals.due > 0 ? selectedFeeTotals.due.toLocaleString() : 0}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: payment & history */}
-                    <div className="lg:col-span-2 space-y-5">
-                      <div className="ui-card p-5 md:p-6">
-                        <h3 className={`${h3} mb-5 flex items-center gap-2.5`}><span className="w-9 h-9 rounded-xl bg-brand-gradient text-white flex items-center justify-center shadow-brand-soft"><FiPlus /></span> Collect new payment</h3>
-                        <form onSubmit={handleAddFee} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className={labelCls} htmlFor="fee-amount">Amount (₹)</label>
-                            <input id="fee-amount" type="number" className={`${inputCls} text-lg`} placeholder="Enter amount" value={feeForm.amount} onChange={e => setFeeForm({ ...feeForm, amount: e.target.value })} required />
-                          </div>
-                          <div>
-                            <label className={labelCls} htmlFor="fee-type">Payment type</label>
-                            <select id="fee-type" className={inputCls} value={feeForm.type} onChange={e => setFeeForm({ ...feeForm, type: e.target.value })}>
-                              <option value="Tuition">Tuition Fee</option>
-                              <option value="Exam">Exam Fee</option>
-                              <option value="Registration">Registration Fee</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className={labelCls} htmlFor="fee-remarks">Remarks / receipt note</label>
-                            <input id="fee-remarks" type="text" className={inputCls} placeholder="e.g. Paid via UPI, Transaction ID…" value={feeForm.remarks} onChange={e => setFeeForm({ ...feeForm, remarks: e.target.value })} />
-                          </div>
-                          <button type="submit" disabled={savingFee} className="md:col-span-2 ui-btn-primary !py-3">
-                            <FiCheckCircle /> {savingFee ? 'Recording…' : <>Confirm &amp; send receipt</>}
-                          </button>
-                        </form>
-                      </div>
-
-                      <div className="ui-card overflow-hidden">
-                        <div className="px-5 md:px-6 py-5 flex items-center justify-between">
-                          <h3 className={h3}>Payment history</h3>
-                          <Badge tone="gray">{selectedFeeTotals.studentFees.length} payments</Badge>
-                        </div>
-                        <div className={`${tableScroll} max-h-[28rem]`}>
-                          <table className="w-full text-left min-w-[520px]">
-                            <thead>
-                              <tr className={theadRow}>
-                                <th className={thCls}>Date</th>
-                                <th className={thCls}>Type</th>
-                                <th className={thCls}>Amount</th>
-                                <th className={`${thCls} text-right`}>Receipt</th>
-                              </tr>
-                            </thead>
-                            <tbody className={tbodyCls}>
-                              {selectedFeeTotals.studentFees.length > 0 ? (
-                                selectedFeeTotals.studentFees.map(fee => (
-                                  <tr key={fee._id} className={rowCls}>
-                                    <td className={`${tdCls} text-sm font-semibold text-gray-600 dark:text-gray-300`}>{new Date(fee.date).toLocaleDateString()}</td>
-                                    <td className={tdCls}><Badge tone="brand">{fee.type}</Badge></td>
-                                    <td className={`${tdCls} font-extrabold text-gray-900 dark:text-white`}>₹{fee.amount.toLocaleString()}</td>
-                                    <td className={`${tdCls} text-right`}>
-                                      <span className="inline-flex flex-wrap justify-end gap-1">
-                                        <button onClick={() => handleDownloadReceipt(fee)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-600 hover:bg-brand-50 dark:hover:bg-white/5"><FiFileText /> View receipt</button>
-                                        {(fee.status || 'Paid') === 'Paid' && <button type="button" onClick={() => printInvoice(fee._id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5"><FiPrinter /> {t('admin.fees.invoice')}</button>}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                ))
-                              ) : (
-                                <EmptyRow colSpan={4} icon={FiCreditCard} title="No payment history for this student" />
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  // No student selected - KPIs, approvals, defaulters and all transactions
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
-                      <div className="relative overflow-hidden rounded-3xl bg-brand-dark text-white p-6 shadow-card flex items-center gap-6">
-                        <div className="pointer-events-none absolute -top-16 -right-16 w-48 h-48 rounded-full bg-brand-500/25 blur-3xl" />
-                        <ProgressRing value={feeKpis.pct} size={124} stroke={12} track="rgba(255,255,255,0.08)" label="Collected vs pending">
-                          <p className="text-2xl font-extrabold">{Math.round(feeKpis.pct)}%</p>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">collected</p>
-                        </ProgressRing>
-                        <div className="relative space-y-3 min-w-0">
-                          <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-brand-500" />Collected</p>
-                            <p className="text-xl font-extrabold truncate">{formatINR(feeKpis.collected)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-white/30" />Pending</p>
-                            <p className="text-xl font-extrabold text-brand-300 truncate">{formatINR(feeKpis.pending)}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <StatCard icon={FiTrendingUp} label="Transactions" value={fees.length} hint="All recorded fee entries" tone="brand" />
-                      <StatCard icon={FiClock} label="Awaiting approval" value={feeKpis.pendingCount} hint="Manual payments to review" tone={feeKpis.pendingCount ? 'amber' : 'dark'} />
-                    </div>
-
-                    <UpcomingDues onSelectStudent={openFeeStudent} />
-
-                    <FeeApprovals onChanged={fetchFees} />
-
-                    <div className="ui-card overflow-hidden">
-                      <div className="flex justify-between items-center px-5 md:px-6 py-5">
-                        <div>
-                          <h3 className={h3}>All transactions</h3>
-                          <p className="text-xs text-gray-500">{fees.length} records</p>
-                        </div>
-                        <button onClick={fetchFees} className={iconBtn} title="Refresh" aria-label="Refresh transactions"><FiRefreshCw className={feesLoading ? 'animate-spin' : ''} /></button>
-                      </div>
-                      <div className={`${tableScroll} max-h-[36rem]`}>
-                        <table className="w-full text-left min-w-[680px]">
-                          <thead>
-                            <tr className={theadRow}>
-                              <th className={thCls}>Student</th>
-                              <th className={thCls}>Date</th>
-                              <th className={thCls}>Type</th>
-                              <th className={thCls}>Amount</th>
-                              <th className={thCls}>Status</th>
-                              <th className={`${thCls} text-right`}>{t('admin.fees.invoice')}</th>
-                            </tr>
-                          </thead>
-                          <tbody className={tbodyCls}>
-                            {feesLoading && fees.length === 0 ? <SkeletonRows rows={5} cols={6} /> : feesPg.total === 0 ? (
-                              <EmptyRow colSpan={6} icon={FiCreditCard} title="No transactions found" hint="Search a student above to record the first payment." />
-                            ) : feesPg.pageItems.map(fee => {
-                              const st = (fee.status || 'Paid').toLowerCase();
-                              return (
-                                <tr key={fee._id} className={rowCls}>
-                                  <td className={tdCls}>
-                                    <div className="flex items-center gap-3">
-                                      <Avatar name={fee.studentId?.name || '?'} size="sm" />
-                                      <div className="min-w-0">
-                                        <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{fee.studentId?.name || 'Unknown'}</p>
-                                        <p className="text-[11px] text-gray-400">{fee.studentId?.fatherName ? `F: ${fee.studentId.fatherName}` : ''}</p>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className={`${tdCls} text-sm text-gray-600 dark:text-gray-300`}>{new Date(fee.date || fee.createdAt).toLocaleDateString()}</td>
-                                  <td className={`${tdCls} text-sm font-semibold text-gray-600 dark:text-gray-300`}>{fee.type}</td>
-                                  <td className={`${tdCls} font-extrabold text-gray-900 dark:text-white`}>₹{Number(fee.amount || 0).toLocaleString('en-IN')}</td>
-                                  <td className={tdCls}>
-                                    <Badge tone={st === 'paid' ? 'green' : st === 'rejected' ? 'red' : 'amber'} dot>{fee.status || 'Paid'}</Badge>
-                                  </td>
-                                  <td className={`${tdCls} text-right`}>
-                                    {st === 'paid' ? (
-                                      <button type="button" onClick={() => printInvoice(fee._id)} className={iconBtn} title={t('admin.fees.invoice')} aria-label={t('admin.fees.invoiceFor', { name: fee.studentId?.name || '' })}><FiPrinter /></button>
-                                    ) : <span className="text-xs text-gray-300">—</span>}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                      <Pagination {...feesPg} label="transactions" />
-                    </div>
-                  </div>
-                )}
-              </>
+              <FeesDesk
+                canManage
+                students={allStudents}
+                focusStudentId={feeFocusId}
+                onFocusHandled={clearFeeFocus}
+                onDataChanged={refreshAfterFees}
+              />
             )}
 
             {/* ============================ TEACHERS ============================ */}

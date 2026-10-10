@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { badgeTone } from './adminTheme';
 import { FiChevronLeft, FiChevronRight, FiX, FiTrash2, FiInbox, FiAlertTriangle } from 'react-icons/fi';
 
@@ -238,10 +239,11 @@ const useEscape = (onClose) => {
   }, [onClose]);
 };
 
-export const Modal = ({ title, subtitle, icon: Icon, onClose, children, footer, maxWidth = 'max-w-xl', bodyClass = 'p-6 md:p-7', z = 'z-[200]' }) => {
+export const Modal = ({ title, subtitle, icon: Icon, onClose, children, footer, maxWidth = 'max-w-xl', bodyClass = 'p-6 md:p-7', z = 'z-[200]', portal = false }) => {
   useEscape(onClose);
-  return (
-    <div className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${z} flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in`} onClick={onClose}>
+  // portal: render under <body> so a transformed/animated ancestor can't clip the fixed backdrop.
+  const node = (
+    <div className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${z} flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in`} onClick={(e) => { e.stopPropagation(); onClose?.(); }}>
       <div
         role="dialog"
         aria-modal="true"
@@ -269,6 +271,7 @@ export const Modal = ({ title, subtitle, icon: Icon, onClose, children, footer, 
       </div>
     </div>
   );
+  return portal ? createPortal(node, document.body) : node;
 };
 
 // Promise-free confirm dialog. Render when `open`; onConfirm runs then closes.

@@ -12,6 +12,9 @@ const auth = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 const { getAccessibleStudent, resolveStudent, isObjectId, canAccessStudent } = require('../utils/access');
 const { reallocatePlan } = require('../utils/feeAllocation');
+const ClassFeeStructure = require('../models/ClassFeeStructure');
+const Class = require('../models/Class');
+const { applyStructureToStudent } = require('../utils/classFees');
 const { uploadSingle, fileUrl, removeUpload } = require('../utils/upload');
 const { TZ, istDayRange, istDateString, lastNMonthsIST } = require('../utils/time');
 
@@ -186,6 +189,162 @@ router.put('/plans/:studentId', auth, roleAuth('admin'), async (req, res) => {
   } catch (err) {
     console.error('Error updating fee plan:', err);
     if (err.name === 'ValidationError') return res.status(400).json({ message: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ---------- Class-wise fee structures ----------
+
+const classNum = (n) => parseInt(String(n).replace(/\D+/g, ''), 10) || 0;
+
+// One row per class: its structure (if set) plus how collection is going
+router.get('/class-fees', auth, roleAuth('admin', 'staff'), async (req, res) => {
+  try {
+    const [classes, structures, students, plans, paid] = await Promise.all([
+      Class.find().select('name').lean(),
+      ClassFeeStructure.find().lean(),
+      Student.find().select('classId totalFee').lean(),
+      FeePlan.find().select('studentId').lean(),
+      Fee.aggregate([{ $match: { status: 'Paid' } }, { $group: { _id: '$studentId', total: { $sum: '$amount' } } }]),
+    ]);
+    const structByClass = new Map(structures.map(s => [String(s.classId), s]));
+    const planSet = new Set(plans.map(p => String(p.studentId)));
+    const paidBy = new Map(paid.map(p => [String(p._id), p.total]));
+
+    const rows = classes.map(c => {
+      const list = students.filter(s => String(s.classId) === String(c._id));
+      let expected = 0, collected = 0, pending = 0, withPlan = 0;
+      list.forEach(s => {
+        const p = paidBy.get(String(s._id)) || 0;
+        expected += s.totalFee || 0;
+        collected += p;
+        pending += Math.max(0, (s.totalFee || 0) - p);
+        if (planSet.has(String(s._id))) withPlan++;
+      });
+      const st = structByClass.get(String(c._id));
+      return {
+        classId: c._id,
+        className: c.name,
+        structure: st ? {
+          totalFee: st.totalFee,
+          gstPercent: st.gstPercent || 0,
+          note: st.note || '',
+          installments: [...st.installments].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)),
+          updatedAt: st.updatedAt,
+        } : null,
+        students: list.length,
+        withPlan,
+        withoutPlan: list.length - withPlan,
+        expected: round2(expected),
+        collected: round2(collected),
+        pending: round2(pending),
+      };
+    }).sort((a, b) => classNum(a.className) - classNum(b.className) || a.className.localeCompare(b.className));
+    res.json(rows);
+  } catch (err) {
+    console.error('class-fees list error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create / update the standard fee for a class
+router.put('/class-fees/:classId', auth, roleAuth('admin'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    if (!isObjectId(classId) || !(await Class.exists({ _id: classId }))) return res.status(404).json({ message: 'Class not found' });
+    const b = req.body || {};
+    const totalFee = Number(b.totalFee);
+    const gstPercent = num(b.gstPercent, 0);
+    if (!Number.isFinite(totalFee) || totalFee <= 0) return res.status(400).json({ message: 'Total fee must be greater than 0' });
+    if (!Number.isFinite(gstPercent) || gstPercent < 0 || gstPercent > 100) return res.status(400).json({ message: 'gstPercent must be 0-100' });
+
+    const built = buildInstallments(b, round2(totalFee));
+    if (built.error) return res.status(400).json({ message: built.error });
+    const sum = round2(built.installments.reduce((s, i) => s + i.amount, 0));
+    if (Math.abs(sum - round2(totalFee)) > 0.01) {
+      return res.status(400).json({ message: `Installments add up to ₹${sum} but the total fee is ₹${round2(totalFee)}` });
+    }
+
+    const structure = await ClassFeeStructure.findOneAndUpdate(
+      { classId },
+      { $set: { totalFee: round2(totalFee), gstPercent, installments: built.installments, note: String(b.note || '').slice(0, 300), updatedBy: req.user.id } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+    res.json(structure);
+  } catch (err) {
+    console.error('class-fees save error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Copy the class structure into student fee plans.
+// mode 'missing' (default) = only students without a plan; 'all' = replace every plan in the class
+router.post('/class-fees/:classId/apply', auth, roleAuth('admin'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    if (!isObjectId(classId)) return res.status(404).json({ message: 'Class not found' });
+    const structure = await ClassFeeStructure.findOne({ classId });
+    if (!structure || !structure.installments.length) return res.status(400).json({ message: 'Set the fee structure for this class first' });
+    const overwrite = (req.body && req.body.mode) === 'all';
+
+    const students = await Student.find({ classId }).select('_id classId');
+    const result = { total: students.length, created: 0, replaced: 0, skipped: 0 };
+    for (const s of students) {
+      const r = await applyStructureToStudent(structure, s, { overwrite, createdBy: req.user.id });
+      result[r] += 1;
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('class-fees apply error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Students of a class with their fee position (for the collect-payment flow)
+router.get('/class-fees/:classId/students', auth, roleAuth('admin', 'staff'), async (req, res) => {
+  try {
+    const { classId } = req.params;
+    if (!isObjectId(classId)) return res.status(404).json({ message: 'Class not found' });
+    const students = await Student.find({ classId })
+      .populate('userId', 'name email phone')
+      .populate('batchId', 'name')
+      .lean();
+    const ids = students.map(s => s._id);
+    const [plans, paid] = await Promise.all([
+      FeePlan.find({ studentId: { $in: ids } }).lean(),
+      Fee.aggregate([{ $match: { studentId: { $in: ids }, status: 'Paid' } }, { $group: { _id: '$studentId', total: { $sum: '$amount' } } }]),
+    ]);
+    const planBy = new Map(plans.map(p => [String(p.studentId), p]));
+    const paidBy = new Map(paid.map(p => [String(p._id), p.total]));
+
+    const rows = students.map(s => {
+      const plan = planBy.get(String(s._id));
+      const paidAmt = round2(paidBy.get(String(s._id)) || 0);
+      const totalFee = plan ? round2(plan.totalFee - (plan.discount || 0)) : round2(s.totalFee || 0);
+      const ordered = plan ? [...plan.installments].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)) : [];
+      const next = ordered.find(i => i.status !== 'paid');
+      return {
+        studentId: s._id,
+        userId: s.userId ? s.userId._id : null,
+        name: s.name || (s.userId && s.userId.name) || 'Student',
+        email: s.userId ? s.userId.email : '',
+        phone: s.userId ? s.userId.phone : '',
+        fatherName: s.fatherName || '',
+        batchName: s.batchId ? s.batchId.name : '',
+        totalFee,
+        discount: plan ? plan.discount || 0 : 0,
+        paid: paidAmt,
+        pending: Math.max(0, round2(totalFee - paidAmt)),
+        hasPlan: !!plan,
+        installmentsTotal: ordered.length,
+        installmentsPaid: ordered.filter(i => i.status === 'paid').length,
+        installments: ordered.map(i => ({ _id: i._id, label: i.label, amount: i.amount, paidAmount: i.paidAmount || 0, dueDate: i.dueDate, status: i.status })),
+        nextDue: next ? { label: next.label, amount: round2(next.amount - (next.paidAmount || 0)), dueDate: next.dueDate, status: next.status } : null,
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    res.json(rows);
+  } catch (err) {
+    console.error('class-fees students error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });

@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { FiCheckCircle, FiXCircle, FiBell, FiSearch, FiRefreshCw, FiFileText, FiAlertTriangle } from 'react-icons/fi';
+import { FiCheckCircle, FiXCircle, FiBell, FiSearch, FiRefreshCw, FiFileText, FiAlertTriangle, FiCreditCard } from 'react-icons/fi';
 import { api, toastError, toastSuccess, formatINR } from './adminApi';
 import { Pagination, SkeletonRows, EmptyRow, Avatar, Badge, ProgressBar, tableScroll, theadRow, thCls, tdCls, rowCls, tbodyCls, iconBtn } from './AdminUI';
 import usePagination from './usePagination';
 
-const PendingApprovals = ({ onChanged }) => {
-  const [items, setItems] = useState([]);
+const PendingApprovals = ({ onChanged, classFilter = '' }) => {
+  const [allItems, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [rejecting, setRejecting] = useState(null); // fee id with open reason box
@@ -23,6 +23,7 @@ const PendingApprovals = ({ onChanged }) => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  const items = classFilter ? allItems.filter(p => p.student?.className === classFilter) : allItems;
 
   const approve = async (id) => {
     setBusyId(id);
@@ -147,7 +148,7 @@ const PendingApprovals = ({ onChanged }) => {
   );
 };
 
-const Defaulters = ({ reloadKey, canRemind = true }) => {
+const Defaulters = ({ reloadKey, canRemind = true, classFilter = '', onSelectStudent }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -168,9 +169,10 @@ const Defaulters = ({ reloadKey, canRemind = true }) => {
   useEffect(() => { load(); }, [load, reloadKey]);
 
   const q = search.trim().toLowerCase();
+  const inClass = classFilter ? items.filter(d => d.className === classFilter) : items;
   const filtered = q
-    ? items.filter(d => [d.name, d.className, d.phone].some(v => (v || '').toLowerCase().includes(q)))
-    : items;
+    ? inClass.filter(d => [d.name, d.className, d.phone].some(v => (v || '').toLowerCase().includes(q)))
+    : inClass;
   const pg = usePagination(filtered);
   const totalPending = filtered.reduce((a, d) => a + (d.pending || 0), 0);
 
@@ -250,7 +252,12 @@ const Defaulters = ({ reloadKey, canRemind = true }) => {
                     <ProgressBar value={pct} barClass="bg-emerald-500" />
                   </td>
                   <td className={tdCls}><Badge tone="red">{formatINR(d.pending)}</Badge></td>
-                  <td className={`${tdCls} text-right`}>
+                  <td className={`${tdCls} text-right whitespace-nowrap`}>
+                    {onSelectStudent && (
+                      <button type="button" onClick={() => onSelectStudent(d.studentId, d)} className="inline-flex items-center gap-1.5 px-3 py-2 mr-1.5 rounded-xl font-bold text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-500/10 dark:text-emerald-300 transition-all active:scale-95">
+                        <FiCreditCard /> Collect
+                      </button>
+                    )}
                     {canRemind && <button
                       disabled={sending === d.studentId}
                       onClick={() => remind(d)}
@@ -270,7 +277,8 @@ const Defaulters = ({ reloadKey, canRemind = true }) => {
   );
 };
 
-const FeeApprovals = ({ onChanged, canRemind = true }) => {
+// show: 'both' | 'approvals' | 'defaulters'. classFilter = class name ('' = all classes).
+const FeeApprovals = ({ onChanged, canRemind = true, show = 'both', classFilter = '', onSelectStudent, reloadKey: outerKey = 0 }) => {
   const [reloadKey, setReloadKey] = useState(0);
   const handleChanged = () => {
     setReloadKey(k => k + 1);
@@ -278,8 +286,8 @@ const FeeApprovals = ({ onChanged, canRemind = true }) => {
   };
   return (
     <div className="space-y-6">
-      <PendingApprovals onChanged={handleChanged} />
-      <Defaulters reloadKey={reloadKey} canRemind={canRemind} />
+      {show !== 'defaulters' && <PendingApprovals onChanged={handleChanged} classFilter={classFilter} />}
+      {show !== 'approvals' && <Defaulters reloadKey={reloadKey + outerKey} canRemind={canRemind} classFilter={classFilter} onSelectStudent={onSelectStudent} />}
     </div>
   );
 };

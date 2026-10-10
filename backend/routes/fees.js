@@ -5,6 +5,7 @@ const Student = require('../models/Student');
 const auth = require('../middleware/auth');
 const roleAuth = require('../middleware/roleAuth');
 const sendFeeReceipt = require('../utils/sendFeeReceipt');
+const { feeSummary } = require('../utils/classFees');
 const sendEmail = require('../utils/sendEmail');
 const sendSMS = require('../utils/sendSMS');
 const { notifyUser } = require('../utils/notify');
@@ -59,6 +60,12 @@ async function getFeeContacts(student) {
         parents,
         emails,
     };
+}
+
+// " Remaining balance: ₹X." / " Fees are now fully paid." suffix for notifications
+function balanceText(summary) {
+    if (!summary || !(summary.totalFee > 0)) return '';
+    return summary.balance > 0 ? ` Remaining balance: ₹${formatINR(summary.balance)}.` : ' Fees are now fully paid.';
 }
 
 async function paidTotal(studentId) {
@@ -147,10 +154,12 @@ router.post('/razorpay/verify', auth, roleAuth('parent'), async (req, res) => {
         });
         await fee.save();
         await allocateFeeToPlan(fee);
+        const summary = await feeSummary(student._id, fee);
 
         const { studentUserId, parents, emails } = await getFeeContacts(student);
         if (emails.length > 0) {
             sendFeeReceipt(emails, {
+                summary,
                 studentName: student.name,
                 fatherName: student.fatherName,
                 amount: paidAmount,
@@ -164,7 +173,7 @@ router.post('/razorpay/verify', auth, roleAuth('parent'), async (req, res) => {
 
         await notifyUser(req.io, studentUserId, {
             title: 'Fee Payment Received',
-            message: `Payment of ₹${formatINR(paidAmount)} received via Razorpay. Transaction ID: ${paymentId}.`,
+            message: `Payment of ₹${formatINR(paidAmount)} received via Razorpay. Transaction ID: ${paymentId}.${balanceText(summary)}`,
             type: 'fee'
         });
         for (const p of parents) {
@@ -220,11 +229,13 @@ router.post('/pay', auth, roleAuth('admin', 'staff', 'parent'), async (req, res)
         });
         await fee.save();
         if (status === 'Paid') await allocateFeeToPlan(fee);
+        const summary = status === 'Paid' ? await feeSummary(studentProfile._id, fee) : null;
 
         const { studentUserId, parents, emails } = await getFeeContacts(studentProfile);
 
         if (status === 'Paid' && emails.length > 0) {
             sendFeeReceipt(emails, {
+                summary,
                 studentName: studentProfile.name,
                 fatherName: studentProfile.fatherName,
                 amount: amt,
@@ -239,7 +250,7 @@ router.post('/pay', auth, roleAuth('admin', 'staff', 'parent'), async (req, res)
         await notifyUser(req.io, studentUserId, {
             title: status === 'Paid' ? 'Fee Payment Received' : 'Payment Submitted',
             message: status === 'Paid'
-                ? `We have received a payment of ₹${formatINR(amt)} for ${type || 'fees'}.`
+                ? `We have received a payment of ₹${formatINR(amt)} for ${type || 'fees'}.${balanceText(summary)}`
                 : `Payment proof of ₹${formatINR(amt)} submitted for verification.`,
             type: 'fee'
         });
@@ -247,13 +258,13 @@ router.post('/pay', auth, roleAuth('admin', 'staff', 'parent'), async (req, res)
             await notifyUser(req.io, p._id, {
                 title: status === 'Paid' ? 'Fee Payment Confirmation' : 'Payment Submitted',
                 message: status === 'Paid'
-                    ? `Payment of ₹${formatINR(amt)} received for ${studentProfile.name}.`
+                    ? `Payment of ₹${formatINR(amt)} received for ${studentProfile.name}.${balanceText(summary)}`
                     : `Payment proof of ₹${formatINR(amt)} submitted for verification for ${studentProfile.name}.`,
                 type: 'fee'
             });
         }
 
-        res.json(fee);
+        res.json({ ...fee.toObject(), summary, emailedTo: status === 'Paid' ? emails : [] });
     } catch (err) {
         console.error('Error adding fee:', err);
         res.status(500).json({ message: 'Server error' });
@@ -352,9 +363,11 @@ router.post('/:id/approve', auth, roleAuth('admin', 'staff'), async (req, res) =
 
         const student = await Student.findById(fee.studentId);
         if (student) {
+            const summary = await feeSummary(student._id, fee);
             const { studentUserId, parents, emails } = await getFeeContacts(student);
             if (emails.length > 0) {
                 sendFeeReceipt(emails, {
+                    summary,
                     studentName: student.name,
                     fatherName: student.fatherName,
                     amount: fee.amount,
@@ -367,13 +380,13 @@ router.post('/:id/approve', auth, roleAuth('admin', 'staff'), async (req, res) =
             }
             await notifyUser(req.io, studentUserId, {
                 title: 'Payment Approved',
-                message: `Your payment of ₹${formatINR(fee.amount)} has been verified and approved.`,
+                message: `Your payment of ₹${formatINR(fee.amount)} has been verified and approved.${balanceText(summary)}`,
                 type: 'fee'
             });
             for (const p of parents) {
                 await notifyUser(req.io, p._id, {
                     title: 'Payment Approved',
-                    message: `Payment of ₹${formatINR(fee.amount)} for ${student.name} has been verified and approved.`,
+                    message: `Payment of ₹${formatINR(fee.amount)} for ${student.name} has been verified and approved.${balanceText(summary)}`,
                     type: 'fee'
                 });
             }

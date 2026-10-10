@@ -77,6 +77,11 @@ async function createStudentAccount(data, { sendEmails = true, cls: knownClass }
     throw e;
   }
 
+  // No fee given: use the class's standard fee structure (if the admin has set one)
+  if (!(Number(totalFee) > 0)) {
+    await require('./classFees').applyClassStructureIfAny(student);
+  }
+
   if (sendEmails) {
     const msg = 'Welcome to Oasis JEE Classes, ' + name + '!\n\n' +
       'Your student account has been created.\n' +

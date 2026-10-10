@@ -15,7 +15,7 @@ const dueChip = (daysLeft, t) => {
  * Unpaid installments due within N days, overdue included (GET /finance/upcoming-dues?days=).
  * compact: short list for overview cards. onSelectStudent(studentId) makes rows clickable.
  */
-const UpcomingDues = ({ compact = false, limit, onSelectStudent, onViewAll, reloadKey = 0, className = '' }) => {
+const UpcomingDues = ({ compact = false, limit, onSelectStudent, onViewAll, reloadKey = 0, className = '', classFilter = '' }) => {
   const { t } = useI18n();
   const [days, setDays] = useState(compact ? 7 : 14);
   const [rows, setRows] = useState(null);
@@ -36,7 +36,7 @@ const UpcomingDues = ({ compact = false, limit, onSelectStudent, onViewAll, relo
 
   useEffect(() => { load(); }, [load, reloadKey]);
 
-  const list = rows || [];
+  const list = classFilter ? (rows || []).filter(r => r.className === classFilter) : (rows || []);
   const overdue = list.filter(r => r.daysLeft < 0);
   const total = list.reduce((a, r) => a + (r.amount || 0), 0);
   const shown = limit ? list.slice(0, limit) : list;
@@ -79,7 +79,7 @@ const UpcomingDues = ({ compact = false, limit, onSelectStudent, onViewAll, relo
               return (
                 <li key={`${r.studentId}-${r.installmentId}`}>
                   <Tag
-                    {...(onSelectStudent ? { type: 'button', onClick: () => onSelectStudent(r.studentId) } : {})}
+                    {...(onSelectStudent ? { type: 'button', onClick: () => onSelectStudent(r.studentId, r) } : {})}
                     className={`group w-full flex items-center gap-3 p-2.5 rounded-2xl text-left transition-colors ${r.daysLeft < 0 ? 'bg-red-50/60 dark:bg-red-500/5' : ''} ${onSelectStudent ? 'hover:bg-brand-50/60 dark:hover:bg-white/5' : ''}`}
                   >
                     <Avatar name={r.studentName} size="sm" />

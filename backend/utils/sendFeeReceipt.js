@@ -2,7 +2,33 @@ const apiInstance = require('./brevo');
 const SibApiV3Sdk = require('sib-api-v3-sdk');
 
 const sendFeeReceipt = async (emails, paymentData) => {
-    const { studentName, fatherName, amount, transactionId, date, mode, type, remarks } = paymentData;
+    const { studentName, fatherName, amount, transactionId, date, mode, type, remarks, summary } = paymentData;
+    const inr = (n) => Number(n || 0).toLocaleString('en-IN');
+    const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+
+    // Fee position after this payment (total / paid so far / balance / next installment)
+    let summaryHtml = '';
+    if (summary && summary.totalFee > 0) {
+        const cleared = summary.balance <= 0;
+        const covered = (summary.coveredLabels || []).length ? `<div style="font-size:13px;color:#555;margin-bottom:12px;">This payment cleared: <strong>${summary.coveredLabels.join(', ')}</strong></div>` : '';
+        const progress = summary.installmentsTotal ? `<div style="font-size:12px;color:#888;margin-top:10px;">Installments paid: ${summary.installmentsPaid} of ${summary.installmentsTotal}</div>` : '';
+        const next = !cleared && summary.next
+            ? `<div style="margin-top:14px;padding:12px 14px;background:#fff6ef;border:1px solid #fdcfae;border-radius:8px;font-size:13px;color:#333;">
+                   <strong>Next installment:</strong> ${summary.next.label} — ₹${inr(summary.next.amount)} due on <strong>${fmtDate(summary.next.dueDate)}</strong>
+               </div>` : '';
+        summaryHtml = `
+                <div style="margin-top:24px;border:1px solid #eee;border-radius:10px;padding:18px 20px;">
+                    <div style="font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#f37021;margin-bottom:12px;">Fee summary</div>
+                    ${covered}
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;color:#333;">
+                        <tr><td style="padding:6px 0;color:#666;">Total course fee</td><td align="right" style="padding:6px 0;font-weight:bold;">₹${inr(summary.totalFee)}</td></tr>
+                        <tr><td style="padding:6px 0;color:#666;">Paid so far (including this payment)</td><td align="right" style="padding:6px 0;font-weight:bold;color:#16a34a;">₹${inr(summary.totalPaid)}</td></tr>
+                        <tr><td style="padding:10px 0 4px;border-top:1px dashed #ddd;font-weight:bold;">Remaining balance</td><td align="right" style="padding:10px 0 4px;border-top:1px dashed #ddd;font-weight:bold;font-size:18px;color:${cleared ? '#16a34a' : '#dc2626'};">${cleared ? 'Nil — fully paid 🎉' : '₹' + inr(summary.balance)}</td></tr>
+                    </table>
+                    ${progress}
+                    ${next}
+                </div>`;
+    }
     const senderEmail = process.env.SENDER_EMAIL || 'oasispatna5555@gmail.com';
 
     let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
@@ -105,6 +131,8 @@ const sendFeeReceipt = async (emails, paymentData) => {
                     <div class="amount-value">₹${Number(amount).toLocaleString('en-IN')}</div>
                 </div>
 
+                ${summaryHtml}
+
                 ${remarks ? `
                 <div style="margin-top: 20px; font-size: 14px; font-style: italic; color: #666; border-left: 3px solid #f37021; padding-left: 15px;">
                     Note: ${remarks}
@@ -126,7 +154,10 @@ const sendFeeReceipt = async (emails, paymentData) => {
     </html>
     `;
 
-    sendSmtpEmail.subject = `🎉 Payment Successful: ₹${amount} - Oasis Classes`;
+    const balanceNote = summary && summary.totalFee > 0
+        ? (summary.balance > 0 ? ` | Balance ₹${inr(summary.balance)}` : ' | Fully paid')
+        : '';
+    sendSmtpEmail.subject = `Payment received: ₹${inr(amount)}${balanceNote} - Oasis Classes`;
     sendSmtpEmail.htmlContent = receiptHtml;
 
     sendSmtpEmail.sender = { "name": "Oasis Classes", "email": senderEmail };
